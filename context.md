@@ -47,7 +47,7 @@ Garantizar que cada cambio mejore el sistema sin introducir regresiones, errores
 
 
 # ==============================================
-# PROYECTO: CLÍNICA ESTÁNDAR (v1.7)
+# PROYECTO: CLÍNICA ESTÁNDAR (v1.8)
 # ==============================================
 
 ## Visión General
@@ -102,7 +102,9 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 # ==============================================
 
 ## Cambios Realizados
-- **v1.7 (Fecha Actual):**
+- **v1.8 (Fecha Actual):**
+  - **Implementación Sección Servicios (Tarea 3):** Se ha completado el diseño y la implementación de la sección "Nuestros Servicios" en la página principal. Se crearon tarjetas de servicio con un diseño limpio y profesional, manteniendo la coherencia con el Design System.
+- **v1.7:**
   - **Mejora Hero Section (Responsive y UX):** Se implementó el uso de imágenes de fondo responsivas para la sección Hero (`banner.jpg` para desktop, `banner_mobil.jpg` para móvil). Se desacopló la lógica de JS y CSS para mayor robustez. Se añadió una animación sutil de zoom (Ken Burns) y se mejoró el degradado para una apariencia más profesional y "next-level".
 - **v1.6:**
   - **Rediseño de la Sección Hero (Tarea 2):** Se implementó la imagen `public/assets/banner.jpg` como fondo. Se ajustó el degradado del overlay para garantizar la legibilidad del texto y se verificó la correcta funcionalidad de los botones de acción.
@@ -123,11 +125,6 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
   - **Implementación del Protocolo de Seguridad y Calidad:** Se ha añadido la sección "PRIME DIRECTIVE" con checklists de auditoría y verificación obligatorias para minimizar errores y regresiones.
 
 ## Tareas Pendientes (Backlog Priorizado)
-
-### 4. Mejora de la Sección Especialidades (Prioridad Media)
-- **Requerimiento:** Mejorar el diseño y la funcionalidad de la sección de especialidades destacadas.
-- **Sub-tarea 4.1 (Funcionalidad):** Asegurar que el botón "Ver Todas las Especialidades" redirija a `pages/specialties/`.
-- **Sub-tarea 4.2 (Funcionalidad):** Implementar que los enlaces "Saber más" redirijan a `pages/specialties/?especialidad=NOMBRE_ESPECIALIDAD`, permitiendo pre-filtrar la página de destino.
 
 ### 5. Mejora de la Sección Doctores (Prioridad Media)
 - **Requerimiento:** Mejorar el diseño, interacción y UX de la sección "Conozca a Nuestro Equipo" para inspirar confianza.
