@@ -47,7 +47,7 @@ Garantizar que cada cambio mejore el sistema sin introducir regresiones, errores
 
 
 # ==============================================
-# PROYECTO: CLÍNICA ESTÁNDAR (v1.9)
+# PROYECTO: CLÍNICA ESTÁNDAR (v2.0)
 # ==============================================
 
 ## Visión General
@@ -115,6 +115,8 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 # ==============================================
 
 ## Cambios Realizados
+- **v2.0 (Fecha Actual):**
+  - **Mejora de la Sección Doctores (Tarea 5):** Se rediseñaron las tarjetas de los doctores en la página principal con un diseño de superposición (overlay) más moderno y una microinteracción al pasar el cursor para revelar más detalles. Se reestructuró el HTML y se refactorizó el CSS para lograr el nuevo aspecto premium.
 - **v1.9 (Fecha Actual):**
   - **Refactorización Arquitectónica (Componentes):** Se ha refactorizado el `header` y el `footer` en componentes PHP/CSS/JS reutilizables y encapsulados dentro del directorio `public/shared/`. Se actualizaron todas las páginas (`index.php`, `pages/specialties/`, `pages/doctors/`) para utilizar esta nueva arquitectura, mejorando drásticamente la mantenibilidad y consistencia del código. Se eliminaron los archivos `header.php` y `footer.php` del directorio raíz.
 - **v1.8 (Fecha Actual):**
@@ -140,11 +142,6 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
   - **Implementación del Protocolo de Seguridad y Calidad:** Se ha añadido la sección "PRIME DIRECTIVE" con checklists de auditoría y verificación obligatorias para minimizar errores y regresiones.
 
 ## Tareas Pendientes (Backlog Priorizado)
-
-### 5. Mejora de la Sección Doctores (Prioridad Media)
-- **Requerimiento:** Mejorar el diseño, interacción y UX de la sección "Conozca a Nuestro Equipo" para inspirar confianza.
-- **Sub-tarea 5.1 (UI/UX):** Rediseñar las `doctor-card` para que sean más impactantes. Incluir un efecto hover que revele más información o un sutil brillo para destacar.
-- **Sub-tarea 5.2 (Funcionalidad):** Asegurar que el botón "Ver Todos los Doctores" redirija a `pages/doctors/`.
 
 ### 6. Rediseño de la Sección Testimonios (Prioridad Media)
 - **Requerimiento:** Mejorar el diseño, maquetación, UX y funcionalidad para que los testimonios generen seguridad y calidez.

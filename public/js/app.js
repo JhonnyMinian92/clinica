@@ -217,16 +217,15 @@
       const dots = dom.testimonialDots.children;
 
       function updateCarousel() {
-        slides.forEach((slide, index) => {
-          slide.classList.remove('is-active', 'is-prev', 'is-next');
+        const activeSlide = slides[currentIndex];
+        if (!activeSlide) return;
 
-          if (index === currentIndex) {
-            slide.classList.add('is-active');
-          } else if (index === (currentIndex - 1 + totalSlides) % totalSlides) {
-            slide.classList.add('is-prev');
-          } else if (index === (currentIndex + 1) % totalSlides) {
-            slide.classList.add('is-next');
-          }
+        // UX Improvement: Adjust wrapper height to match the active slide's height
+        dom.testimonialWrapper.style.height = `${activeSlide.offsetHeight}px`;
+
+        // Toggle active class for fade effect
+        slides.forEach((slide, index) => {
+          slide.classList.toggle('is-active', index === currentIndex);
         });
 
         // Update dots

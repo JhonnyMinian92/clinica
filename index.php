@@ -89,28 +89,28 @@ $testimonios = [
     'autor' => 'Carlos Rodríguez',
     'detalle' => 'Paciente de Cardiología',
     'valoracion' => 5,
-    'avatar' => 'https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=200&auto=format&fit=crop'
+    'avatar' => 'public/assets/avatar.png'
   ],
   [
     'texto' => 'Llevar a mi hijo recién nacido a la Dra. Castillo fue la mejor decisión. Su paciencia y conocimiento nos dieron una tranquilidad inmensa en momentos de incertidumbre.',
     'autor' => 'Ana Sofía Paredes',
     'detalle' => 'Madre de paciente de Pediatría',
     'valoracion' => 5,
-    'avatar' => 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop'
+    'avatar' => 'public/assets/avatar.png'
   ],
   [
     'texto' => 'Después de años buscando una solución para mi problema de piel, la Dra. Morales me dio un diagnóstico preciso y un tratamiento que realmente funcionó. ¡Increíble!',
     'autor' => 'Javier Mendoza',
     'detalle' => 'Paciente de Dermatología',
     'valoracion' => 5,
-    'avatar' => 'https://images.unsplash.com/photo-1557862921-37829c790f19?q=80&w=200&auto=format&fit=crop'
+    'avatar' => 'public/assets/avatar.png'
   ],
   [
     'texto' => 'La tecnología que utilizan para los diagnósticos por imagen es de otro nivel. Obtuve mis resultados de resonancia magnética rápidamente y con una claridad impresionante.',
     'autor' => 'Lucía Fernández',
     'detalle' => 'Paciente de Diagnóstico por Imagen',
     'valoracion' => 5,
-    'avatar' => 'https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=200&auto=format&fit=crop'
+    'avatar' => 'public/assets/avatar.png'
   ]
 ];
 

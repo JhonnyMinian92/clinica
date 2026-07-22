@@ -609,12 +609,12 @@ body.mobile-nav-open .nav-link {
   font-size: var(--font-size-h3);
   line-height: 1.2;
   margin-bottom: calc(var(--spacing-unit) * 0.5);
-  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 .doctor-card .doctor-specialty {
   font-weight: 500;
   opacity: 0.9;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 .doctor-card-details {
   max-height: 0;
@@ -728,36 +728,51 @@ body.mobile-nav-open .nav-link {
   position: relative;
   max-width: 800px;
   margin: 0 auto;
-  /* El padding es para los botones en desktop. En móvil, lo reducimos. */
-  padding: 0 var(--spacing-unit);
-  overflow: hidden; /* CRÍTICO: Contiene los slides dentro del carrusel. */
 }
 
 .testimonial-wrapper {
-  display: flex;
-  transition: transform var(--transition-duration-medium) var(--ease-in-out-quint);
+  position: relative;
+  /* La altura se ajusta con JS para transiciones suaves */
+  transition: height var(--transition-duration-medium) var(--ease-out-cubic);
 }
 
 .testimonial-slide {
-  flex: 0 0 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--transition-duration-medium) var(--ease-out-cubic),
+    visibility 0s var(--transition-duration-medium);
+  background-color: var(--color-background-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-hard);
+  padding: calc(var(--spacing-unit) * 5);
   text-align: center;
-  position: relative;
-  /* Añadimos padding para espaciar el contenido */
-  padding: calc(var(--spacing-unit) * 4) calc(var(--spacing-unit) * 2) 0;
+  z-index: 1;
+}
+
+.testimonial-slide.is-active {
+  opacity: 1;
+  visibility: visible;
+  position: relative; /* Permite que el wrapper calcule su altura */
+  transition-delay: 0s;
+  z-index: 2;
 }
 
 .testimonial-slide::before {
   content: '“';
   font-family: Georgia, serif;
-  font-size: 8rem; /* Un poco más grande para más impacto */
-  color: var(--color-border);
-  opacity: 0.5; /* Más sutil */
+  font-size: 10rem;
+  color: var(--color-primary);
+  opacity: 0.05;
   position: absolute;
-  top: var(--spacing-unit);
-  left: 50%;
-  transform: translateX(-50%);
+  top: -1rem;
+  left: 1rem;
   line-height: 1;
-  z-index: -1;
+  z-index: 1;
 }
 
 .testimonial-avatar {
@@ -768,7 +783,9 @@ body.mobile-nav-open .nav-link {
   margin: 0 auto calc(var(--spacing-unit) * 2);
   box-shadow: var(--shadow-medium);
   border: 3px solid var(--color-white);
-  outline: 2px solid var(--color-primary);
+  outline: 3px solid var(--color-primary);
+  position: relative;
+  z-index: 2;
 }
 
 .testimonial-rating {
@@ -776,6 +793,8 @@ body.mobile-nav-open .nav-link {
   font-size: 1.25rem;
   margin-bottom: var(--spacing-unit);
   letter-spacing: 2px;
+  position: relative;
+  z-index: 2;
 }
 
 .testimonial-text {
@@ -785,30 +804,30 @@ body.mobile-nav-open .nav-link {
   max-width: 650px;
   margin: 0 auto calc(var(--spacing-unit) * 2);
   line-height: 1.7;
+  position: relative;
+  z-index: 2;
 }
 
 .testimonial-author {
   font-weight: 600;
   font-style: normal;
   color: var(--color-text-primary);
+  position: relative;
+  z-index: 2;
 }
 
 .testimonial-controls {
-  display: none; /* Hidden on touch devices, rely on swipe (future enhancement) */
+  display: none;
 }
 
 @media (min-width: 768px) {
-  .testimonial-carousel {
-    /* Restauramos el padding para los botones en desktop */
-    padding: 0 calc(var(--spacing-unit) * 5);
-  }
   .testimonial-controls {
     display: block;
   }
   .carousel-btn {
     position: absolute;
     top: 50%;
-    transform: translateY(-50%);
+    transform: translateY(-50%) scale(1);
     background-color: rgba(255, 255, 255, 0.7);
     backdrop-filter: blur(2px);
     border: 1px solid var(--color-border);
@@ -820,7 +839,7 @@ body.mobile-nav-open .nav-link {
     place-items: center;
     color: var(--color-text-primary);
     transition: all var(--transition-duration-fast) ease;
-    z-index: 10;
+    z-index: 3;
   }
   .carousel-btn:hover {
     background-color: var(--color-primary);
@@ -829,10 +848,10 @@ body.mobile-nav-open .nav-link {
     transform: translateY(-50%) scale(1.1);
   }
   .carousel-btn.prev {
-    left: 0px;
+    left: -22px;
   }
   .carousel-btn.next {
-    right: 0px;
+    right: -22px;
   }
 }
 
