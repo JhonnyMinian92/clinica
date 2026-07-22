@@ -1,84 +1,84 @@
 <?php
 // Datos para la página principal
 $especialidades_destacadas = [
-    [
-        'titulo' => 'Cardiología',
-        'descripcion' => 'Cuidado integral de su corazón con la tecnología más avanzada.',
-        'icono' => '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>'
-    ],
-    [
-        'titulo' => 'Neurología',
-        'descripcion' => 'Diagnóstico y tratamiento de enfermedades del sistema nervioso.',
-        'icono' => '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>'
-    ],
-    [
-        'titulo' => 'Pediatría',
-        'descripcion' => 'Cuidamos la salud de los más pequeños con dedicación y cariño.',
-        'icono' => '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>'
-    ],
-    [
-        'titulo' => 'Oncología',
-        'descripcion' => 'Tratamientos de vanguardia y apoyo continuo en la lucha contra el cáncer.',
-        'icono' => '<path d="M12 2a2 2 0 0 0-2 2v2H8a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2h2a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2V4a2 2 0 0 0-2-2h-2z"></path>'
-    ],
+  [
+    'titulo' => 'Cardiología',
+    'descripcion' => 'Cuidado integral de su corazón con la tecnología más avanzada.',
+    'icono' => '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>'
+  ],
+  [
+    'titulo' => 'Neurología',
+    'descripcion' => 'Diagnóstico y tratamiento de enfermedades del sistema nervioso.',
+    'icono' => '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>'
+  ],
+  [
+    'titulo' => 'Pediatría',
+    'descripcion' => 'Cuidamos la salud de los más pequeños con dedicación y cariño.',
+    'icono' => '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>'
+  ],
+  [
+    'titulo' => 'Oncología',
+    'descripcion' => 'Tratamientos de vanguardia y apoyo continuo en la lucha contra el cáncer.',
+    'icono' => '<path d="M12 2a2 2 0 0 0-2 2v2H8a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2h2a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2V4a2 2 0 0 0-2-2h-2z"></path>'
+  ],
 ];
 
 $doctores_destacados = [
-    [
-        'nombre' => 'Dr. Alejandro Vargas',
-        'especialidad' => 'Cardiólogo Intervencionista',
-        'experiencia' => '15+ años de experiencia',
-        'foto' => 'https://images.unsplash.com/photo-1622253692010-333f2da60710?q=80&w=400&auto=format&fit=crop',
-    ],
-    [
-        'nombre' => 'Dra. Sofía Castillo',
-        'especialidad' => 'Pediatra Neonatóloga',
-        'experiencia' => '12+ años de experiencia',
-        'foto' => 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=400&auto=format&fit=crop',
-    ],
-    [
-        'nombre' => 'Dr. Mateo Herrera',
-        'especialidad' => 'Neurólogo Vascular',
-        'experiencia' => '18+ años de experiencia',
-        'foto' => 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=400&auto=format&fit=crop',
-    ],
-    [
-        'nombre' => 'Dra. Valentina Morales',
-        'especialidad' => 'Dermatóloga Estética',
-        'experiencia' => '10+ años de experiencia',
-        'foto' => 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?q=80&w=400&auto=format&fit=crop',
-    ],
+  [
+    'nombre' => 'Dr. Alejandro Vargas',
+    'especialidad' => 'Cardiólogo Intervencionista',
+    'experiencia' => '15+ años de experiencia',
+    'foto' => 'https://images.unsplash.com/photo-1622253692010-333f2da60710?q=80&w=400&auto=format&fit=crop',
+  ],
+  [
+    'nombre' => 'Dra. Sofía Castillo',
+    'especialidad' => 'Pediatra Neonatóloga',
+    'experiencia' => '12+ años de experiencia',
+    'foto' => 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=400&auto=format&fit=crop',
+  ],
+  [
+    'nombre' => 'Dr. Mateo Herrera',
+    'especialidad' => 'Neurólogo Vascular',
+    'experiencia' => '18+ años de experiencia',
+    'foto' => 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=400&auto=format&fit=crop',
+  ],
+  [
+    'nombre' => 'Dra. Valentina Morales',
+    'especialidad' => 'Dermatóloga Estética',
+    'experiencia' => '10+ años de experiencia',
+    'foto' => 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?q=80&w=400&auto=format&fit=crop',
+  ],
 ];
 
 $testimonios = [
-    [
-        'texto' => 'El nivel de profesionalismo y la calidad humana del Dr. Vargas y su equipo son excepcionales. Me sentí seguro y bien atendido durante todo mi procedimiento coronario.',
-        'autor' => 'Carlos Rodríguez',
-        'detalle' => 'Paciente de Cardiología',
-        'valoracion' => 5,
-        'avatar' => 'https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=200&auto=format&fit=crop'
-    ],
-    [
-        'texto' => 'Llevar a mi hijo recién nacido a la Dra. Castillo fue la mejor decisión. Su paciencia y conocimiento nos dieron una tranquilidad inmensa en momentos de incertidumbre.',
-        'autor' => 'Ana Sofía Paredes',
-        'detalle' => 'Madre de paciente de Pediatría',
-        'valoracion' => 5,
-        'avatar' => 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop'
-    ],
-    [
-        'texto' => 'Después de años buscando una solución para mi problema de piel, la Dra. Morales me dio un diagnóstico preciso y un tratamiento que realmente funcionó. ¡Increíble!',
-        'autor' => 'Javier Mendoza',
-        'detalle' => 'Paciente de Dermatología',
-        'valoracion' => 5,
-        'avatar' => 'https://images.unsplash.com/photo-1557862921-37829c790f19?q=80&w=200&auto=format&fit=crop'
-    ],
-    [
-        'texto' => 'La tecnología que utilizan para los diagnósticos por imagen es de otro nivel. Obtuve mis resultados de resonancia magnética rápidamente y con una claridad impresionante.',
-        'autor' => 'Lucía Fernández',
-        'detalle' => 'Paciente de Diagnóstico por Imagen',
-        'valoracion' => 5,
-        'avatar' => 'https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=200&auto=format&fit=crop'
-    ]
+  [
+    'texto' => 'El nivel de profesionalismo y la calidad humana del Dr. Vargas y su equipo son excepcionales. Me sentí seguro y bien atendido durante todo mi procedimiento coronario.',
+    'autor' => 'Carlos Rodríguez',
+    'detalle' => 'Paciente de Cardiología',
+    'valoracion' => 5,
+    'avatar' => 'https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=200&auto=format&fit=crop'
+  ],
+  [
+    'texto' => 'Llevar a mi hijo recién nacido a la Dra. Castillo fue la mejor decisión. Su paciencia y conocimiento nos dieron una tranquilidad inmensa en momentos de incertidumbre.',
+    'autor' => 'Ana Sofía Paredes',
+    'detalle' => 'Madre de paciente de Pediatría',
+    'valoracion' => 5,
+    'avatar' => 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop'
+  ],
+  [
+    'texto' => 'Después de años buscando una solución para mi problema de piel, la Dra. Morales me dio un diagnóstico preciso y un tratamiento que realmente funcionó. ¡Increíble!',
+    'autor' => 'Javier Mendoza',
+    'detalle' => 'Paciente de Dermatología',
+    'valoracion' => 5,
+    'avatar' => 'https://images.unsplash.com/photo-1557862921-37829c790f19?q=80&w=200&auto=format&fit=crop'
+  ],
+  [
+    'texto' => 'La tecnología que utilizan para los diagnósticos por imagen es de otro nivel. Obtuve mis resultados de resonancia magnética rápidamente y con una claridad impresionante.',
+    'autor' => 'Lucía Fernández',
+    'detalle' => 'Paciente de Diagnóstico por Imagen',
+    'valoracion' => 5,
+    'avatar' => 'https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=200&auto=format&fit=crop'
+  ]
 ];
 ?>
 <!DOCTYPE html>
@@ -105,20 +105,18 @@ $testimonios = [
   <!-- Header -->
   <header class="main-header" id="main-header">
     <div class="container header-container">
-      <a href="/" class="logo" aria-label="Página de inicio de Clínica Estándar">
+      <a href="" class="logo" aria-label="Página de inicio de Clínica Estándar">
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-svg">
-          <path
-            d="M12 2L12 5M12 19L12 22M22 12L19 12M5 12L2 12M19.07 4.93L17 7M7 17L4.93 19.07M19.07 19.07L17 17M7 7L4.93 4.93M16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79086 9.79086 8 12 8C14.2091 8 16 9.79086 16 12Z"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-          <path
-            d="M12 14C13.1046 14 14 13.1046 14 12C14 10.8954 13.1046 10 12 10C10.8954 10 10 10.8954 10 12C10 13.1046 10.8954 14 12 14Z"
-            fill="currentColor" />
+          <path d="M12 5C12 5 9 2 6 2C3 2 2 4 2 6C2 9 5 12 12 19C19 12 22 9 22 6C22 4 21 2 18 2C15 2 12 5 12 5Z"
+            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4" />
+          <path d="M12 8V16M8 12H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" />
         </svg>
         <span class="clinic-name-header">Clínica Estándar</span>
       </a>
       <nav class="main-nav" id="main-nav" aria-label="Navegación principal">
         <ul class="nav-list">
-          <li><a href="pages/specialties/" class="nav-link">Especialidades</a></li>
+          <li><a href="#specialties" class="nav-link">Especialidades</a></li>
           <li><a href="#services" class="nav-link">Servicios</a></li>
           <li><a href="#doctors" class="nav-link">Doctores</a></li>
           <li><a href="#about" class="nav-link">Nosotros</a></li>
@@ -211,6 +209,21 @@ $testimonios = [
     </section>
 
     <!-- ============================ -->
+    <!-- ========= SERVICIOS ======== -->
+    <!-- ============================ -->
+    <section id="services" class="section">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title animate-on-scroll fade-in-up">Nuestros Servicios</h2>
+          <p class="section-subtitle animate-on-scroll fade-in-up" style="--animation-delay: 100ms;">
+            Atención médica completa para usted y su familia. (Sección en desarrollo)
+          </p>
+        </div>
+        <!-- El contenido de las tarjetas de servicios se añadirá aquí en una futura tarea. -->
+      </div>
+    </section>
+
+    <!-- ============================ -->
     <!-- ====== ESPECIALIDADES ====== -->
     <!-- ============================ -->
     <section id="specialties" class="section section-light">
@@ -223,19 +236,19 @@ $testimonios = [
         </div>
         <div class="grid-4-col">
           <?php foreach ($especialidades_destacadas as $i => $especialidad): ?>
-          <div class="specialty-card animate-on-scroll fade-in-up"
-            style="--animation-delay: <?php echo ($i * 100) + 200; ?>ms;">
-            <div class="specialty-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <?php echo $especialidad['icono']; ?>
-              </svg>
+            <div class="specialty-card animate-on-scroll fade-in-up"
+              style="--animation-delay: <?php echo ($i * 100) + 200; ?>ms;">
+              <div class="specialty-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <?php echo $especialidad['icono']; ?>
+                </svg>
+              </div>
+              <h3 class="specialty-title"><?php echo htmlspecialchars($especialidad['titulo']); ?></h3>
+              <p class="specialty-text"><?php echo htmlspecialchars($especialidad['descripcion']); ?></p>
+              <a href="pages/specialties/?especialidad=<?php echo urlencode($especialidad['titulo']); ?>"
+                class="specialty-link">Saber más</a>
             </div>
-            <h3 class="specialty-title"><?php echo htmlspecialchars($especialidad['titulo']); ?></h3>
-            <p class="specialty-text"><?php echo htmlspecialchars($especialidad['descripcion']); ?></p>
-            <a href="pages/specialties/?especialidad=<?php echo urlencode($especialidad['titulo']); ?>"
-              class="specialty-link">Saber más</a>
-          </div>
           <?php endforeach; ?>
         </div>
         <div class="section-footer animate-on-scroll fade-in-up">
@@ -256,19 +269,19 @@ $testimonios = [
         </div>
         <div class="grid-4-col">
           <?php foreach ($doctores_destacados as $i => $doctor): ?>
-          <div class="doctor-card animate-on-scroll fade-in-up"
-            style="--animation-delay: <?php echo ($i * 100) + 200; ?>ms;">
-            <div class="doctor-photo skeleton">
-              <img data-src="<?php echo htmlspecialchars($doctor['foto']); ?>"
-                alt="Fotografía de <?php echo htmlspecialchars($doctor['nombre']); ?>" loading="lazy" class="lazy-img">
+            <div class="doctor-card animate-on-scroll fade-in-up"
+              style="--animation-delay: <?php echo ($i * 100) + 200; ?>ms;">
+              <div class="doctor-photo skeleton">
+                <img data-src="<?php echo htmlspecialchars($doctor['foto']); ?>"
+                  alt="Fotografía de <?php echo htmlspecialchars($doctor['nombre']); ?>" loading="lazy" class="lazy-img">
+              </div>
+              <div class="doctor-info">
+                <h3 class="doctor-name"><?php echo htmlspecialchars($doctor['nombre']); ?></h3>
+                <p class="doctor-specialty"><?php echo htmlspecialchars($doctor['especialidad']); ?></p>
+                <p class="doctor-exp"><?php echo htmlspecialchars($doctor['experiencia']); ?></p>
+                <a href="pages/doctors/" class="btn btn-tertiary">Ver Perfil</a>
+              </div>
             </div>
-            <div class="doctor-info">
-              <h3 class="doctor-name"><?php echo htmlspecialchars($doctor['nombre']); ?></h3>
-              <p class="doctor-specialty"><?php echo htmlspecialchars($doctor['especialidad']); ?></p>
-              <p class="doctor-exp"><?php echo htmlspecialchars($doctor['experiencia']); ?></p>
-              <a href="pages/doctors/" class="btn btn-tertiary">Ver Perfil</a>
-            </div>
-          </div>
           <?php endforeach; ?>
         </div>
         <div class="section-footer animate-on-scroll fade-in-up">
@@ -292,16 +305,16 @@ $testimonios = [
           style="--animation-delay: 200ms;">
           <div class="testimonial-wrapper">
             <?php foreach ($testimonios as $testimonio): ?>
-            <div class="testimonial-slide">
-              <img src="<?php echo htmlspecialchars($testimonio['avatar']); ?>"
-                alt="Avatar de <?php echo htmlspecialchars($testimonio['autor']); ?>" class="testimonial-avatar">
-              <div class="testimonial-rating"
-                aria-label="Valoración: <?php echo $testimonio['valoracion']; ?> de 5 estrellas">
-                <?php echo str_repeat('★', $testimonio['valoracion']) . str_repeat('☆', 5 - $testimonio['valoracion']); ?>
+              <div class="testimonial-slide">
+                <img src="<?php echo htmlspecialchars($testimonio['avatar']); ?>"
+                  alt="Avatar de <?php echo htmlspecialchars($testimonio['autor']); ?>" class="testimonial-avatar">
+                <div class="testimonial-rating"
+                  aria-label="Valoración: <?php echo $testimonio['valoracion']; ?> de 5 estrellas">
+                  <?php echo str_repeat('★', $testimonio['valoracion']) . str_repeat('☆', 5 - $testimonio['valoracion']); ?>
+                </div>
+                <p class="testimonial-text">"<?php echo htmlspecialchars($testimonio['texto']); ?>"</p>
+                <p class="testimonial-author"><?php echo htmlspecialchars($testimonio['autor']); ?></p>
               </div>
-              <p class="testimonial-text">"<?php echo htmlspecialchars($testimonio['texto']); ?>"</p>
-              <p class="testimonial-author"><?php echo htmlspecialchars($testimonio['autor']); ?></p>
-            </div>
             <?php endforeach; ?>
           </div>
           <div class="testimonial-controls">
@@ -333,12 +346,10 @@ $testimonios = [
           <a href="/" class="logo footer-logo" aria-label="Página de inicio de Clínica Estándar">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
               class="logo-svg">
-              <path
-                d="M12 2L12 5M12 19L12 22M22 12L19 12M5 12L2 12M19.07 4.93L17 7M7 17L4.93 19.07M19.07 19.07L17 17M7 7L4.93 4.93M16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79086 9.79086 8 12 8C14.2091 8 16 9.79086 16 12Z"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-              <path
-                d="M12 14C13.1046 14 14 13.1046 14 12C14 10.8954 13.1046 10 12 10C10.8954 10 10 10.8954 10 12C10 13.1046 10.8954 14 12 14Z"
-                fill="currentColor"></path>
+              <path d="M12 5C12 5 9 2 6 2C3 2 2 4 2 6C2 9 5 12 12 19C19 12 22 9 22 6C22 4 21 2 18 2C15 2 12 5 12 5Z"
+                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4" />
+              <path d="M12 8V16M8 12H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
             </svg>
             <span class="clinic-name-header">Clínica Estándar</span>
           </a>
