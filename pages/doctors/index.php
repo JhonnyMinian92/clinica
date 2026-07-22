@@ -143,10 +143,25 @@ include __DIR__ . '/../../public/shared/header/header.php';
     <div class="container">
       <!-- Filters -->
       <div class="doctors-filters" id="doctors-filters">
-        <div class="filter-group">
-          <input type="search" id="name-filter" placeholder="Buscar por nombre..." class="filter-input">
+        <div class="filter-group animate-on-scroll fade-in-up" style="--animation-delay: 100ms;">
+          <span class="filter-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </span>
+          <input type="search" id="name-filter" placeholder="Buscar por nombre..." class="filter-input"
+            style="padding-left: 40px;">
         </div>
-        <div class="filter-group">
+        <div class="filter-group animate-on-scroll fade-in-up" style="--animation-delay: 200ms;">
+          <span class="filter-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          </span>
           <select id="specialty-filter" class="filter-select">
             <option value="">Todas las especialidades</option>
             <?php foreach ($especialidades_filtro as $item): ?>
@@ -154,7 +169,14 @@ include __DIR__ . '/../../public/shared/header/header.php';
             <?php endforeach; ?>
           </select>
         </div>
-        <div class="filter-group">
+        <div class="filter-group animate-on-scroll fade-in-up" style="--animation-delay: 300ms;">
+          <span class="filter-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </span>
           <select id="availability-filter" class="filter-select">
             <option value="">Toda disponibilidad</option>
             <?php foreach ($disponibilidades_filtro as $item): ?>
@@ -162,13 +184,33 @@ include __DIR__ . '/../../public/shared/header/header.php';
             <?php endforeach; ?>
           </select>
         </div>
-        <div class="filter-group">
+        <div class="filter-group animate-on-scroll fade-in-up" style="--animation-delay: 400ms;">
+          <span class="filter-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M2 12h20"></path>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+              </path>
+            </svg>
+          </span>
           <select id="language-filter" class="filter-select">
             <option value="">Todos los idiomas</option>
             <?php foreach ($idiomas_filtro as $item): ?>
               <option value="<?php echo htmlspecialchars($item); ?>"><?php echo htmlspecialchars($item); ?></option>
             <?php endforeach; ?>
           </select>
+        </div>
+        <div class="animate-on-scroll fade-in-up" style="--animation-delay: 500ms;">
+          <button id="filter-reset-btn" class="filter-reset-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+              style="vertical-align: middle; margin-right: 4px;">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+            Limpiar
+          </button>
         </div>
       </div>
 
@@ -230,7 +272,7 @@ include __DIR__ . '/../../public/shared/header/header.php';
         <?php endforeach; ?>
       </div>
       <div id="no-results-message" class="no-results-message" style="display: none;">
-        <p>No se encontraron doctores que coincidan con los filtros seleccionados.</p>
+        <p>No se encontraron especialistas que coincidan con su búsqueda.</p>
       </div>
     </div>
   </section>
