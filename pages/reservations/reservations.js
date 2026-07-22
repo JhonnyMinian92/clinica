@@ -26,6 +26,7 @@
     const doctorSelectionGrid = document.getElementById('doctor-selection-grid');
     const noResultsMessage = form.querySelector('.no-results-message');
     const doctorNoResultsMessage = document.getElementById('doctor-no-results');
+    const timeSlotWrapper = document.querySelector('.time-slot-wrapper');
     const timeSlotsGrid = document.getElementById('time-slots');
     const patientNameInput = document.getElementById('patient-name');
     const patientEmailInput = document.getElementById('patient-email');
@@ -162,7 +163,17 @@
     function adjustFormHeight() {
       const activeStepElement = formSteps[currentStep];
       if (activeStepElement) {
-        form.style.height = `${activeStepElement.offsetHeight}px`;
+        const formNavigation = form.querySelector('.form-navigation');
+        let totalHeight = activeStepElement.offsetHeight;
+
+        if (formNavigation) {
+          // Se suma la altura visible del contenedor de navegación (incluye padding y borde)
+          totalHeight += formNavigation.offsetHeight;
+          // Y también su margen superior, que ocupa espacio en el layout
+          totalHeight += parseInt(window.getComputedStyle(formNavigation).marginTop, 10);
+        }
+
+        form.style.height = `${totalHeight}px`;
       }
     }
 
@@ -454,8 +465,8 @@
       selection.time = null; // Reset time on new date selection
       validateStep();
 
-      timeSlotsGrid.innerHTML = '<div class="skeleton-time"></div><div class="skeleton-time"></div><div class="skeleton-time"></div><div class="skeleton-time"></div>';
-      adjustFormHeight();
+      // Mostrar el estado de carga
+      timeSlotWrapper.classList.add('is-loading');
 
       // Simulación de una llamada a la API para obtener horarios
       setTimeout(() => {
@@ -510,6 +521,9 @@
             .join('');
           timeSlotsGrid.innerHTML = timeSlotsHTML;
         }
+
+        // Ocultar el estado de carga y ajustar altura
+        timeSlotWrapper.classList.remove('is-loading');
         adjustFormHeight();
       }, 600); // Simular retardo de red
     }

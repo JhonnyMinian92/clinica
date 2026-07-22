@@ -157,6 +157,9 @@ include __DIR__ . '/../../public/shared/header/header.php';
             <!-- Horarios Disponibles -->
             <div class="time-slot-wrapper">
               <p class="time-slot-title">Horarios disponibles</p>
+              <div class="time-slot-loader">
+                <div class="spinner"></div>
+              </div>
               <div id="time-slots" class="selection-grid time-grid">
                 <div class="no-time-selected">
                   <p>Seleccione una fecha en el calendario para ver los horarios.</p>
