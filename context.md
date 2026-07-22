@@ -116,7 +116,10 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 # ==============================================
 
 ## Cambios Realizados
-- **v3.0 (Fecha Actual):**
+- **v3.4 (Fecha Actual):**
+  - **Optimización del Filtro de Especialidades (Tarea 8.1):** Se ha refactorizado el script `specialties.js` para incluir una función `debounce`. Esto mejora el rendimiento y la experiencia de usuario al no ejecutar la búsqueda en cada pulsación de tecla, sino tras una breve pausa. Adicionalmente, se han añadido estilos al mensaje de "sin resultados" en `specialties.css` y se ha limpiado el HTML correspondiente en `pages/specialties/index.php` para una mejor separación de responsabilidades (CSS sobre estilos inline).
+- **v3.3 (Fecha Actual):**
+  - **Implementación de Sección de Estadísticas (Tarea 9):** Se ha añadido la sección de estadísticas en la página principal (`index.php`). Esta sección utiliza los estilos predefinidos en `style.css` y la lógica de animación de contadores de `app.js` para mostrar cifras clave de la clínica de forma dinámica e impactante.
 - **v3.2 (Fecha Actual):**
   - **Auditoría y Corrección de Archivos (Bitácora):** Se realizó una auditoría exhaustiva de la estructura de archivos. Se eliminaron `c:\xampp\htdocs\clinica\pages\specialties\footer.php` y `c:\xampp\htdocs\clinica\specialties.css` (del directorio raíz) por ser redundantes y estar mal ubicados. Se movieron los estilos de `specialties.css` a `c:\xampp\htdocs\clinica\pages\specialties\specialties.css` y se actualizó `c:\xampp\htdocs\clinica\pages\specialties\index.php` para cargar este CSS y su JS específico (`specialties.js`) a través del header/footer compartido. Se verificó que `c:\xampp\htdocs\clinica\pages\doctors\` no contuviera archivos `specialties.css` fuera de lugar.
   - **Refactorización de Página de Reservaciones:** Se corrigió `c:\xampp\htdocs\clinica\pages\reservations\index.php` para que utilizara los componentes `header.php` y `footer.php` compartidos, eliminando el HTML duplicado y asegurando la coherencia arquitectónica. Se declaró `$page_specific_css` y `$page_specific_js` para la carga dinámica de assets.
@@ -154,7 +157,7 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 
 ### Tareas para v3.0
 
-**El backlog actual está vacío.**
+**El backlog actual está vacío. ¡Buen trabajo!**
 
 # ==============================================
 # DIRECTIVAS DE TRABAJO Y REQUERIMIENTOS

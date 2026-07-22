@@ -714,6 +714,11 @@ body.mobile-nav-open .nav-link {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
+.stat-number {
+  /* Asegura que el número y el sufijo permanezcan en la misma línea */
+  display: inline;
+}
+
 .stat-label {
   font-size: var(--font-size-normal);
   opacity: 0.8;

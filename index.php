@@ -193,6 +193,32 @@ include __DIR__ . '/public/shared/header/header.php';
   </section>
 
   <!-- ============================ -->
+  <!-- ========= ESTADÍSTICAS ========= -->
+  <!-- ============================ -->
+  <section class="stats-section section">
+    <div class="container">
+      <div class="grid-4-col">
+        <div class="stat-item animate-on-scroll fade-in-up" style="--animation-delay: 0ms;">
+          <span class="stat-number" data-target="50000">0</span><span class="stat-suffix">+</span>
+          <p class="stat-label">Pacientes Atendidos</p>
+        </div>
+        <div class="stat-item animate-on-scroll fade-in-up" style="--animation-delay: 100ms;">
+          <span class="stat-number" data-target="25">0</span><span class="stat-suffix">+</span>
+          <p class="stat-label">Años de Experiencia</p>
+        </div>
+        <div class="stat-item animate-on-scroll fade-in-up" style="--animation-delay: 200ms;">
+          <span class="stat-number" data-target="100">0</span><span class="stat-suffix">+</span>
+          <p class="stat-label">Especialistas Certificados</p>
+        </div>
+        <div class="stat-item animate-on-scroll fade-in-up" style="--animation-delay: 300ms;">
+          <span class="stat-number" data-target="98">0</span><span class="stat-suffix">%</span>
+          <p class="stat-label">Tasa de Satisfacción</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ -->
   <!-- ========= SERVICIOS ======== -->
   <!-- ============================ -->
   <section id="services" class="section section-light">
@@ -205,18 +231,18 @@ include __DIR__ . '/public/shared/header/header.php';
       </div>
       <div class="grid-3-col">
         <?php foreach ($servicios as $i => $servicio): ?>
-          <div class="service-card animate-on-scroll fade-in-up"
-            style="--animation-delay: <?php echo ($i * 100) + 200; ?>ms;">
-            <div class="service-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
-                aria-hidden="true">
-                <?php echo $servicio['icono']; ?>
-              </svg>
-            </div>
-            <h3 class="service-title"><?php echo htmlspecialchars($servicio['titulo']); ?></h3>
-            <p class="service-text"><?php echo htmlspecialchars($servicio['descripcion']); ?></p>
+        <div class="service-card animate-on-scroll fade-in-up"
+          style="--animation-delay: <?php echo ($i * 100) + 200; ?>ms;">
+          <div class="service-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+              aria-hidden="true">
+              <?php echo $servicio['icono']; ?>
+            </svg>
           </div>
+          <h3 class="service-title"><?php echo htmlspecialchars($servicio['titulo']); ?></h3>
+          <p class="service-text"><?php echo htmlspecialchars($servicio['descripcion']); ?></p>
+        </div>
         <?php endforeach; ?>
       </div>
     </div>
@@ -235,19 +261,19 @@ include __DIR__ . '/public/shared/header/header.php';
       </div>
       <div class="grid-4-col">
         <?php foreach ($especialidades_destacadas as $i => $especialidad): ?>
-          <div class="specialty-card animate-on-scroll fade-in-up"
-            style="--animation-delay: <?php echo ($i * 100) + 200; ?>ms;">
-            <div class="specialty-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <?php echo $especialidad['icono']; ?>
-              </svg>
-            </div>
-            <h3 class="specialty-title"><?php echo htmlspecialchars($especialidad['titulo']); ?></h3>
-            <p class="specialty-text"><?php echo htmlspecialchars($especialidad['descripcion']); ?></p>
-            <a href="pages/specialties/?especialidad=<?php echo urlencode($especialidad['titulo']); ?>"
-              class="specialty-link">Saber más</a>
+        <div class="specialty-card animate-on-scroll fade-in-up"
+          style="--animation-delay: <?php echo ($i * 100) + 200; ?>ms;">
+          <div class="specialty-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <?php echo $especialidad['icono']; ?>
+            </svg>
           </div>
+          <h3 class="specialty-title"><?php echo htmlspecialchars($especialidad['titulo']); ?></h3>
+          <p class="specialty-text"><?php echo htmlspecialchars($especialidad['descripcion']); ?></p>
+          <a href="pages/specialties/?especialidad=<?php echo urlencode($especialidad['titulo']); ?>"
+            class="specialty-link">Saber más</a>
+        </div>
         <?php endforeach; ?>
       </div>
       <div class="section-footer animate-on-scroll fade-in-up">
@@ -268,23 +294,23 @@ include __DIR__ . '/public/shared/header/header.php';
       </div>
       <div class="grid-4-col">
         <?php foreach ($doctores_destacados as $i => $doctor): ?>
-          <div class="doctor-card animate-on-scroll fade-in-up"
-            style="--animation-delay: <?php echo ($i * 100) + 200; ?>ms;">
-            <div class="doctor-photo skeleton">
-              <img data-src="<?php echo htmlspecialchars($doctor['foto']); ?>"
-                alt="Fotografía de <?php echo htmlspecialchars($doctor['nombre']); ?>" loading="lazy" class="lazy-img">
-            </div>
-            <div class="doctor-card-overlay">
-              <div class="doctor-card-content">
-                <h3 class="doctor-name"><?php echo htmlspecialchars($doctor['nombre']); ?></h3>
-                <p class="doctor-specialty"><?php echo htmlspecialchars($doctor['especialidad']); ?></p>
-                <div class="doctor-card-details">
-                  <p class="doctor-exp"><?php echo htmlspecialchars($doctor['experiencia']); ?></p>
-                  <a href="pages/doctors/" class="btn btn-primary btn-sm">Ver Perfil</a>
-                </div>
+        <div class="doctor-card animate-on-scroll fade-in-up"
+          style="--animation-delay: <?php echo ($i * 100) + 200; ?>ms;">
+          <div class="doctor-photo skeleton">
+            <img data-src="<?php echo htmlspecialchars($doctor['foto']); ?>"
+              alt="Fotografía de <?php echo htmlspecialchars($doctor['nombre']); ?>" loading="lazy" class="lazy-img">
+          </div>
+          <div class="doctor-card-overlay">
+            <div class="doctor-card-content">
+              <h3 class="doctor-name"><?php echo htmlspecialchars($doctor['nombre']); ?></h3>
+              <p class="doctor-specialty"><?php echo htmlspecialchars($doctor['especialidad']); ?></p>
+              <div class="doctor-card-details">
+                <p class="doctor-exp"><?php echo htmlspecialchars($doctor['experiencia']); ?></p>
+                <a href="pages/doctors/" class="btn btn-primary btn-sm">Ver Perfil</a>
               </div>
             </div>
           </div>
+        </div>
         <?php endforeach; ?>
       </div>
       <div class="section-footer animate-on-scroll fade-in-up">
@@ -308,16 +334,16 @@ include __DIR__ . '/public/shared/header/header.php';
         style="--animation-delay: 200ms;">
         <div class="testimonial-wrapper">
           <?php foreach ($testimonios as $testimonio): ?>
-            <div class="testimonial-slide">
-              <img src="<?php echo htmlspecialchars($testimonio['avatar']); ?>"
-                alt="Avatar de <?php echo htmlspecialchars($testimonio['autor']); ?>" class="testimonial-avatar">
-              <div class="testimonial-rating"
-                aria-label="Valoración: <?php echo $testimonio['valoracion']; ?> de 5 estrellas">
-                <?php echo str_repeat('★', $testimonio['valoracion']) . str_repeat('☆', 5 - $testimonio['valoracion']); ?>
-              </div>
-              <p class="testimonial-text">"<?php echo htmlspecialchars($testimonio['texto']); ?>"</p>
-              <p class="testimonial-author"><?php echo htmlspecialchars($testimonio['autor']); ?></p>
+          <div class="testimonial-slide">
+            <img src="<?php echo htmlspecialchars($testimonio['avatar']); ?>"
+              alt="Avatar de <?php echo htmlspecialchars($testimonio['autor']); ?>" class="testimonial-avatar">
+            <div class="testimonial-rating"
+              aria-label="Valoración: <?php echo $testimonio['valoracion']; ?> de 5 estrellas">
+              <?php echo str_repeat('★', $testimonio['valoracion']) . str_repeat('☆', 5 - $testimonio['valoracion']); ?>
             </div>
+            <p class="testimonial-text">"<?php echo htmlspecialchars($testimonio['texto']); ?>"</p>
+            <p class="testimonial-author"><?php echo htmlspecialchars($testimonio['autor']); ?></p>
+          </div>
           <?php endforeach; ?>
         </div>
         <div class="testimonial-controls">
