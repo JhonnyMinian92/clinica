@@ -5,16 +5,19 @@ include __DIR__ . '/../../public/shared/header/header.php';
 ?>
 
 <main id="main-content">
+  <!-- Page Header -->
+  <section class="page-header">
+    <div class="container">
+      <h1 class="page-title">Nuestras Especialidades</h1>
+      <p class="page-subtitle">
+        Ofrecemos una cobertura médica integral con un equipo de especialistas de primer nivel y tecnología de
+        vanguardia.
+      </p>
+    </div>
+  </section>
+
   <section class="section">
     <div class="container">
-      <div class="section-header">
-        <h1 class="section-title">Nuestras Especialidades</h1>
-        <p class="section-subtitle">
-          Ofrecemos una cobertura médica integral con un equipo de especialistas de primer nivel y tecnología de
-          vanguardia.
-        </p>
-      </div>
-
       <div class="grid-3-col">
 
         <div class="specialty-card" style="animation-delay: 200ms;">

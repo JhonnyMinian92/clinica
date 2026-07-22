@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="/clinica/public/css/style.css">
   <link rel="stylesheet" href="/clinica/public/shared/header/header.css">
   <link rel="stylesheet" href="/clinica/public/shared/footer/footer.css">
+  <link rel="stylesheet" href="/clinica/public/css/components.css">
 
   <?php
   // Carga condicional de CSS para páginas específicas

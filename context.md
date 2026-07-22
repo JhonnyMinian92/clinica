@@ -47,7 +47,7 @@ Garantizar que cada cambio mejore el sistema sin introducir regresiones, errores
 
 
 # ==============================================
-# PROYECTO: CLÍNICA ESTÁNDAR (v2.0)
+# PROYECTO: CLÍNICA ESTÁNDAR (v3.0)
 # ==============================================
 
 ## Visión General
@@ -115,6 +115,8 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 # ==============================================
 
 ## Cambios Realizados
+- **v2.1 (Fecha Actual):**
+  - **Rediseño de la Sección Testimonios (Tarea 6):** Se ha refactorizado el carrusel de testimonios para usar un efecto de fundido (fade) más elegante. Se mejoró el diseño de las tarjetas de testimonio y se implementó un ajuste dinámico de altura para eliminar el `layout shift`, mejorando la UX.
 - **v2.0 (Fecha Actual):**
   - **Mejora de la Sección Doctores (Tarea 5):** Se rediseñaron las tarjetas de los doctores en la página principal con un diseño de superposición (overlay) más moderno y una microinteracción al pasar el cursor para revelar más detalles. Se reestructuró el HTML y se refactorizó el CSS para lograr el nuevo aspecto premium.
 - **v1.9 (Fecha Actual):**
@@ -143,16 +145,13 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 
 ## Tareas Pendientes (Backlog Priorizado)
 
-### 6. Rediseño de la Sección Testimonios (Prioridad Media)
-- **Requerimiento:** Mejorar el diseño, maquetación, UX y funcionalidad para que los testimonios generen seguridad y calidez.
-- **Sub-tarea 6.1 (UI/UX):** Rediseñar el carrusel. Explorar un efecto de "tarjeta apilada" o una transición de fundido más suave. Mejorar la tipografía y la presentación del avatar y la valoración.
-- **Sub-tarea 6.2 (Funcionalidad):** Revisar el código JS del carrusel en `app.js` para asegurar que sea robusto, accesible (navegable por teclado) y funcione bien en dispositivos táctiles.
+### Tareas para v3.0
 
-### 7. Rediseño del Footer (Prioridad Alta)
-- **Requerimiento:** Actualizar el footer para que sea elegante, profesional y contenga la información correcta.
-- **Sub-tarea 7.1 (Diseño):** Rediseñar el layout del footer para que sea más limpio y profesional.
-- **Sub--tarea 7.2 (Contenido):** Actualizar la información de contacto con los datos correctos: Dirección (Buenavista y Tarqui, Machala), Teléfono, Correo y enlaces a redes sociales (Facebook, Instagram, WhatsApp).
-- **Sub-tarea 7.3 (Limpieza):** Eliminar los enlaces "Aviso Legal" y "Política de Privacidad" del `footer-bottom`, ya que no existen.
+#### 8. Desarrollo del Catálogo Interactivo de Especialidades (Prioridad Crítica)
+- **Objetivo:** Transformar la página estática `/pages/specialties/` en un catálogo dinámico y funcional que sirva como el verdadero punto de partida para encontrar un especialista y agendar una cita.
+- **Sub-tarea 8.1 (Backend/Datos):** Crear un array de especialidades más completo en `pages/specialties/index.php` (simulando una base de datos) y renderizar todas las especialidades desde este array.
+- **Sub-tarea 8.2 (UI/UX):** Mejorar el diseño de las tarjetas de especialidad en esta página para que sean más informativas y atractivas, incluyendo un botón claro de "Agendar Cita".
+- **Sub-tarea 8.3 (Funcionalidad):** Implementar un filtro de búsqueda en la parte superior de la página para que los usuarios puedan encontrar rápidamente una especialidad escribiendo su nombre.
 
 # ==============================================
 # DIRECTIVAS DE TRABAJO Y REQUERIMIENTOS
