@@ -117,7 +117,14 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 
 ## Cambios Realizados
 
-- **v4.1 (Fecha Actual):**
+- **v4.2 (Fecha Actual):**
+  - **Refinamiento de UX y Correcciones en Formulario (Tarea 14.1):** Se han realizado múltiples mejoras en la experiencia de usuario y se han corregido errores de layout en el formulario de reservaciones.
+    - **Corrección de Layout (Botones):** Se solucionó el bug que ocultaba los botones de navegación al ajustar dinámicamente la altura del contenedor para que siempre sean visibles.
+    - **Mejora de Validación:** Se implementó una validación más estricta para el campo de teléfono y se añadieron mensajes de error específicos y claros para los campos de email y teléfono.
+    - **Mejora de Estilo (Botón "Anterior"):** Se corrigió el estilo del botón "Anterior" para garantizar su visibilidad sobre fondos claros.
+    - **UX Loader:** Se reemplazó el skeleton loader de los horarios por un spinner de carga superpuesto, mejorando la comunicación visual con el usuario.
+
+- **v4.1:**
   - **Mejora Avanzada del Agendamiento (Tareas 13.1-13.3):** Se ha implementado la lógica de disponibilidad real del doctor y se han mejorado las funcionalidades del formulario.
     - **Filtro de Doctores (Paso 2):** Se añadió un campo de búsqueda para filtrar doctores por nombre.
     - **Intervalos de 15 Minutos (Paso 3):** Se ajustó la generación de horarios a intervalos de 15 minutos.
@@ -180,10 +187,7 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 
 ## Tareas Pendientes (Backlog Priorizado)
 
-### Tareas para v4.2
-
-#### Tarea 14: Corrección de Layout en Formulario de Reservaciones
-- **14.1 - Visibilidad de Botones de Navegación:** Investigar y corregir el problema de layout que oculta los botones "Siguiente" y "Anterior" entre los pasos del formulario, especialmente al navegar desde el paso 4. La altura del contenedor no se está ajustando correctamente para incluir los botones.
+### Tareas para v4.3
 
 #### Tarea 12: Refinamiento del Formulario de Reservaciones
 - **12.5 - Auditoría y Refinamiento:** Realizar una auditoría completa de accesibilidad (WCAG) para el nuevo calendario y los flujos. Mejorar el manejo de casos borde (ej. cambiar de especialidad o doctor después de haber avanzado). Implementar la funcionalidad de pre-selección de doctor/especialidad si se llega desde una URL con parámetros.

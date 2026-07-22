@@ -99,14 +99,14 @@ include __DIR__ . '/../../public/shared/header/header.php';
 
           <div class="selection-grid" id="specialty-grid">
             <?php foreach ($especialidades as $item): ?>
-            <div class="selectable-card" data-value="<?php echo $item['id']; ?>"
-              data-name="<?php echo $item['titulo']; ?>">
-              <div class="card-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round"><?php echo $item['icono']; ?></svg>
+              <div class="selectable-card" data-value="<?php echo $item['id']; ?>"
+                data-name="<?php echo $item['titulo']; ?>">
+                <div class="card-icon">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round"><?php echo $item['icono']; ?></svg>
+                </div>
+                <span class="card-title"><?php echo $item['titulo']; ?></span>
               </div>
-              <span class="card-title"><?php echo $item['titulo']; ?></span>
-            </div>
             <?php endforeach; ?>
           </div>
           <div class="no-results-message" style="display: none;">
@@ -216,7 +216,7 @@ include __DIR__ . '/../../public/shared/header/header.php';
 
         <!-- Botones de Navegación -->
         <div class="form-navigation">
-          <button type="button" id="prev-btn" class="btn btn-secondary">Anterior</button>
+          <button type="button" id="prev-btn" class="btn btn-tertiary">Anterior</button>
           <button type="button" id="next-btn" class="btn btn-primary">Siguiente</button>
         </div>
 
@@ -227,8 +227,8 @@ include __DIR__ . '/../../public/shared/header/header.php';
 
 <!-- Datos de doctores para JS, debe estar antes del footer que carga el script -->
 <script>
-const doctorsData = <?php echo json_encode($doctores); ?>;
-const bookedAppointmentsData = <?php echo json_encode($citas_reservadas); ?>;
+  const doctorsData = <?php echo json_encode($doctores); ?>;
+  const bookedAppointmentsData = <?php echo json_encode($citas_reservadas); ?>;
 </script>
 
 <?php
