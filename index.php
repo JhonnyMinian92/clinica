@@ -274,11 +274,15 @@ include __DIR__ . '/public/shared/header/header.php';
               <img data-src="<?php echo htmlspecialchars($doctor['foto']); ?>"
                 alt="Fotografía de <?php echo htmlspecialchars($doctor['nombre']); ?>" loading="lazy" class="lazy-img">
             </div>
-            <div class="doctor-info">
-              <h3 class="doctor-name"><?php echo htmlspecialchars($doctor['nombre']); ?></h3>
-              <p class="doctor-specialty"><?php echo htmlspecialchars($doctor['especialidad']); ?></p>
-              <p class="doctor-exp"><?php echo htmlspecialchars($doctor['experiencia']); ?></p>
-              <a href="pages/doctors/" class="btn btn-tertiary">Ver Perfil</a>
+            <div class="doctor-card-overlay">
+              <div class="doctor-card-content">
+                <h3 class="doctor-name"><?php echo htmlspecialchars($doctor['nombre']); ?></h3>
+                <p class="doctor-specialty"><?php echo htmlspecialchars($doctor['especialidad']); ?></p>
+                <div class="doctor-card-details">
+                  <p class="doctor-exp"><?php echo htmlspecialchars($doctor['experiencia']); ?></p>
+                  <a href="pages/doctors/" class="btn btn-primary btn-sm">Ver Perfil</a>
+                </div>
+              </div>
             </div>
           </div>
         <?php endforeach; ?>

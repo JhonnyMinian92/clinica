@@ -79,20 +79,25 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 
 ## 2. Componentes Principales del Sistema
 - **`index.php`**: Página de aterrizaje (landing page) estática y pública. Muestra la información principal de la clínica: especialidades destacadas, doctores, equipos (radiografía, ecografía), y datos de contacto. Es el principal punto de entrada para los pacientes.
-- **`public/css/style.css`**: Hoja de estilos global. Define el "Design System: Aura Health", la paleta de colores, tipografía, espaciados, y estilos de componentes no encapsulados.
-- **`public/js/app.js`**: Archivo JavaScript principal. Gestiona la interactividad global del sitio: animaciones de scroll, lazy loading, y el carrusel de testimonios.
+- **`public/css/style.css`**: Hoja de estilos global. Define el "Design System: Aura Health" (variables, resets, clases de utilidad) y estilos para secciones no componentizadas de `index.php`.
+- **`public/js/app.js`**: Archivo JavaScript principal. Gestiona la interactividad global del sitio que no pertenece a un componente específico (ej. animaciones de scroll, lazy loading, carrusel de testimonios).
 - **`public/shared/header/`**: Componente de cabecera reutilizable.
-  - `header.php`: Contiene el `DOCTYPE`, `<head>` y la estructura `<header>`. Gestiona la carga de todos los assets CSS.
+  - `header.php`: Contiene el `DOCTYPE`, `<head>` y la estructura `<header>`. Gestiona la carga de assets CSS globales, de componentes y condicionales por página.
   - `header.css`: Estilos específicos del header.
   - `header.js`: Lógica JavaScript para la navegación (sticky y móvil).
 - **`public/shared/footer/`**: Componente de pie de página reutilizable.
-  - `footer.php`: Contiene la estructura `<footer>` y el cierre de la página. Gestiona la carga de todos los assets JS.
+  - `footer.php`: Contiene la estructura `<footer>` y el cierre de la página. Gestiona la carga de assets JS globales, de componentes y condicionales por página.
   - `footer.css`: Estilos específicos del footer.
   - `footer.js`: Lógica JavaScript específica del footer (actualmente vacío).
 
 ## 3. Estructura de Páginas (Directorio `/pages`)
-- **`/pages/specialties/`**: Catálogo completo de especialidades médicas. Permite al usuario ver detalles de cada una y iniciar el proceso de reserva de cita desde aquí.
-- **`/pages/doctors/`**: Directorio de médicos. Muestra una lista filtrable de doctores con su información detallada: foto, especialidad, subespecialidad, ciudad, valoración (estrellas), experiencia, etc.
+- **`/pages/specialties/`**: Catálogo de especialidades.
+  - `index.php`: Vista principal de la página.
+  - `specialties.js`: Lógica de frontend específica para esta página (actualmente vacío).
+- **`/pages/doctors/`**: Directorio de médicos.
+  - `index.php`: Vista principal con la lógica de filtrado y renderizado de perfiles.
+  - `doctors.css`: Estilos específicos para los perfiles y filtros de la página de doctores.
+  - `doctors.js`: Lógica de frontend para la interactividad de los filtros.
 - **`/pages/reservations/`**: Sistema de agendamiento de citas. Implementado como un "stepper" de 5 pasos para guiar al usuario.
 - **`/pages/login/`**: Portal de acceso **exclusivo para doctores**. No es accesible desde la navegación principal del sitio público.
 - **`/pages/dashboard/`**: Panel de control para doctores, visible únicamente después de un inicio de sesión exitoso.

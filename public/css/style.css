@@ -250,6 +250,11 @@ body {
   box-shadow: var(--shadow-soft);
 }
 
+.btn-sm {
+  padding: var(--spacing-unit) calc(var(--spacing-unit) * 2);
+  font-size: var(--font-size-small);
+}
+
 body.mobile-nav-open {
   overflow: hidden; /* Previene el scroll cuando el menú está abierto */
 }
@@ -555,11 +560,11 @@ body.mobile-nav-open .nav-link {
 /* ---------------------------------- */
 
 .doctor-card {
-  background-color: var(--color-background-white);
+  position: relative;
   border-radius: var(--border-radius-medium);
   overflow: hidden;
   box-shadow: var(--shadow-medium);
-  text-align: center;
+  aspect-ratio: 3 / 4;
   transition: transform var(--transition-duration-medium) var(--ease-out-cubic);
 }
 .doctor-card:hover {
@@ -567,6 +572,11 @@ body.mobile-nav-open .nav-link {
   box-shadow: var(--shadow-hard);
 }
 .doctor-photo {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   aspect-ratio: 3 / 4;
 }
 .lazy-img {
@@ -580,22 +590,49 @@ body.mobile-nav-open .nav-link {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
+  transition: transform var(--transition-duration-medium) var(--ease-out-cubic);
 }
-.doctor-info {
+.doctor-card:hover .doctor-photo img {
+  transform: scale(1.05);
+}
+.doctor-card-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  color: var(--color-white);
   padding: calc(var(--spacing-unit) * 3);
+  background: linear-gradient(to top, rgba(10, 37, 64, 0.95) 0%, rgba(10, 37, 64, 0.7) 50%, transparent 100%);
+  transition: all var(--transition-duration-medium) var(--ease-out-cubic);
 }
-.doctor-name {
+.doctor-card .doctor-name {
   font-size: var(--font-size-h3);
+  line-height: 1.2;
+  margin-bottom: calc(var(--spacing-unit) * 0.5);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
 }
-.doctor-specialty {
-  color: var(--color-primary);
-  font-weight: 600;
+.doctor-card .doctor-specialty {
+  font-weight: 500;
+  opacity: 0.9;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
 }
-.doctor-exp {
-  color: var(--color-text-secondary);
+.doctor-card-details {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: all var(--transition-duration-medium) var(--ease-out-cubic);
+  transform: translateY(10px);
+}
+.doctor-card:hover .doctor-card-details {
+  max-height: 100px;
+  opacity: 1;
+  transform: translateY(0);
+  margin-top: var(--spacing-unit) * 2;
+}
+.doctor-card .doctor-exp {
   font-size: var(--font-size-small);
   margin-bottom: var(--spacing-unit) * 2;
+  opacity: 0.9;
 }
 
 /* ---------------------------------- */
