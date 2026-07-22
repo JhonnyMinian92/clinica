@@ -209,14 +209,8 @@
               const imageLoadPromise = new Promise((resolve) => {
                 const img = new Image();
                 img.src = bgUrl;
-                img.addEventListener(
-                  'load',
-                  () => {
-                    el.style.backgroundImage = `url(${bgUrl})`;
-                    resolve();
-                  },
-                  { once: true },
-                );
+                // Solo pre-cargamos la imagen, el CSS se encarga de mostrarla.
+                img.addEventListener('load', resolve, { once: true });
               });
 
               const minTimePromise = new Promise((resolve) => {

@@ -424,10 +424,18 @@ body.mobile-nav-open .nav-link {
 }
 
 /* Animación escalonada para los enlaces de navegación */
-body.mobile-nav-open .nav-list li:nth-child(1) .nav-link { animation-delay: 200ms; }
-body.mobile-nav-open .nav-list li:nth-child(2) .nav-link { animation-delay: 250ms; }
-body.mobile-nav-open .nav-list li:nth-child(3) .nav-link { animation-delay: 300ms; }
-body.mobile-nav-open .nav-list li:nth-child(4) .nav-link { animation-delay: 350ms; }
+body.mobile-nav-open .nav-list li:nth-child(1) .nav-link {
+  animation-delay: 200ms;
+}
+body.mobile-nav-open .nav-list li:nth-child(2) .nav-link {
+  animation-delay: 250ms;
+}
+body.mobile-nav-open .nav-list li:nth-child(3) .nav-link {
+  animation-delay: 300ms;
+}
+body.mobile-nav-open .nav-list li:nth-child(4) .nav-link {
+  animation-delay: 350ms;
+}
 
 @keyframes navLinkFadeIn {
   to {
@@ -479,7 +487,33 @@ body.mobile-nav-open .hamburger-line:nth-child(3) {
   transition: background-image 1s ease-in-out;
 }
 
-/* .is-loaded class will be added by JS to trigger the final state */
+/*
+  "Next Level" Hero:
+  La clase .is-loaded es añadida por JS y activa la visualización de la imagen de fondo.
+  Usamos media queries para servir la imagen correcta y una animación para un efecto sutil.
+*/
+.hero.is-loaded {
+  /* Mobile-first: por defecto se usa la imagen para móvil */
+  background-image: url('../assets/banner_mobil.jpg');
+  animation: hero-bg-zoom 20s ease-out forwards;
+}
+
+@media (min-width: 768px) {
+  .hero.is-loaded {
+    /* Imagen para tablet y desktop */
+    background-image: url('../assets/banner.jpg');
+  }
+}
+
+/* Animación sutil de zoom para un efecto cinemático (Ken Burns) */
+@keyframes hero-bg-zoom {
+  from {
+    background-size: 115%;
+  }
+  to {
+    background-size: 100%;
+  }
+}
 
 .hero-overlay {
   position: absolute;
@@ -487,7 +521,8 @@ body.mobile-nav-open .hamburger-line:nth-child(3) {
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(to top, rgba(10, 37, 64, 0.8) 0%, rgba(10, 37, 64, 0.4) 100%);
+  /* "Next Level" Overlay: Combina un gradiente para legibilidad con una viñeta para enfocar */
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(10, 37, 64, 0.5) 100%), linear-gradient(90deg, rgba(10, 37, 64, 0.8) 0%, rgba(10, 37, 64, 0.2) 60%, transparent 100%);
 }
 
 .hero-content {

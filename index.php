@@ -138,7 +138,7 @@ $testimonios = [
     <!-- ========= HERO ============= -->
     <!-- ============================ -->
     <section id="hero" class="hero lazy-bg skeleton skeleton-dark"
-      data-bg="https://images.unsplash.com/photo-1584982751601-C59f3299e690?q=80&w=2070&auto=format&fit=crop">
+      data-bg="public/assets/banner.jpg">
       <div class="hero-overlay"></div>
       <div class="container">
         <div class="hero-content animate-on-scroll fade-in-up">

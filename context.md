@@ -47,7 +47,7 @@ Garantizar que cada cambio mejore el sistema sin introducir regresiones, errores
 
 
 # ==============================================
-# PROYECTO: CLÍNICA ESTÁNDAR (v1.5.3)
+# PROYECTO: CLÍNICA ESTÁNDAR (v1.7)
 # ==============================================
 
 ## Visión General
@@ -102,7 +102,11 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 # ==============================================
 
 ## Cambios Realizados
-- **v1.5.3 (Fecha Actual):**
+- **v1.7 (Fecha Actual):**
+  - **Mejora Hero Section (Responsive y UX):** Se implementó el uso de imágenes de fondo responsivas para la sección Hero (`banner.jpg` para desktop, `banner_mobil.jpg` para móvil). Se desacopló la lógica de JS y CSS para mayor robustez. Se añadió una animación sutil de zoom (Ken Burns) y se mejoró el degradado para una apariencia más profesional y "next-level".
+- **v1.6:**
+  - **Rediseño de la Sección Hero (Tarea 2):** Se implementó la imagen `public/assets/banner.jpg` como fondo. Se ajustó el degradado del overlay para garantizar la legibilidad del texto y se verificó la correcta funcionalidad de los botones de acción.
+- **v1.5.3:**
   - **Hotfix 3 - Corrección Definitiva Navegación Móvil:** Se solucionó el problema de visibilidad y posicionamiento del menú móvil. Se implementó un fondo oscuro de alto contraste y se aseguró que el header no interfiera visualmente, logrando un centrado y legibilidad perfectos.
 - **v1.5.2:**
   - **Hotfix 2 - Rediseño Navegación Móvil:** Se rediseñó completamente el menú móvil a un estilo "Glassmorphism". Se corrigió el `z-index` para un centrado y visibilidad perfectos, y se mejoró el contraste del texto para una legibilidad y estética superiores.
@@ -119,16 +123,6 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
   - **Implementación del Protocolo de Seguridad y Calidad:** Se ha añadido la sección "PRIME DIRECTIVE" con checklists de auditoría y verificación obligatorias para minimizar errores y regresiones.
 
 ## Tareas Pendientes (Backlog Priorizado)
-
-### 2. Rediseño de la Sección Hero (Prioridad Alta)
-- **Requerimiento:** Actualizar el banner principal y asegurar la funcionalidad de sus botones.
-- **Sub-tarea 2.1 (UI):** Implementar la imagen `public/assets/banner.jpg` como fondo. Asegurar legibilidad del texto y correcta visualización en todos los dispositivos.
-- **Sub-tarea 2.2 (Funcionalidad):** Verificar que el botón "Agendar una Cita" redirige a `pages/reservations/` y "Encontrar un Doctor" a `pages/doctors/`.
-
-### 3. Creación y Mejora de la Sección Servicios (Prioridad Media)
-- **Requerimiento:** Diseñar e implementar la sección de "Servicios" que actualmente falta.
-- **Sub-tarea 3.1 (Diseño):** **[INICIADO]** Se ha creado la sección con `id="services"`. La siguiente fase es poblarla con tarjetas de servicios (Consulta Externa, Emergencias, etc.).
-- **Sub-tarea 3.2 (Funcionalidad):** Asegurar que el enlace "Servicios" en el NAV apunte correctamente a esta nueva sección.
 
 ### 4. Mejora de la Sección Especialidades (Prioridad Media)
 - **Requerimiento:** Mejorar el diseño y la funcionalidad de la sección de especialidades destacadas.
