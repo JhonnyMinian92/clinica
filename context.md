@@ -85,6 +85,7 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
   - `header.php`: Contiene el `DOCTYPE`, `<head>` y la estructura `<header>`. Gestiona la carga de assets CSS globales, de componentes y condicionales por página.
   - `header.css`: Estilos específicos del header.
   - `header.js`: Lógica JavaScript para la navegación (sticky y móvil).
+- **`public/css/components.css`**: Hoja de estilos para componentes de UI reutilizables en múltiples páginas (ej. `.page-header`).
 - **`public/shared/footer/`**: Componente de pie de página reutilizable.
   - `footer.php`: Contiene la estructura `<footer>` y el cierre de la página. Gestiona la carga de assets JS globales, de componentes y condicionales por página.
   - `footer.css`: Estilos específicos del footer.
@@ -115,6 +116,8 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 # ==============================================
 
 ## Cambios Realizados
+- **v3.0 (Fecha Actual):**
+  - **Optimización de Componentes CSS:** Se han centralizado los estilos de componentes de UI reutilizables (como `.page-header`) en un nuevo archivo `public/css/components.css`. Esto elimina la duplicación de código y mejora la mantenibilidad, siguiendo el principio DRY.
 - **v2.1 (Fecha Actual):**
   - **Rediseño de la Sección Testimonios (Tarea 6):** Se ha refactorizado el carrusel de testimonios para usar un efecto de fundido (fade) más elegante. Se mejoró el diseño de las tarjetas de testimonio y se implementó un ajuste dinámico de altura para eliminar el `layout shift`, mejorando la UX.
 - **v2.0 (Fecha Actual):**
