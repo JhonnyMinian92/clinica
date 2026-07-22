@@ -169,11 +169,11 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 ### Tareas para v3.0
 
 #### Tarea 12: Implementación del Formulario de Reservaciones (Flujo Completo)
-- **12.1 - Lógica del Stepper:** Implementar la navegación básica entre pasos (Siguiente/Anterior), la actualización de la barra de progreso y las transiciones de altura en `reservations.js`.
-- **12.2 - Lógica de Selección:** Desarrollar la carga dinámica de doctores basada en la especialidad seleccionada y la simulación de horarios disponibles.
-- **12.3 - Lógica de Datos y Confirmación:** Implementar la validación de datos del paciente y la población dinámica de la tarjeta de resumen final.
-- **12.4 - Simulación de Envío:** Cambiar el botón final a "Confirmar Cita" y mostrar un mensaje de éxito al completarse el flujo.
-- **12.5 - Auditoría y Refinamiento:** Realizar una auditoría completa de accesibilidad (WCAG), manejo de casos borde (ej. cambiar selección), y la funcionalidad de pre-selección por URL.
+- **12.1 - Lógica del Stepper (Completado):** Se ha implementado la navegación básica entre pasos (Siguiente/Anterior), la actualización de la barra de progreso y las transiciones de altura en `reservations.js`.
+- **12.2 - Lógica de Selección (Completado):** Se ha implementado el filtro de "Especialidad", la carga y selección dinámica de "Doctores", y la simulación y selección de "Fecha y Hora".
+- **12.3 - Lógica de Datos y Confirmación (Completado):** Se ha implementado la validación en tiempo real para los datos del paciente y la población dinámica de la tarjeta de resumen final.
+- **12.4 - Simulación de Envío (Completado):** Se ha implementado la simulación de envío del formulario, incluyendo un estado de carga en el botón y un mensaje de éxito final.
+- **12.5 - Auditoría y Refinamiento (Pendiente):** Realizar una auditoría completa de accesibilidad (WCAG), manejo de casos borde (ej. cambiar selección), y la funcionalidad de pre-selección por URL.
 
 # ==============================================
 # DIRECTIVAS DE TRABAJO Y REQUERIMIENTOS

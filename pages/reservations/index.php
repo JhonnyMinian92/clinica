@@ -11,24 +11,24 @@ $especialidades = [
 
 $doctores = [
   'cardio' => [
-    ['id' => 'doc1', 'nombre' => 'Dr. Alejandro Vargas', 'foto' => 'https://randomuser.me/api/portraits/men/75.jpg'],
-    ['id' => 'doc2', 'nombre' => 'Dra. Sofía Castillo', 'foto' => 'https://randomuser.me/api/portraits/women/75.jpg']
+    ['id' => 'doc1', 'nombre' => 'Dr. Alejandro Vargas', 'foto' => 'https://randomuser.me/api/portraits/men/75.jpg', 'valoracion' => 5],
+    ['id' => 'doc2', 'nombre' => 'Dra. Sofía Castillo', 'foto' => 'https://randomuser.me/api/portraits/women/75.jpg', 'valoracion' => 4]
   ],
   'pediatria' => [
-    ['id' => 'doc3', 'nombre' => 'Dra. Isabela Rojas', 'foto' => 'https://randomuser.me/api/portraits/women/76.jpg']
+    ['id' => 'doc3', 'nombre' => 'Dra. Isabela Rojas', 'foto' => 'https://randomuser.me/api/portraits/women/76.jpg', 'valoracion' => 5]
   ],
   'neuro' => [
-    ['id' => 'doc4', 'nombre' => 'Dr. Mateo Herrera', 'foto' => 'https://randomuser.me/api/portraits/men/76.jpg']
+    ['id' => 'doc4', 'nombre' => 'Dr. Mateo Herrera', 'foto' => 'https://randomuser.me/api/portraits/men/76.jpg', 'valoracion' => 5]
   ],
   'derma' => [
-    ['id' => 'doc5', 'nombre' => 'Dra. Valentina Morales', 'foto' => 'https://randomuser.me/api/portraits/women/77.jpg'],
-    ['id' => 'doc6', 'nombre' => 'Dr. Lucas Jiménez', 'foto' => 'https://randomuser.me/api/portraits/men/77.jpg']
+    ['id' => 'doc5', 'nombre' => 'Dra. Valentina Morales', 'foto' => 'https://randomuser.me/api/portraits/women/77.jpg', 'valoracion' => 4],
+    ['id' => 'doc6', 'nombre' => 'Dr. Lucas Jiménez', 'foto' => 'https://randomuser.me/api/portraits/men/77.jpg', 'valoracion' => 5]
   ],
   'gine' => [
-    ['id' => 'doc7', 'nombre' => 'Dra. Camila Ríos', 'foto' => 'https://randomuser.me/api/portraits/women/78.jpg']
+    ['id' => 'doc7', 'nombre' => 'Dra. Camila Ríos', 'foto' => 'https://randomuser.me/api/portraits/women/78.jpg', 'valoracion' => 5]
   ],
   'onco' => [
-    ['id' => 'doc8', 'nombre' => 'Dr. Sebastián Peña', 'foto' => 'https://randomuser.me/api/portraits/men/78.jpg']
+    ['id' => 'doc8', 'nombre' => 'Dr. Sebastián Peña', 'foto' => 'https://randomuser.me/api/portraits/men/78.jpg', 'valoracion' => 5]
   ]
 ];
 
@@ -93,6 +93,9 @@ include __DIR__ . '/../../public/shared/header/header.php';
                 <span class="card-title"><?php echo $item['titulo']; ?></span>
               </div>
             <?php endforeach; ?>
+          </div>
+          <div class="no-results-message" style="display: none;">
+            No se encontraron especialidades que coincidan con su búsqueda.
           </div>
         </div>
 
