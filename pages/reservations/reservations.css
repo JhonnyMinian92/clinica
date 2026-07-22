@@ -247,6 +247,7 @@ body {
   flex-direction: column;
   justify-content: center;
   text-align: left;
+  z-index: 100;
 }
 
 .doctor-grid .card-title {
