@@ -117,15 +117,13 @@ include __DIR__ . '/../../public/shared/header/header.php';
             <div class="calendar-container">
               <div class="calendar-header">
                 <button type="button" id="prev-month-btn" class="calendar-nav-btn" aria-label="Mes anterior">‹</button>
-                <h3 id="calendar-month-year" class="calendar-title" aria-live="polite"></h3>
+                <h3 id="calendar-month-year" class="calendar-title"></h3>
                 <button type="button" id="next-month-btn" class="calendar-nav-btn" aria-label="Mes siguiente">›</button>
               </div>
-              <div class="calendar-weekdays" role="row">
-                <span role="columnheader">Lun</span><span role="columnheader">Mar</span><span
-                  role="columnheader">Mié</span><span role="columnheader">Jue</span><span
-                  role="columnheader">Vie</span><span role="columnheader">Sáb</span><span role="columnheader">Dom</span>
+              <div class="calendar-weekdays">
+                <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
               </div>
-              <div id="calendar-grid" class="calendar-grid" role="grid">
+              <div id="calendar-grid" class="calendar-grid">
                 <!-- Los días se generarán aquí con JS -->
               </div>
             </div>
