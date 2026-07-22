@@ -280,6 +280,21 @@ body {
   font-size: var(--font-size-small);
 }
 
+.time-grid .selectable-card.is-booked {
+  background-color: var(--color-background-light);
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+  text-decoration: line-through;
+  opacity: 0.8;
+  transform: none;
+  box-shadow: none;
+  animation: none; /* Cancela la animación de entrada para los ya reservados */
+}
+.time-grid .selectable-card.is-booked:hover::before {
+  transform: scaleX(0);
+}
+
 .time-grid .no-time-selected {
   grid-column: 1 / -1;
   text-align: center;

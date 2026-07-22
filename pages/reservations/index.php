@@ -2,7 +2,7 @@
 // Simulación de datos que vendrían de una base de datos
 $especialidades = [
   ['id' => 'cardio', 'titulo' => 'Cardiología', 'icono' => '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>'],
-  ['id' => 'pediatria', 'titulo' => 'Pediatría', 'icono' => '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>'],
+  ['id' => 'pediatria', 'titulo' => 'Pediatría', 'icono' => '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>'], // doc3
   ['id' => 'neuro', 'titulo' => 'Neurología', 'icono' => '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>'],
   ['id' => 'derma', 'titulo' => 'Dermatología', 'icono' => '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>'],
   ['id' => 'gine', 'titulo' => 'Ginecología', 'icono' => '<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line>'],
@@ -11,24 +11,39 @@ $especialidades = [
 
 $doctores = [
   'cardio' => [
-    ['id' => 'doc1', 'nombre' => 'Dr. Alejandro Vargas', 'foto' => 'https://randomuser.me/api/portraits/men/75.jpg', 'valoracion' => 5],
-    ['id' => 'doc2', 'nombre' => 'Dra. Sofía Castillo', 'foto' => 'https://randomuser.me/api/portraits/women/75.jpg', 'valoracion' => 4]
+    ['id' => 'doc1', 'nombre' => 'Dr. Alejandro Vargas', 'foto' => 'https://randomuser.me/api/portraits/men/75.jpg', 'valoracion' => 5, 'horario_semanal' => ['Lunes' => 'Mañana', 'Miércoles' => 'Mañana', 'Viernes' => 'Tarde']],
+    ['id' => 'doc2', 'nombre' => 'Dra. Sofía Castillo', 'foto' => 'https://randomuser.me/api/portraits/women/75.jpg', 'valoracion' => 4, 'horario_semanal' => ['Martes' => 'Tarde', 'Jueves' => 'Tarde', 'Sábado' => 'Mañana']]
   ],
   'pediatria' => [
-    ['id' => 'doc3', 'nombre' => 'Dra. Isabela Rojas', 'foto' => 'https://randomuser.me/api/portraits/women/76.jpg', 'valoracion' => 5]
+    ['id' => 'doc3', 'nombre' => 'Dra. Isabela Rojas', 'foto' => 'https://randomuser.me/api/portraits/women/76.jpg', 'valoracion' => 5, 'horario_semanal' => ['Lunes' => 'Completo', 'Martes' => 'Completo', 'Miércoles' => 'Completo', 'Jueves' => 'Completo', 'Viernes' => 'Completo']]
   ],
   'neuro' => [
-    ['id' => 'doc4', 'nombre' => 'Dr. Mateo Herrera', 'foto' => 'https://randomuser.me/api/portraits/men/76.jpg', 'valoracion' => 5]
+    ['id' => 'doc4', 'nombre' => 'Dr. Mateo Herrera', 'foto' => 'https://randomuser.me/api/portraits/men/76.jpg', 'valoracion' => 5, 'horario_semanal' => ['Lunes' => 'Tarde', 'Miércoles' => 'Tarde', 'Viernes' => 'Tarde']]
   ],
   'derma' => [
-    ['id' => 'doc5', 'nombre' => 'Dra. Valentina Morales', 'foto' => 'https://randomuser.me/api/portraits/women/77.jpg', 'valoracion' => 4],
-    ['id' => 'doc6', 'nombre' => 'Dr. Lucas Jiménez', 'foto' => 'https://randomuser.me/api/portraits/men/77.jpg', 'valoracion' => 5]
+    ['id' => 'doc5', 'nombre' => 'Dra. Valentina Morales', 'foto' => 'https://randomuser.me/api/portraits/women/77.jpg', 'valoracion' => 4, 'horario_semanal' => ['Martes' => 'Mañana', 'Jueves' => 'Mañana']],
+    ['id' => 'doc6', 'nombre' => 'Dr. Lucas Jiménez', 'foto' => 'https://randomuser.me/api/portraits/men/77.jpg', 'valoracion' => 5, 'horario_semanal' => ['Lunes' => 'Tarde', 'Miércoles' => 'Completo', 'Viernes' => 'Mañana']]
   ],
   'gine' => [
-    ['id' => 'doc7', 'nombre' => 'Dra. Camila Ríos', 'foto' => 'https://randomuser.me/api/portraits/women/78.jpg', 'valoracion' => 5]
+    ['id' => 'doc7', 'nombre' => 'Dra. Camila Ríos', 'foto' => 'https://randomuser.me/api/portraits/women/78.jpg', 'valoracion' => 5, 'horario_semanal' => ['Martes' => 'Tarde', 'Jueves' => 'Tarde']]
   ],
   'onco' => [
-    ['id' => 'doc8', 'nombre' => 'Dr. Sebastián Peña', 'foto' => 'https://randomuser.me/api/portraits/men/78.jpg', 'valoracion' => 5]
+    ['id' => 'doc8', 'nombre' => 'Dr. Sebastián Peña', 'foto' => 'https://randomuser.me/api/portraits/men/78.jpg', 'valoracion' => 5, 'horario_semanal' => ['Lunes' => 'Mañana', 'Jueves' => 'Mañana']]
+  ]
+];
+
+// Simulación de citas ya reservadas para la demo
+$citas_reservadas = [
+  'doc1' => [
+    // Usamos una fecha futura dinámica para que la demo siempre funcione
+    date('Y-m-d', strtotime('next monday')) => ['09:00', '09:15', '10:30'],
+    date('Y-m-d', strtotime('next wednesday')) => ['11:00'],
+  ],
+  'doc3' => [
+    date('Y-m-d', strtotime('next tuesday')) => ['14:00', '14:15', '16:00', '16:30'],
+  ],
+  'doc6' => [
+    date('Y-m-d', strtotime('next wednesday')) => ['09:00', '09:15', '09:30', '09:45', '10:00', '10:15', '10:30', '10:45', '11:00'],
   ]
 ];
 
@@ -207,6 +222,7 @@ include __DIR__ . '/../../public/shared/header/header.php';
 <!-- Datos de doctores para JS, debe estar antes del footer que carga el script -->
 <script>
   const doctorsData = <?php echo json_encode($doctores); ?>;
+  const bookedAppointmentsData = <?php echo json_encode($citas_reservadas); ?>;
 </script>
 
 <?php

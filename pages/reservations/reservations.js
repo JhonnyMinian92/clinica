@@ -52,6 +52,7 @@
       specialtyName: null,
       doctorId: null,
       doctorName: null,
+      doctorSchedule: {},
       date: null,
       time: null,
       patientName: '',
@@ -277,8 +278,18 @@
       specialtyGrid.querySelectorAll('.selectable-card').forEach((card) => card.classList.remove('active'));
       selectedCard.classList.add('active');
 
-      selection.specialtyId = selectedCard.dataset.value;
-      selection.specialtyName = selectedCard.dataset.name;
+      const specialtyId = selectedCard.dataset.value;
+      const specialtyName = selectedCard.dataset.name;
+
+      // Si el usuario cambia de especialidad, reseteamos la selección de doctor
+      if (selection.specialtyId && selection.specialtyId !== specialtyId) {
+        selection.doctorId = null;
+        selection.doctorName = null;
+        selection.doctorSchedule = {};
+      }
+
+      selection.specialtyId = specialtyId;
+      selection.specialtyName = specialtyName;
 
       // Validate the step to enable the next button internally
       validateStep();
@@ -335,8 +346,19 @@
       doctorSelectionGrid.querySelectorAll('.selectable-card').forEach((card) => card.classList.remove('active'));
       selectedCard.classList.add('active');
 
-      selection.doctorId = selectedCard.dataset.value;
-      selection.doctorName = selectedCard.dataset.name;
+      const doctorId = selectedCard.dataset.value;
+      const selectedDoctor = doctorsData[selection.specialtyId]?.find((doc) => doc.id === doctorId);
+
+      if (selectedDoctor) {
+        selection.doctorId = selectedDoctor.id;
+        selection.doctorName = selectedDoctor.nombre;
+        selection.doctorSchedule = selectedDoctor.horario_semanal || {};
+      } else {
+        // Fallback si el doctor no se encuentra (no debería ocurrir)
+        selection.doctorId = doctorId;
+        selection.doctorName = selectedCard.dataset.name;
+        selection.doctorSchedule = {};
+      }
 
       // Validate and automatically proceed
       validateStep();
@@ -372,8 +394,15 @@
         const date = new Date(year, month, day);
         const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
+        // Obtener el nombre del día en español para verificar el horario
+        const dayName = date.toLocaleDateString('es-ES', { weekday: 'long' });
+        const capitalizedDayName = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+
+        // Verificar si el doctor trabaja en este día de la semana
+        const worksOnThisDay = Object.keys(selection.doctorSchedule).includes(capitalizedDayName);
+
         let classes = 'calendar-day';
-        if (date < calendarState.today.setHours(0, 0, 0, 0)) {
+        if (date < calendarState.today.setHours(0, 0, 0, 0) || !worksOnThisDay) {
           classes += ' is-disabled';
         }
         if (date.toDateString() === calendarState.today.toDateString()) {
@@ -420,34 +449,53 @@
 
       // Simulación de una llamada a la API para obtener horarios
       setTimeout(() => {
-        // Generar horarios de 7:00 a 21:30 en intervalos de 30 minutos.
-        const allTimes = [];
-        for (let hour = 7; hour < 22; hour++) {
-          // from 7:00 up to (but not including) 22:00
-          allTimes.push(`${String(hour).padStart(2, '0')}:00`);
-          allTimes.push(`${String(hour).padStart(2, '0')}:30`);
+        // 1. Determinar el turno del doctor para el día seleccionado
+        const selectedDateObj = new Date(selection.date + 'T00:00:00');
+        const dayName = selectedDateObj.toLocaleDateString('es-ES', { weekday: 'long' });
+        const capitalizedDayName = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+        const shift = selection.doctorSchedule[capitalizedDayName];
+
+        let availableTimes = [];
+
+        // 2. Generar horarios según el turno
+        if (shift === 'Mañana' || shift === 'Completo') {
+          for (let h = 7; h < 13; h++) { // 7:00 a 12:45
+            ['00', '15', '30', '45'].forEach((m) => availableTimes.push(`${String(h).padStart(2, '0')}:${m}`));
+          }
+        }
+        if (shift === 'Tarde' || shift === 'Completo') {
+          for (let h = 13; h < 22; h++) { // 13:00 a 21:45
+            ['00', '15', '30', '45'].forEach((m) => availableTimes.push(`${String(h).padStart(2, '0')}:${m}`));
+          }
         }
 
-        let filteredTimes = allTimes;
+        let filteredTimes = availableTimes;
 
         // Si la fecha seleccionada es hoy, filtrar los horarios que ya pasaron
-        const selectedDate = new Date(selection.date + 'T00:00:00');
-        if (selectedDate.toDateString() === calendarState.today.toDateString()) {
+        if (selectedDateObj.toDateString() === calendarState.today.toDateString()) {
           const now = new Date();
           const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-          filteredTimes = allTimes.filter((time) => time > currentTime);
+          filteredTimes = availableTimes.filter((time) => time > currentTime);
         }
 
+        // 3. Obtener las citas ya reservadas para este doctor y fecha
+        const bookedSlots = bookedAppointmentsData[selection.doctorId]?.[selection.date] || [];
+
         if (filteredTimes.length === 0) {
-          timeSlotsGrid.innerHTML = `<p class="no-results-message" style="display: block;">No hay horarios disponibles para esta fecha.</p>`;
+          timeSlotsGrid.innerHTML = `<p class="no-results-message" style="display: block;">No hay horarios disponibles para este turno.</p>`;
         } else {
           const timeSlotsHTML = filteredTimes
             .map(
-              (time, index) => `
-            <button type="button" class="selectable-card" data-value="${time}" style="--animation-order: ${index};">
-              <span class="card-title">${time}</span>
-            </button>
-          `,
+              (time, index) => {
+                const isBooked = bookedSlots.includes(time);
+                const bookedClass = isBooked ? 'is-booked is-disabled' : '';
+                const disabledAttr = isBooked ? 'disabled' : '';
+                return `
+                  <button type="button" class="selectable-card ${bookedClass}" data-value="${time}" style="--animation-order: ${index};" ${disabledAttr}>
+                    <span class="card-title">${time}</span>
+                  </button>
+                `;
+              },
             )
             .join('');
           timeSlotsGrid.innerHTML = timeSlotsHTML;
