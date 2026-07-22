@@ -116,6 +116,11 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 # ==============================================
 
 ## Cambios Realizados
+- **v3.5 (Fecha Actual):**
+  - **Rediseño Premium de la Página de Doctores (Tarea 10):** Se ha realizado una mejora integral de la página de doctores (`/pages/doctors/`).
+    - **CSS:** Se rediseñaron los filtros para ser más limpios y organizados. Las tarjetas de perfil de los doctores ahora tienen un diseño más sofisticado y profesional, con una mejor jerarquía visual y un responsive design perfeccionado.
+    - **JS:** Se optimizó la interactividad. El filtrado ahora utiliza una animación suave de atenuación en lugar de ocultar elementos bruscamente. Se implementó `debounce` en la búsqueda por nombre para mejorar el rendimiento y se añadió la funcionalidad para un nuevo botón de "Limpiar filtros".
+    - **HTML:** Se actualizó la estructura para reflejar el nuevo diseño de los filtros y añadir el botón de reinicio.
 - **v3.4 (Fecha Actual):**
   - **Optimización del Filtro de Especialidades (Tarea 8.1):** Se ha refactorizado el script `specialties.js` para incluir una función `debounce`. Esto mejora el rendimiento y la experiencia de usuario al no ejecutar la búsqueda en cada pulsación de tecla, sino tras una breve pausa. Adicionalmente, se han añadido estilos al mensaje de "sin resultados" en `specialties.css` y se ha limpiado el HTML correspondiente en `pages/specialties/index.php` para una mejor separación de responsabilidades (CSS sobre estilos inline).
 - **v3.3 (Fecha Actual):**
