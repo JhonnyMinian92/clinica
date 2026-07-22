@@ -63,7 +63,7 @@ Es el sitio web oficial de una clínica privada. Debe transmitir inmediatamente:
 # ==============================================
 # ARQUITECTURA Y ESTADO ACTUAL DEL SISTEMA (MEMORIA)
 # ==============================================
-
+ 
 Esta sección funciona como tu memoria y mapa del sistema. Describe el estado actual del proyecto.
 
 ## 1. Información de la Clínica
@@ -115,14 +115,21 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 # BITÁCORA DE CAMBIOS Y TAREAS PENDIENTES
 # ==============================================
 
-## Cambios Realizados
-- **v3.6 (Fecha Actual):**
+## Cambios Realizados (v4.0)
+
+- **v4.0 (Fecha Actual):**
+  - **Implementación del Formulario de Reservaciones (Tareas 12.1-12.4):** Se ha construido el flujo completo del formulario de agendamiento de citas.
+    - **HTML:** Se maquetó la estructura de 5 pasos, incluyendo el nuevo calendario interactivo y los contenedores para cada etapa.
+    - **CSS:** Se diseñó la barra de progreso, las transiciones entre pasos y se creó un layout responsive y funcional para el calendario y la selección de horarios, con alturas fijas y scroll en escritorio.
+    - **JS:** Se implementó toda la lógica del "stepper" (navegación, validación, actualización de UI), la selección de especialidad, la carga dinámica de doctores, la generación del calendario (deshabilitando días pasados), la generación de horarios dinámicos (filtrando horas pasadas en el día actual) y la simulación de envío con mensaje de éxito.
+
+- **v3.6:**
   - **Corrección y Mejora de Filtros de Doctores (Tarea 11):** Se solucionaron múltiples errores en la página de doctores que impedían el funcionamiento de los filtros.
     - **JS:** Se corrigió el filtro de "disponibilidad hoy" cambiando su detector de eventos de `input` a `change` para garantizar la compatibilidad. Se hizo que el filtro de especialidad sea insensible a mayúsculas y minúsculas para mayor robustez.
     - **HTML:** Se reorganizó la disposición de los filtros, moviendo el de "disponibilidad hoy" después del de "idiomas", según lo solicitado, y se ajustaron las animaciones de entrada.
-- **v3.5 (Fecha Actual):**
+- **v3.5:**
   - **Refactorización de la Página de Doctores (Tarea 10.1):** Se ha realizado una mejora integral de la página de doctores, implementando un indicador de disponibilidad en tiempo real basado en el día actual y rediseñando las tarjetas de perfil y los filtros para una experiencia de usuario superior.
-- **v3.5 (Fecha Actual):**
+- **v3.5:**
   - **Rediseño Premium de la Página de Doctores (Tarea 10):** Se ha realizado una mejora integral de la página de doctores (`/pages/doctors/`).
     - **CSS:** Se rediseñaron los filtros para ser más limpios y organizados. Las tarjetas de perfil de los doctores ahora tienen un diseño más sofisticado y profesional, con una mejor jerarquía visual y un responsive design perfeccionado.
     - **JS:** Se optimizó la interactividad. El filtrado ahora utiliza una animación suave de atenuación en lugar de ocultar elementos bruscamente. Se implementó `debounce` en la búsqueda por nombre para mejorar el rendimiento y se añadió la funcionalidad para un nuevo botón de "Limpiar filtros".
@@ -130,18 +137,18 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 - **v3.4 (Fecha Actual):**
   - **Optimización del Filtro de Especialidades (Tarea 8.1):** Se ha refactorizado el script `specialties.js` para incluir una función `debounce`. Esto mejora el rendimiento y la experiencia de usuario al no ejecutar la búsqueda en cada pulsación de tecla, sino tras una breve pausa. Adicionalmente, se han añadido estilos al mensaje de "sin resultados" en `specialties.css` y se ha limpiado el HTML correspondiente en `pages/specialties/index.php` para una mejor separación de responsabilidades (CSS sobre estilos inline).
 - **v3.3 (Fecha Actual):**
-  - **Implementación de Sección de Estadísticas (Tarea 9):** Se ha añadido la sección de estadísticas en la página principal (`index.php`). Esta sección utiliza los estilos predefinidos en `style.css` y la lógica de animación de contadores de `app.js` para mostrar cifras clave de la clínica de forma dinámica e impactante.
+  - **Implementación de Sección de Estadísticas (Tarea 9):** Se añadió la sección de estadísticas en la página principal (`index.php`). Esta sección utiliza los estilos predefinidos en `style.css` y la lógica de animación de contadores de `app.js` para mostrar cifras clave de la clínica de forma dinámica e impactante.
 - **v3.2 (Fecha Actual):**
   - **Auditoría y Corrección de Archivos (Bitácora):** Se realizó una auditoría exhaustiva de la estructura de archivos. Se eliminaron `c:\xampp\htdocs\clinica\pages\specialties\footer.php` y `c:\xampp\htdocs\clinica\specialties.css` (del directorio raíz) por ser redundantes y estar mal ubicados. Se movieron los estilos de `specialties.css` a `c:\xampp\htdocs\clinica\pages\specialties\specialties.css` y se actualizó `c:\xampp\htdocs\clinica\pages\specialties\index.php` para cargar este CSS y su JS específico (`specialties.js`) a través del header/footer compartido. Se verificó que `c:\xampp\htdocs\clinica\pages\doctors\` no contuviera archivos `specialties.css` fuera de lugar.
   - **Refactorización de Página de Reservaciones:** Se corrigió `c:\xampp\htdocs\clinica\pages\reservations\index.php` para que utilizara los componentes `header.php` y `footer.php` compartidos, eliminando el HTML duplicado y asegurando la coherencia arquitectónica. Se declaró `$page_specific_css` y `$page_specific_js` para la carga dinámica de assets.
 - **v3.1 (Fecha Actual):**
   - **Catálogo Interactivo de Especialidades (Tarea 8):** Se ha transformado la página de especialidades en una herramienta dinámica y funcional. Se implementó un catálogo generado por PHP, se mejoró el diseño de las tarjetas y se añadió un filtro de búsqueda en tiempo real con JavaScript.
 - **v2.1 (Fecha Actual):**
-  - **Rediseño de la Sección Testimonios (Tarea 6):** Se ha refactorizado el carrusel de testimonios para usar un efecto de fundido (fade) más elegante. Se mejoró el diseño de las tarjetas de testimonio y se implementó un ajuste dinámico de altura para eliminar el `layout shift`, mejorando la UX.
+  - **Rediseño de la Sección Testimonios (Tarea 6):** Se refactorizó el carrusel de testimonios para usar un efecto de fundido (fade) más elegante. Se mejoró el diseño de las tarjetas de testimonio y se implementó un ajuste dinámico de altura para eliminar el `layout shift`, mejorando la UX.
 - **v2.0 (Fecha Actual):**
   - **Mejora de la Sección Doctores (Tarea 5):** Se rediseñaron las tarjetas de los doctores en la página principal con un diseño de superposición (overlay) más moderno y una microinteracción al pasar el cursor para revelar más detalles. Se reestructuró el HTML y se refactorizó el CSS para lograr el nuevo aspecto premium.
 - **v1.9 (Fecha Actual):**
-  - **Refactorización Arquitectónica (Componentes):** Se ha refactorizado el `header` y el `footer` en componentes PHP/CSS/JS reutilizables y encapsulados dentro del directorio `public/shared/`. Se actualizaron todas las páginas (`index.php`, `pages/specialties/`, `pages/doctors/`) para utilizar esta nueva arquitectura, mejorando drásticamente la mantenibilidad y consistencia del código. Se eliminaron los archivos `header.php` y `footer.php` del directorio raíz.
+  - **Refactorización Arquitectónica (Componentes):** Se refactorizó el `header` y el `footer` en componentes PHP/CSS/JS reutilizables y encapsulados dentro del directorio `public/shared/`. Se actualizaron todas las páginas (`index.php`, `pages/specialties/`, `pages/doctors/`) para utilizar esta nueva arquitectura, mejorando drásticamente la mantenibilidad y consistencia del código. Se eliminaron los archivos `header.php` y `footer.php` del directorio raíz.
 - **v1.8 (Fecha Actual):**
   - **Implementación Sección Servicios (Tarea 3):** Se ha completado el diseño y la implementación de la sección "Nuestros Servicios" en la página principal. Se crearon tarjetas de servicio con un diseño limpio y profesional, manteniendo la coherencia con el Design System.
 - **v1.7:**
@@ -166,14 +173,18 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 
 ## Tareas Pendientes (Backlog Priorizado)
 
-### Tareas para v3.0
+### Tareas para v4.1
 
-#### Tarea 12: Implementación del Formulario de Reservaciones (Flujo Completo)
-- **12.1 - Lógica del Stepper (Completado):** Se ha implementado la navegación básica entre pasos (Siguiente/Anterior), la actualización de la barra de progreso y las transiciones de altura en `reservations.js`.
-- **12.2 - Lógica de Selección (Completado):** Se ha implementado el filtro de "Especialidad", la carga y selección dinámica de "Doctores", y la simulación y selección de "Fecha y Hora".
-- **12.3 - Lógica de Datos y Confirmación (Completado):** Se ha implementado la validación en tiempo real para los datos del paciente y la población dinámica de la tarjeta de resumen final.
-- **12.4 - Simulación de Envío (Completado):** Se ha implementado la simulación de envío del formulario, incluyendo un estado de carga en el botón y un mensaje de éxito final.
-- **12.5 - Auditoría y Refinamiento (Pendiente):** Realizar una auditoría completa de accesibilidad (WCAG), manejo de casos borde (ej. cambiar selección), y la funcionalidad de pre-selección por URL.
+#### Tarea 13: Mejora Avanzada del Agendamiento de Citas
+- **13.1 - Filtro de Doctores en Paso 2:** Implementar un campo de búsqueda en el paso de selección de doctor para permitir al usuario filtrar la lista de especialistas por nombre, mejorando la usabilidad cuando hay muchos doctores en una especialidad.
+- **13.2 - Ajuste de Intervalos de Cita a 15 Minutos:** Modificar la lógica de generación de horarios en `reservations.js` para que los intervalos de tiempo sean de 15 minutos (ej. 09:00, 09:15, 09:30) en lugar de 30, aumentando la granularidad de la oferta.
+- **13.3 - Lógica de Disponibilidad Real del Doctor:** Conectar la selección de fecha y hora con la disponibilidad real de cada doctor.
+    - **Calendario Inteligente:** El calendario en el Paso 3 deberá leer el `horario_semanal` del doctor seleccionado y deshabilitar los días de la semana en los que no trabaja.
+    - **Horarios por Turno:** La lista de horarios generada deberá respetar el turno del doctor para el día seleccionado (ej. 'Mañana', 'Tarde' o 'Completo').
+    - **Visualización de Citas Ocupadas:** Simular una base de datos de citas existentes y reflejarlo en la UI, mostrando los horarios ya reservados en un estado "deshabilitado" o visualmente distinto, para que el paciente solo pueda seleccionar los disponibles.
+
+#### Tarea 12: Refinamiento del Formulario de Reservaciones
+- **12.5 - Auditoría y Refinamiento:** Realizar una auditoría completa de accesibilidad (WCAG) para el nuevo calendario y los flujos. Mejorar el manejo de casos borde (ej. cambiar de especialidad o doctor después de haber avanzado). Implementar la funcionalidad de pre-selección de doctor/especialidad si se llega desde una URL con parámetros.
 
 # ==============================================
 # DIRECTIVAS DE TRABAJO Y REQUERIMIENTOS

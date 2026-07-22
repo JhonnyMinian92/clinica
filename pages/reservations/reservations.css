@@ -374,6 +374,12 @@ body {
   cursor: not-allowed;
   text-decoration: line-through;
 }
+.calendar-day:focus-visible {
+  outline: 3px solid var(--color-secondary);
+  outline-offset: 2px;
+  background-color: #eef7ff;
+}
+
 
 /* --- Estilos para campos de formulario --- */
 .date-time-container,
