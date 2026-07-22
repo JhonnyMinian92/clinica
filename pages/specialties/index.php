@@ -1,7 +1,7 @@
 <?php
 // Incluimos el header reutilizable.
 // Usamos __DIR__ para construir una ruta absoluta al archivo, lo que hace el código más robusto.
-include __DIR__ . '/../../header.php';
+include __DIR__ . '/../../public/shared/header/header.php';
 ?>
 
 <main id="main-content">
@@ -67,5 +67,5 @@ include __DIR__ . '/../../header.php';
 
 <?php
 // Incluimos el footer reutilizable
-include __DIR__ . '/../../footer.php';
+include __DIR__ . '/../../public/shared/footer/footer.php';
 ?>

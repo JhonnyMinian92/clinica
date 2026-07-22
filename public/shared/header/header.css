@@ -1,0 +1,148 @@
+/* ---------------------------------- */
+/* #HEADER                            */
+/* ---------------------------------- */
+
+.main-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+  height: var(--header-height);
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid transparent;
+  transition: all var(--transition-duration-medium) var(--ease-out-cubic);
+}
+
+/* Cuando el menú móvil está abierto, el header se vuelve transparente para no interferir */
+body.mobile-nav-open .main-header {
+  background-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  border-bottom-color: transparent;
+}
+
+.main-header.scrolled {
+  height: var(--header-height-scrolled);
+  box-shadow: var(--shadow-soft);
+  border-bottom-color: var(--color-border);
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-unit);
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.logo-svg {
+  transition: transform var(--transition-duration-medium) var(--ease-out-cubic);
+}
+.logo:hover .logo-svg {
+  transform: scale(1.1);
+}
+
+.clinic-name-header {
+  font-size: 1.25rem;
+  color: var(--color-text-primary);
+}
+
+.main-nav {
+  display: none; /* Oculto en móvil */
+}
+
+.nav-list {
+  display: flex;
+  list-style: none;
+  gap: calc(var(--spacing-unit) * 4);
+}
+
+.nav-link {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  font-weight: 500;
+  position: relative;
+  padding: var(--spacing-unit) 0;
+}
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: var(--color-primary);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform var(--transition-duration-medium) var(--ease-out-cubic);
+}
+.nav-link:hover,
+.nav-link:focus {
+  color: var(--color-text-primary);
+}
+.nav-link:hover::after,
+.nav-link:focus::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-unit);
+}
+
+.mobile-nav-toggle {
+  display: block; /* Visible en móvil */
+  width: 40px;
+  height: 40px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  z-index: 1002; /* Debe estar por encima del overlay del menú */
+  padding: 0;
+}
+
+.hamburger-line {
+  display: block;
+  width: 24px;
+  height: 2px;
+  background-color: var(--color-text-primary);
+  margin: 5px auto;
+  transition: all var(--transition-duration-medium) var(--ease-out-cubic);
+}
+
+/* Estilos para menú móvil abierto */
+body.mobile-nav-open .hamburger-line:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+body.mobile-nav-open .hamburger-line:nth-child(2) {
+  opacity: 0;
+}
+body.mobile-nav-open .hamburger-line:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+@media (min-width: 1024px) {
+  .main-nav {
+    display: block;
+  }
+  .mobile-nav-toggle {
+    display: none;
+  }
+  .header-actions .btn {
+    display: inline-block;
+  }
+}

@@ -47,7 +47,7 @@ Garantizar que cada cambio mejore el sistema sin introducir regresiones, errores
 
 
 # ==============================================
-# PROYECTO: CLÍNICA ESTÁNDAR (v1.8)
+# PROYECTO: CLÍNICA ESTÁNDAR (v1.9)
 # ==============================================
 
 ## Visión General
@@ -79,8 +79,16 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 
 ## 2. Componentes Principales del Sistema
 - **`index.php`**: Página de aterrizaje (landing page) estática y pública. Muestra la información principal de la clínica: especialidades destacadas, doctores, equipos (radiografía, ecografía), y datos de contacto. Es el principal punto de entrada para los pacientes.
-- **`public/css/style.css`**: Hoja de estilos global. Define el "Design System: Aura Health", la paleta de colores, tipografía, espaciados, y estilos de todos los componentes visuales.
-- **`public/js/app.js`**: Archivo JavaScript principal. Gestiona la interactividad global del sitio: navegación, animaciones de scroll, lazy loading, y el carrusel de testimonios.
+- **`public/css/style.css`**: Hoja de estilos global. Define el "Design System: Aura Health", la paleta de colores, tipografía, espaciados, y estilos de componentes no encapsulados.
+- **`public/js/app.js`**: Archivo JavaScript principal. Gestiona la interactividad global del sitio: animaciones de scroll, lazy loading, y el carrusel de testimonios.
+- **`public/shared/header/`**: Componente de cabecera reutilizable.
+  - `header.php`: Contiene el `DOCTYPE`, `<head>` y la estructura `<header>`. Gestiona la carga de todos los assets CSS.
+  - `header.css`: Estilos específicos del header.
+  - `header.js`: Lógica JavaScript para la navegación (sticky y móvil).
+- **`public/shared/footer/`**: Componente de pie de página reutilizable.
+  - `footer.php`: Contiene la estructura `<footer>` y el cierre de la página. Gestiona la carga de todos los assets JS.
+  - `footer.css`: Estilos específicos del footer.
+  - `footer.js`: Lógica JavaScript específica del footer (actualmente vacío).
 
 ## 3. Estructura de Páginas (Directorio `/pages`)
 - **`/pages/specialties/`**: Catálogo completo de especialidades médicas. Permite al usuario ver detalles de cada una y iniciar el proceso de reserva de cita desde aquí.
@@ -102,6 +110,8 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 # ==============================================
 
 ## Cambios Realizados
+- **v1.9 (Fecha Actual):**
+  - **Refactorización Arquitectónica (Componentes):** Se ha refactorizado el `header` y el `footer` en componentes PHP/CSS/JS reutilizables y encapsulados dentro del directorio `public/shared/`. Se actualizaron todas las páginas (`index.php`, `pages/specialties/`, `pages/doctors/`) para utilizar esta nueva arquitectura, mejorando drásticamente la mantenibilidad y consistencia del código. Se eliminaron los archivos `header.php` y `footer.php` del directorio raíz.
 - **v1.8 (Fecha Actual):**
   - **Implementación Sección Servicios (Tarea 3):** Se ha completado el diseño y la implementación de la sección "Nuestros Servicios" en la página principal. Se crearon tarjetas de servicio con un diseño limpio y profesional, manteniendo la coherencia con el Design System.
 - **v1.7:**

@@ -19,10 +19,6 @@
   document.addEventListener('DOMContentLoaded', () => {
     // Almacén de referencias a elementos del DOM para eficiencia
     const dom = {
-      header: document.getElementById('main-header'),
-      mobileNavToggle: document.getElementById('mobile-nav-toggle'),
-      mainNav: document.getElementById('main-nav'),
-      navLinks: document.querySelectorAll('.nav-link'),
       animatedElements: document.querySelectorAll('.animate-on-scroll'),
       statNumbers: document.querySelectorAll('.stat-number'),
       lazyImages: document.querySelectorAll('.lazy-img'),
@@ -38,58 +34,11 @@
      * Función principal de inicialización.
      */
     function init() {
-      if (!dom.header) {
-        console.warn('Elementos esenciales no encontrados. El script no se ejecutará completamente.');
-        return;
-      }
-      attachEventListeners();
+      // La lógica de eventos del header se ha movido a /public/shared/header/header.js
       initScrollAnimations();
       initStatCounters();
       initLazyLoading();
       initTestimonialCarousel();
-    }
-
-    /**
-     * Adjunta todos los listeners de eventos a los elementos relevantes del DOM.
-     */
-    function attachEventListeners() {
-      // Listener para el encogimiento del header al hacer scroll
-      window.addEventListener('scroll', handleHeaderScroll);
-
-      // Listener para el botón de navegación móvil
-      if (dom.mobileNavToggle) {
-        dom.mobileNavToggle.addEventListener('click', toggleMobileNav);
-      }
-
-      // Cerrar menú móvil al hacer clic en un enlace
-      dom.navLinks.forEach((link) => {
-        link.addEventListener('click', () => {
-          if (document.body.classList.contains('mobile-nav-open')) {
-            toggleMobileNav();
-          }
-        });
-      });
-    }
-
-    /**
-     * Maneja el cambio de estado del header al hacer scroll.
-     * Añade/quita una clase para un estilo más eficiente en CSS.
-     */
-    function handleHeaderScroll() {
-      if (window.scrollY > 50) {
-        dom.header.classList.add('scrolled');
-      } else {
-        dom.header.classList.remove('scrolled');
-      }
-    }
-
-    /**
-     * Muestra/oculta la navegación móvil y actualiza los atributos ARIA.
-     */
-    function toggleMobileNav() {
-      const isExpanded = dom.mobileNavToggle.getAttribute('aria-expanded') === 'true';
-      document.body.classList.toggle('mobile-nav-open');
-      dom.mobileNavToggle.setAttribute('aria-expanded', !isExpanded);
     }
 
     /**
