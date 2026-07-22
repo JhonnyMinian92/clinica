@@ -387,7 +387,14 @@
 
       // Simulación de una llamada a la API para obtener horarios
       setTimeout(() => {
-        let allTimes = ['09:00', '09:30', '10:00', '10:30', '11:00', '14:00', '14:30', '15:00', '16:30'];
+        // Generar horarios de 7:00 a 21:30 en intervalos de 30 minutos.
+        const allTimes = [];
+        for (let hour = 7; hour < 22; hour++) {
+          // from 7:00 up to (but not including) 22:00
+          allTimes.push(`${String(hour).padStart(2, '0')}:00`);
+          allTimes.push(`${String(hour).padStart(2, '0')}:30`);
+        }
+
         let filteredTimes = allTimes;
 
         // Si la fecha seleccionada es hoy, filtrar los horarios que ya pasaron
