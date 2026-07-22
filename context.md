@@ -47,7 +47,7 @@ Garantizar que cada cambio mejore el sistema sin introducir regresiones, errores
 
 
 # ==============================================
-# PROYECTO: CLÍNICA ESTÁNDAR (v3.0)
+# PROYECTO: CLÍNICA ESTÁNDAR (v3.1)
 # ==============================================
 
 ## Visión General
@@ -117,7 +117,11 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 
 ## Cambios Realizados
 - **v3.0 (Fecha Actual):**
-  - **Optimización de Componentes CSS:** Se han centralizado los estilos de componentes de UI reutilizables (como `.page-header`) en un nuevo archivo `public/css/components.css`. Esto elimina la duplicación de código y mejora la mantenibilidad, siguiendo el principio DRY.
+- **v3.2 (Fecha Actual):**
+  - **Auditoría y Corrección de Archivos (Bitácora):** Se realizó una auditoría exhaustiva de la estructura de archivos. Se eliminaron `c:\xampp\htdocs\clinica\pages\specialties\footer.php` y `c:\xampp\htdocs\clinica\specialties.css` (del directorio raíz) por ser redundantes y estar mal ubicados. Se movieron los estilos de `specialties.css` a `c:\xampp\htdocs\clinica\pages\specialties\specialties.css` y se actualizó `c:\xampp\htdocs\clinica\pages\specialties\index.php` para cargar este CSS y su JS específico (`specialties.js`) a través del header/footer compartido. Se verificó que `c:\xampp\htdocs\clinica\pages\doctors\` no contuviera archivos `specialties.css` fuera de lugar.
+  - **Refactorización de Página de Reservaciones:** Se corrigió `c:\xampp\htdocs\clinica\pages\reservations\index.php` para que utilizara los componentes `header.php` y `footer.php` compartidos, eliminando el HTML duplicado y asegurando la coherencia arquitectónica. Se declaró `$page_specific_css` y `$page_specific_js` para la carga dinámica de assets.
+- **v3.1 (Fecha Actual):**
+  - **Catálogo Interactivo de Especialidades (Tarea 8):** Se ha transformado la página de especialidades en una herramienta dinámica y funcional. Se implementó un catálogo generado por PHP, se mejoró el diseño de las tarjetas y se añadió un filtro de búsqueda en tiempo real con JavaScript.
 - **v2.1 (Fecha Actual):**
   - **Rediseño de la Sección Testimonios (Tarea 6):** Se ha refactorizado el carrusel de testimonios para usar un efecto de fundido (fade) más elegante. Se mejoró el diseño de las tarjetas de testimonio y se implementó un ajuste dinámico de altura para eliminar el `layout shift`, mejorando la UX.
 - **v2.0 (Fecha Actual):**
@@ -150,11 +154,7 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 
 ### Tareas para v3.0
 
-#### 8. Desarrollo del Catálogo Interactivo de Especialidades (Prioridad Crítica)
-- **Objetivo:** Transformar la página estática `/pages/specialties/` en un catálogo dinámico y funcional que sirva como el verdadero punto de partida para encontrar un especialista y agendar una cita.
-- **Sub-tarea 8.1 (Backend/Datos):** Crear un array de especialidades más completo en `pages/specialties/index.php` (simulando una base de datos) y renderizar todas las especialidades desde este array.
-- **Sub-tarea 8.2 (UI/UX):** Mejorar el diseño de las tarjetas de especialidad en esta página para que sean más informativas y atractivas, incluyendo un botón claro de "Agendar Cita".
-- **Sub-tarea 8.3 (Funcionalidad):** Implementar un filtro de búsqueda en la parte superior de la página para que los usuarios puedan encontrar rápidamente una especialidad escribiendo su nombre.
+**El backlog actual está vacío.**
 
 # ==============================================
 # DIRECTIVAS DE TRABAJO Y REQUERIMIENTOS

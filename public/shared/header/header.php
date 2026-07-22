@@ -26,6 +26,9 @@
   if (strpos($_SERVER['REQUEST_URI'], '/pages/doctors/') !== false) {
     echo '<link rel="stylesheet" href="/clinica/pages/doctors/doctors.css">';
   }
+  if (strpos($_SERVER['REQUEST_URI'], '/pages/specialties/') !== false) {
+    echo '<link rel="stylesheet" href="/clinica/pages/specialties/specialties.css">';
+  }
   ?>
 </head>
 

@@ -139,36 +139,6 @@ body {
   text-align: center;
 }
 
-/* --- Filtro de Búsqueda --- */
-.filter-wrapper {
-  position: relative;
-  margin-bottom: calc(var(--spacing-unit) * 4);
-}
-
-.filter-input {
-  width: 100%;
-  padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 2) calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 5);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-soft);
-  font-size: 1rem;
-  transition: all var(--transition-duration-fast) ease;
-}
-
-.filter-input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(0, 91, 234, 0.2);
-}
-
-.filter-icon {
-  position: absolute;
-  left: calc(var(--spacing-unit) * 1.5);
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--color-text-secondary);
-  pointer-events: none;
-}
-
 /* --- Cuadrícula de Selección --- */
 .selection-grid {
   display: grid;

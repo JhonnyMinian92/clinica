@@ -1,0 +1,44 @@
+/*
+ * specialties.css
+ * Estilos para el catálogo de especialidades
+ * Clínica Estándar
+ */
+
+.specialty-catalog-card {
+  background-color: var(--color-background-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-medium);
+  padding: calc(var(--spacing-unit) * 4);
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  transition: all var(--transition-duration-medium) var(--ease-out-cubic);
+  box-shadow: var(--shadow-soft);
+}
+
+.specialty-catalog-card:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--shadow-hard);
+  border-color: var(--color-primary);
+}
+
+.specialty-catalog-card .specialty-icon {
+  color: var(--color-primary);
+  margin-bottom: calc(var(--spacing-unit) * 2);
+  align-self: flex-start;
+}
+
+.specialty-catalog-card .specialty-title {
+  font-size: var(--font-size-h3);
+  margin-bottom: var(--spacing-unit);
+}
+
+.specialty-catalog-card .specialty-text {
+  color: var(--color-text-secondary);
+  flex-grow: 1;
+  margin-bottom: calc(var(--spacing-unit) * 3);
+}
+
+.specialty-catalog-card .btn {
+  margin-top: auto; /* Pushes the button to the bottom */
+}

@@ -43,212 +43,148 @@ if ($especialidad_seleccionada_titulo) {
   }
 }
 
+// Definir assets específicos para esta página para que sean cargados por los componentes de header/footer.
+$page_specific_css = 'reservations.css';
+$page_specific_js = 'reservations.js';
+
+include __DIR__ . '/../../public/shared/header/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="es">
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Agendar Cita | Clínica Estándar</title>
-  <meta name="description"
-    content="Agende su cita de forma rápida y sencilla en Clínica Estándar. Seleccione la especialidad, el doctor y el horario que prefiera.">
-  <link rel="canonical" href="https://www.clinicaestandar.com/reservations">
+<main id="main-content">
+  <div class="reservation-container">
+    <div class="reservation-form-wrapper">
+      <h1 class="form-main-title">Agendar una Cita</h1>
+      <p class="form-main-subtitle">Siga los pasos para encontrar un horario conveniente para usted.</p>
 
-  <!-- Favicon, Fonts, Global CSS -->
-  <link rel="icon" href="../../favicon.ico" type="image/x-icon">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../../public/css/style.css">
-
-  <!-- Page-specific CSS -->
-  <link rel="stylesheet" href="reservations.css">
-</head>
-
-<body>
-
-  <!-- Header (reutilizado) -->
-  <header class="main-header" id="main-header">
-    <div class="container header-container">
-      <a href="../../" class="logo" aria-label="Página de inicio de Clínica Estándar">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-svg">
-          <path
-            d="M12 2L12 5M12 19L12 22M22 12L19 12M5 12L2 12M19.07 4.93L17 7M7 17L4.93 19.07M19.07 19.07L17 17M7 7L4.93 4.93M16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79086 9.79086 8 12 8C14.2091 8 16 9.79086 16 12Z"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-          <path
-            d="M12 14C13.1046 14 14 13.1046 14 12C14 10.8954 13.1046 10 12 10C10.8954 10 10 10.8954 10 12C10 13.1046 10.8954 14 12 14Z"
-            fill="currentColor" />
-        </svg>
-        <span class="clinic-name-header">Clínica Estándar</span>
-      </a>
-      <nav class="main-nav" id="main-nav" aria-label="Navegación principal">
-        <ul class="nav-list">
-          <li><a href="../specialties/" class="nav-link">Especialidades</a></li>
-          <li><a href="../../#services" class="nav-link">Servicios</a></li>
-          <li><a href="../../#doctors" class="nav-link">Doctores</a></li>
-        </ul>
-      </nav>
-      <div class="header-actions">
-        <button class="mobile-nav-toggle" id="mobile-nav-toggle" aria-controls="main-nav" aria-expanded="false" aria-label="Abrir menú de navegación">
-          <span class="hamburger-line"></span><span class="hamburger-line"></span><span class="hamburger-line"></span>
-        </button>
+      <!-- Barra de Progreso -->
+      <div class="progress-bar">
+        <div class="progress-step active" data-step-name="Especialidad">1</div>
+        <div class="progress-step" data-step-name="Doctor">2</div>
+        <div class="progress-step" data-step-name="Fecha y Hora">3</div>
+        <div class="progress-step" data-step-name="Sus Datos">4</div>
+        <div class="progress-step" data-step-name="Confirmar">5</div>
       </div>
-    </div>
-  </header>
 
-  <main id="main-content">
-    <div class="reservation-container">
-      <div class="reservation-form-wrapper">
-        <h1 class="form-main-title">Agendar una Cita</h1>
-        <p class="form-main-subtitle">Siga los pasos para encontrar un horario conveniente para usted.</p>
+      <form id="reservation-form" class="reservation-form" novalidate
+        data-selected-specialty-id="<?php echo $especialidad_seleccionada_id; ?>">
 
-        <!-- Barra de Progreso -->
-        <div class="progress-bar">
-          <div class="progress-step active" data-step-name="Especialidad">1</div>
-          <div class="progress-step" data-step-name="Doctor">2</div>
-          <div class="progress-step" data-step-name="Fecha y Hora">3</div>
-          <div class="progress-step" data-step-name="Sus Datos">4</div>
-          <div class="progress-step" data-step-name="Confirmar">5</div>
+        <!-- Paso 1: Seleccionar Especialidad -->
+        <div class="form-step active">
+          <h2 class="step-title">Seleccione una especialidad</h2>
+
+          <div class="filter-wrapper">
+            <svg class="filter-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="specialty-filter" class="filter-input"
+              placeholder="Buscar especialidad (ej. Cardiología)">
+          </div>
+
+          <div class="selection-grid" id="specialty-grid">
+            <?php foreach ($especialidades as $item): ?>
+              <div class="selectable-card" data-value="<?php echo $item['id']; ?>"
+                data-name="<?php echo $item['titulo']; ?>">
+                <div class="card-icon">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round"><?php echo $item['icono']; ?></svg>
+                </div>
+                <span class="card-title"><?php echo $item['titulo']; ?></span>
+              </div>
+            <?php endforeach; ?>
+          </div>
         </div>
 
-        <form id="reservation-form" class="reservation-form" novalidate
-          data-selected-specialty-id="<?php echo $especialidad_seleccionada_id; ?>">
-
-          <!-- Paso 1: Seleccionar Especialidad -->
-          <div class="form-step active">
-            <h2 class="step-title">Seleccione una especialidad</h2>
-
-            <div class="filter-wrapper">
-              <svg class="filter-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
-              <input type="text" id="specialty-filter" class="filter-input"
-                placeholder="Buscar especialidad (ej. Cardiología)">
-            </div>
-
-            <div class="selection-grid" id="specialty-grid">
-              <?php foreach ($especialidades as $item): ?>
-                <div class="selectable-card" data-value="<?php echo $item['id']; ?>"
-                  data-name="<?php echo $item['titulo']; ?>">
-                  <div class="card-icon">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                      stroke-linecap="round" stroke-linejoin="round"><?php echo $item['icono']; ?></svg>
-                  </div>
-                  <span class="card-title"><?php echo $item['titulo']; ?></span>
-                </div>
-              <?php endforeach; ?>
-            </div>
+        <!-- Paso 2: Seleccionar Doctor -->
+        <div class="form-step">
+          <h2 class="step-title">Seleccione un doctor</h2>
+          <div id="doctor-selection-grid" class="selection-grid doctor-grid">
+            <!-- Los doctores se cargarán aquí con JS -->
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
           </div>
+        </div>
 
-          <!-- Paso 2: Seleccionar Doctor -->
-          <div class="form-step">
-            <h2 class="step-title">Seleccione un doctor</h2>
-            <div id="doctor-selection-grid" class="selection-grid doctor-grid">
-              <!-- Los doctores se cargarán aquí con JS -->
-              <div class="skeleton-card"></div>
-              <div class="skeleton-card"></div>
+        <!-- Paso 3: Seleccionar Fecha y Hora -->
+        <div class="form-step">
+          <h2 class="step-title">Seleccione fecha y hora</h2>
+          <div class="date-time-container">
+            <div class="date-picker-wrapper">
+              <label for="appointment-date">Fecha de la cita</label>
+              <input type="date" id="appointment-date" name="appointment-date" class="form-input-styled">
             </div>
-          </div>
-
-          <!-- Paso 3: Seleccionar Fecha y Hora -->
-          <div class="form-step">
-            <h2 class="step-title">Seleccione fecha y hora</h2>
-            <div class="date-time-container">
-              <div class="date-picker-wrapper">
-                <label for="appointment-date">Fecha de la cita</label>
-                <input type="date" id="appointment-date" name="appointment-date" class="form-input-styled">
-              </div>
-              <div class="time-slot-wrapper">
-                <p class="time-slot-title">Horarios disponibles</p>
-                <div id="time-slots" class="selection-grid time-grid">
-                  <!-- Los horarios se cargarán aquí con JS -->
-                  <div class="skeleton-time"></div>
-                  <div class="skeleton-time"></div>
-                  <div class="skeleton-time"></div>
-                  <div class="skeleton-time"></div>
-                </div>
+            <div class="time-slot-wrapper">
+              <p class="time-slot-title">Horarios disponibles</p>
+              <div id="time-slots" class="selection-grid time-grid">
+                <!-- Los horarios se cargarán aquí con JS -->
+                <div class="skeleton-time"></div>
+                <div class="skeleton-time"></div>
+                <div class="skeleton-time"></div>
+                <div class="skeleton-time"></div>
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- Paso 4: Información del Paciente -->
-          <div class="form-step">
-            <h2 class="step-title">Complete sus datos</h2>
-            <div class="patient-info-grid">
-              <div class="form-group-styled">
-                <input type="text" id="patient-name" name="patient-name" required placeholder=" ">
-                <label for="patient-name">Nombre Completo</label>
-              </div>
-              <div class="form-group-styled">
-                <input type="email" id="patient-email" name="patient-email" required placeholder=" ">
-                <label for="patient-email">Correo Electrónico</label>
-              </div>
-              <div class="form-group-styled">
-                <input type="tel" id="patient-phone" name="patient-phone" required placeholder=" ">
-                <label for="patient-phone">Teléfono</label>
-              </div>
-              <div class="form-group-styled">
-                <textarea id="patient-notes" name="patient-notes" rows="3" placeholder=" "></textarea>
-                <label for="patient-notes">Notas adicionales (opcional)</label>
-              </div>
+        <!-- Paso 4: Información del Paciente -->
+        <div class="form-step">
+          <h2 class="step-title">Complete sus datos</h2>
+          <div class="patient-info-grid">
+            <div class="form-group-styled">
+              <input type="text" id="patient-name" name="patient-name" required placeholder=" ">
+              <label for="patient-name">Nombre Completo</label>
+            </div>
+            <div class="form-group-styled">
+              <input type="email" id="patient-email" name="patient-email" required placeholder=" ">
+              <label for="patient-email">Correo Electrónico</label>
+            </div>
+            <div class="form-group-styled">
+              <input type="tel" id="patient-phone" name="patient-phone" required placeholder=" ">
+              <label for="patient-phone">Teléfono</label>
+            </div>
+            <div class="form-group-styled">
+              <textarea id="patient-notes" name="patient-notes" rows="3" placeholder=" "></textarea>
+              <label for="patient-notes">Notas adicionales (opcional)</label>
             </div>
           </div>
+        </div>
 
-          <!-- Paso 5: Confirmación -->
-          <div class="form-step">
-            <h2 class="step-title">Confirme los detalles de su cita</h2>
-            <div class="summary-card">
-              <h3>Resumen de la Cita</h3>
-              <ul class="summary-list">
-                <li><strong>Especialidad:</strong> <span id="summary-specialty"></span></li>
-                <li><strong>Doctor:</strong> <span id="summary-doctor"></span></li>
-                <li><strong>Fecha:</strong> <span id="summary-date"></span></li>
-                <li><strong>Hora:</strong> <span id="summary-time"></span></li>
-                <li><strong>Paciente:</strong> <span id="summary-name"></span></li>
-                <li><strong>Email:</strong> <span id="summary-email"></span></li>
-                <li><strong>Teléfono:</strong> <span id="summary-phone"></span></li>
-              </ul>
-              <p class="summary-footer">Recibirá una confirmación por correo electrónico. Por favor, llegue 15 minutos
-                antes de su cita.</p>
-            </div>
+        <!-- Paso 5: Confirmación -->
+        <div class="form-step">
+          <h2 class="step-title">Confirme los detalles de su cita</h2>
+          <div class="summary-card">
+            <h3>Resumen de la Cita</h3>
+            <ul class="summary-list">
+              <li><strong>Especialidad:</strong> <span id="summary-specialty"></span></li>
+              <li><strong>Doctor:</strong> <span id="summary-doctor"></span></li>
+              <li><strong>Fecha:</strong> <span id="summary-date"></span></li>
+              <li><strong>Hora:</strong> <span id="summary-time"></span></li>
+              <li><strong>Paciente:</strong> <span id="summary-name"></span></li>
+              <li><strong>Email:</strong> <span id="summary-email"></span></li>
+              <li><strong>Teléfono:</strong> <span id="summary-phone"></span></li>
+            </ul>
+            <p class="summary-footer">Recibirá una confirmación por correo electrónico. Por favor, llegue 15 minutos
+              antes de su cita.</p>
           </div>
+        </div>
 
-          <!-- Botones de Navegación -->
-          <div class="form-navigation">
-            <button type="button" id="prev-btn" class="btn btn-secondary">Anterior</button>
-            <button type="button" id="next-btn" class="btn btn-primary">Siguiente</button>
-          </div>
+        <!-- Botones de Navegación -->
+        <div class="form-navigation">
+          <button type="button" id="prev-btn" class="btn btn-secondary">Anterior</button>
+          <button type="button" id="next-btn" class="btn btn-primary">Siguiente</button>
+        </div>
 
-        </form>
-      </div>
+      </form>
     </div>
-  </main>
+  </div>
+</main>
 
-  <!-- Footer (reutilizado) -->
-  <footer class="main-footer">
-    <div class="container">
-      <div class="footer-bottom">
-        <p>&copy; <?php echo date("Y"); ?> Clínica Estándar. Todos los derechos reservados.</p>
-        <ul class="footer-legal-links">
-          <li><a href="../../aviso-legal">Aviso Legal</a></li>
-          <li><a href="../../politica-privacidad">Política de Privacidad</a></li>
-        </ul>
-      </div>
-    </div>
-  </footer>
+<!-- Datos de doctores para JS, debe estar antes del footer que carga el script -->
+<script>
+  const doctorsData = <?php echo json_encode($doctores); ?>;
+</script>
 
-  <!-- Datos de doctores para JS -->
-  <script>
-    const doctorsData = <?php echo json_encode($doctores); ?>;
-  </script>
-
-  <!-- JavaScript -->
-  <script src="../../public/js/app.js" defer></script>
-  <script src="reservations.js" defer></script>
-
-</body>
-
-</html>
+<?php
+include __DIR__ . '/../../public/shared/footer/footer.php';
+?>
