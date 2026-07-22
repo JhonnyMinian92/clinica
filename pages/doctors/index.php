@@ -1,10 +1,15 @@
 <?php
+// Establecer la configuración regional a español para obtener los nombres de los días correctamente.
+setlocale(LC_TIME, 'es_ES.UTF-8', 'Spanish_Spain.1252', 'es_ES', 'Spanish');
+// Obtener el nombre del día actual, capitalizado (ej. "Lunes").
+$dia_actual = ucfirst(strftime('%A'));
+
 // Simulación de una base de datos de doctores
 $doctores = [
   [
     'id' => 'doc1',
     'nombre' => 'Dr. Alejandro Vargas',
-    'foto' => 'https://images.unsplash.com/photo-1622253692010-333f2da60710?q=80&w=400&auto=format&fit=crop',
+    'foto' => '../../public/assets/avatar.png',
     'especialidad' => 'Cardiología',
     'subespecialidad' => 'Cardiología Intervencionista',
     'experiencia_anos' => 15,
@@ -13,12 +18,12 @@ $doctores = [
     'idiomas' => ['Español', 'Inglés'],
     'valoracion' => 5,
     'pacientes' => 3200,
-    'disponibilidad' => 'Mañanas'
+    'horario_semanal' => ['Lunes' => 'Mañana', 'Miércoles' => 'Mañana', 'Viernes' => 'Tarde']
   ],
   [
     'id' => 'doc2',
     'nombre' => 'Dra. Sofía Castillo',
-    'foto' => 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=400&auto=format&fit=crop',
+    'foto' => '../../public/assets/avatar.png',
     'especialidad' => 'Pediatría',
     'subespecialidad' => 'Neonatología',
     'experiencia_anos' => 12,
@@ -27,12 +32,12 @@ $doctores = [
     'idiomas' => ['Español', 'Portugués'],
     'valoracion' => 5,
     'pacientes' => 2800,
-    'disponibilidad' => 'Tardes'
+    'horario_semanal' => ['Martes' => 'Tarde', 'Jueves' => 'Tarde', 'Sábado' => 'Mañana']
   ],
   [
     'id' => 'doc3',
     'nombre' => 'Dr. Mateo Herrera',
-    'foto' => 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=400&auto=format&fit=crop',
+    'foto' => '../../public/assets/avatar.png',
     'especialidad' => 'Neurología',
     'subespecialidad' => 'Neurofisiología Clínica',
     'experiencia_anos' => 18,
@@ -41,12 +46,12 @@ $doctores = [
     'idiomas' => ['Español', 'Inglés'],
     'valoracion' => 5,
     'pacientes' => 4100,
-    'disponibilidad' => 'Completa'
+    'horario_semanal' => ['Lunes' => 'Completo', 'Martes' => 'Completo', 'Miércoles' => 'Completo', 'Jueves' => 'Completo', 'Viernes' => 'Completo']
   ],
   [
     'id' => 'doc4',
     'nombre' => 'Dra. Valentina Morales',
-    'foto' => 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?q=80&w=400&auto=format&fit=crop',
+    'foto' => '../../public/assets/avatar.png',
     'especialidad' => 'Dermatología',
     'subespecialidad' => 'Dermatología Cosmética',
     'experiencia_anos' => 10,
@@ -55,12 +60,12 @@ $doctores = [
     'idiomas' => ['Español'],
     'valoracion' => 4,
     'pacientes' => 3500,
-    'disponibilidad' => 'Tardes'
+    'horario_semanal' => ['Lunes' => 'Tarde', 'Miércoles' => 'Tarde', 'Viernes' => 'Tarde']
   ],
   [
     'id' => 'doc5',
     'nombre' => 'Dr. Lucas Jiménez',
-    'foto' => 'https://plus.unsplash.com/premium_photo-1661764878654-3d0fc6eefd5f?q=80&w=400&auto=format&fit=crop',
+    'foto' => '../../public/assets/avatar.png',
     'especialidad' => 'Traumatología',
     'subespecialidad' => 'Cirugía de Rodilla y Hombro',
     'experiencia_anos' => 20,
@@ -69,12 +74,12 @@ $doctores = [
     'idiomas' => ['Español', 'Inglés'],
     'valoracion' => 5,
     'pacientes' => 5000,
-    'disponibilidad' => 'Mañanas'
+    'horario_semanal' => ['Martes' => 'Mañana', 'Jueves' => 'Mañana']
   ],
   [
     'id' => 'doc6',
     'nombre' => 'Dra. Camila Ríos',
-    'foto' => 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?q=80&w=400&auto=format&fit=crop',
+    'foto' => '../../public/assets/avatar.png',
     'especialidad' => 'Ginecología',
     'subespecialidad' => 'Medicina Reproductiva',
     'experiencia_anos' => 14,
@@ -83,12 +88,12 @@ $doctores = [
     'idiomas' => ['Español', 'Portugués', 'Inglés'],
     'valoracion' => 5,
     'pacientes' => 3900,
-    'disponibilidad' => 'Completa'
+    'horario_semanal' => ['Lunes' => 'Tarde', 'Miércoles' => 'Completo', 'Viernes' => 'Mañana']
   ],
   [
     'id' => 'doc7',
     'nombre' => 'Dr. Sebastián Peña',
-    'foto' => 'https://images.unsplash.com/photo-1625498542638-85712b6b71a3?q=80&w=400&auto=format&fit=crop',
+    'foto' => '../../public/assets/avatar.png',
     'especialidad' => 'Oncología',
     'subespecialidad' => 'Oncología Torácica',
     'experiencia_anos' => 22,
@@ -97,12 +102,12 @@ $doctores = [
     'idiomas' => ['Español', 'Inglés'],
     'valoracion' => 5,
     'pacientes' => 2100,
-    'disponibilidad' => 'Tardes'
+    'horario_semanal' => ['Martes' => 'Tarde', 'Jueves' => 'Tarde']
   ],
   [
     'id' => 'doc8',
     'nombre' => 'Dra. Isabella Gómez',
-    'foto' => 'https://images.unsplash.com/photo-1607990281513-2c110a25bd8c?q=80&w=400&auto=format&fit=crop',
+    'foto' => '../../public/assets/avatar.png',
     'especialidad' => 'Psiquiatría',
     'subespecialidad' => 'Psicoterapia',
     'experiencia_anos' => 9,
@@ -111,19 +116,21 @@ $doctores = [
     'idiomas' => ['Español', 'Catalán'],
     'valoracion' => 4,
     'pacientes' => 1500,
-    'disponibilidad' => 'Mañanas'
+    'horario_semanal' => ['Lunes' => 'Mañana', 'Jueves' => 'Mañana']
   ],
 ];
 
 // Extraer datos para los filtros
 $especialidades_filtro = array_unique(array_column($doctores, 'especialidad'));
 $idiomas_filtro = array_unique(array_merge(...array_column($doctores, 'idiomas')));
-$disponibilidades_filtro = array_unique(array_column($doctores, 'disponibilidad'));
 sort($especialidades_filtro);
 sort($idiomas_filtro);
-sort($disponibilidades_filtro);
 ?>
 <?php
+// Definir assets específicos para esta página.
+$page_specific_css = 'doctors.css';
+$page_specific_js = 'doctors.js';
+
 include __DIR__ . '/../../public/shared/header/header.php';
 ?>
 
@@ -174,21 +181,6 @@ include __DIR__ . '/../../public/shared/header/header.php';
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"></circle>
-              <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
-          </span>
-          <select id="availability-filter" class="filter-select">
-            <option value="">Toda disponibilidad</option>
-            <?php foreach ($disponibilidades_filtro as $item): ?>
-              <option value="<?php echo htmlspecialchars($item); ?>"><?php echo htmlspecialchars($item); ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-        <div class="filter-group animate-on-scroll fade-in-up" style="--animation-delay: 400ms;">
-          <span class="filter-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
               <path d="M2 12h20"></path>
               <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
               </path>
@@ -200,6 +192,14 @@ include __DIR__ . '/../../public/shared/header/header.php';
               <option value="<?php echo htmlspecialchars($item); ?>"><?php echo htmlspecialchars($item); ?></option>
             <?php endforeach; ?>
           </select>
+        </div>
+        <div class="filter-group animate-on-scroll fade-in-up" style="--animation-delay: 400ms;">
+          <!-- Filtro de disponibilidad mejorado: Checkbox -->
+          <label class="filter-switch">
+            <input type="checkbox" id="availability-filter">
+            <span class="switch-slider"></span>
+            <span class="switch-label">Mostrar solo disponibles hoy</span>
+          </label>
         </div>
         <div class="animate-on-scroll fade-in-up" style="--animation-delay: 500ms;">
           <button id="filter-reset-btn" class="filter-reset-btn">
@@ -217,11 +217,30 @@ include __DIR__ . '/../../public/shared/header/header.php';
       <!-- Doctors Grid -->
       <div class="doctors-grid" id="doctors-grid">
         <?php foreach ($doctores as $doctor): ?>
+          <?php
+          // Lógica para determinar la disponibilidad del día actual
+          $horario_hoy = $doctor['horario_semanal'][$dia_actual] ?? 'No disponible';
+          $disponible_hoy = $horario_hoy !== 'No disponible';
+          $texto_disponibilidad = 'No disponible hoy';
+          if ($disponible_hoy) {
+            switch ($horario_hoy) {
+              case 'Mañana':
+                $texto_disponibilidad = 'Disponible por la mañana';
+                break;
+              case 'Tarde':
+                $texto_disponibilidad = 'Disponible por la tarde';
+                break;
+              case 'Completo':
+                $texto_disponibilidad = 'Disponible todo el día';
+                break;
+            }
+          }
+          ?>
           <div class="doctor-profile-card animate-on-scroll fade-in-up"
             data-name="<?php echo htmlspecialchars(strtolower($doctor['nombre'])); ?>"
-            data-specialty="<?php echo htmlspecialchars($doctor['especialidad']); ?>"
-            data-availability="<?php echo htmlspecialchars($doctor['disponibilidad']); ?>"
-            data-languages="<?php echo htmlspecialchars(implode(',', $doctor['idiomas'])); ?>">
+            data-specialty="<?php echo htmlspecialchars(strtolower($doctor['especialidad'])); ?>"
+            data-languages="|<?php echo htmlspecialchars(implode('|', array_map('strtolower', $doctor['idiomas']))); ?>|"
+            data-available-today="<?php echo $disponible_hoy ? 'true' : 'false'; ?>">
             <div class="doctor-profile-photo-wrapper">
               <img src="<?php echo htmlspecialchars($doctor['foto']); ?>"
                 alt="Foto de <?php echo htmlspecialchars($doctor['nombre']); ?>" class="doctor-profile-photo">
@@ -239,33 +258,71 @@ include __DIR__ . '/../../public/shared/header/header.php';
               </p>
               <div class="doctor-profile-details">
                 <div class="detail-item">
-                  <span class="detail-label">Experiencia</span>
+                  <svg class="detail-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M8 21h8a2 2 0 0 0 2-2V7H6v12a2 2 0 0 0 2 2z"></path>
+                    <line x1="10" y1="3" x2="14" y2="3"></line>
+                    <line x1="12" y1="3" x2="12" y2="7"></line>
+                  </svg>
                   <span class="detail-value"><?php echo $doctor['experiencia_anos']; ?> años</span>
+                  <span class="detail-label">de experiencia</span>
                 </div>
                 <div class="detail-item">
-                  <span class="detail-label">Pacientes</span>
+                  <svg class="detail-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                  </svg>
                   <span class="detail-value"><?php echo number_format($doctor['pacientes']); ?>+</span>
+                  <span class="detail-label">pacientes</span>
                 </div>
                 <div class="detail-item">
-                  <span class="detail-label">Universidad</span>
+                  <svg class="detail-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path
+                      d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                    </path>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                  </svg>
                   <span class="detail-value"><?php echo htmlspecialchars($doctor['universidad']); ?></span>
+                  <span class="detail-label">formación</span>
                 </div>
               </div>
               <div class="doctor-profile-tags">
                 <?php foreach ($doctor['idiomas'] as $idioma): ?>
-                  <span class="tag language-tag"><?php echo htmlspecialchars($idioma); ?></span>
+                  <span class="tag language-tag">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="2" y1="12" x2="22" y2="12"></line>
+                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+                      </path>
+                    </svg>
+                    <?php echo htmlspecialchars($idioma); ?>
+                  </span>
                 <?php endforeach; ?>
                 <?php foreach ($doctor['reconocimientos'] as $rec): ?>
-                  <span class="tag recognition-tag"><?php echo htmlspecialchars($rec); ?></span>
+                  <span class="tag recognition-tag">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path
+                        d="M12 8.21l-2.12 4.29-4.7.68 3.4 3.31-.8 4.69L12 18.27l4.22 2.21-.8-4.69 3.4-3.31-4.7-.68L12 8.21z">
+                      </path>
+                    </svg>
+                    <?php echo htmlspecialchars($rec); ?>
+                  </span>
                 <?php endforeach; ?>
               </div>
               <div class="doctor-profile-footer">
-                <span
-                  class="availability-tag availability-<?php echo strtolower(htmlspecialchars($doctor['disponibilidad'])); ?>">
-                  Disponible: <strong><?php echo htmlspecialchars($doctor['disponibilidad']); ?></strong>
-                </span>
+                <div class="availability-status <?php echo $disponible_hoy ? 'is-available' : ''; ?>">
+                  <span class="availability-dot"></span>
+                  <span class="availability-text"><?php echo htmlspecialchars($texto_disponibilidad); ?></span>
+                </div>
                 <a href="../reservations/?doctor_id=<?php echo htmlspecialchars($doctor['id']); ?>"
-                  class="btn btn-primary">Agendar Cita</a>
+                  class="btn btn-primary btn-sm">Agendar Cita</a>
               </div>
             </div>
           </div>

@@ -116,6 +116,12 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 # ==============================================
 
 ## Cambios Realizados
+- **v3.6 (Fecha Actual):**
+  - **Corrección y Mejora de Filtros de Doctores (Tarea 11):** Se solucionaron múltiples errores en la página de doctores que impedían el funcionamiento de los filtros.
+    - **JS:** Se corrigió el filtro de "disponibilidad hoy" cambiando su detector de eventos de `input` a `change` para garantizar la compatibilidad. Se hizo que el filtro de especialidad sea insensible a mayúsculas y minúsculas para mayor robustez.
+    - **HTML:** Se reorganizó la disposición de los filtros, moviendo el de "disponibilidad hoy" después del de "idiomas", según lo solicitado, y se ajustaron las animaciones de entrada.
+- **v3.5 (Fecha Actual):**
+  - **Refactorización de la Página de Doctores (Tarea 10.1):** Se ha realizado una mejora integral de la página de doctores, implementando un indicador de disponibilidad en tiempo real basado en el día actual y rediseñando las tarjetas de perfil y los filtros para una experiencia de usuario superior.
 - **v3.5 (Fecha Actual):**
   - **Rediseño Premium de la Página de Doctores (Tarea 10):** Se ha realizado una mejora integral de la página de doctores (`/pages/doctors/`).
     - **CSS:** Se rediseñaron los filtros para ser más limpios y organizados. Las tarjetas de perfil de los doctores ahora tienen un diseño más sofisticado y profesional, con una mejor jerarquía visual y un responsive design perfeccionado.

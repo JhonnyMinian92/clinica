@@ -22,12 +22,13 @@
   <link rel="stylesheet" href="/clinica/public/css/components.css">
 
   <?php
-  // Carga condicional de CSS para páginas específicas
-  if (strpos($_SERVER['REQUEST_URI'], '/pages/doctors/') !== false) {
-    echo '<link rel="stylesheet" href="/clinica/pages/doctors/doctors.css">';
-  }
-  if (strpos($_SERVER['REQUEST_URI'], '/pages/specialties/') !== false) {
-    echo '<link rel="stylesheet" href="/clinica/pages/specialties/specialties.css">';
+  // Carga condicional y dinámica de CSS para páginas específicas.
+  // Esta lógica permite que cualquier página defina su propio CSS
+  // simplemente estableciendo la variable $page_specific_css antes de incluir este header.
+  if (isset($page_specific_css) && !empty($page_specific_css)) {
+    // Construye la ruta al CSS basándose en el directorio de la página actual.
+    $css_path = dirname($_SERVER['PHP_SELF']) . '/' . $page_specific_css;
+    echo '<link rel="stylesheet" href="' . $css_path . '">';
   }
   ?>
 </head>
