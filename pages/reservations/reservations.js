@@ -22,8 +22,10 @@
     const progressBar = document.querySelector('.progress-bar');
     const specialtyFilterInput = document.getElementById('specialty-filter');
     const specialtyGrid = document.getElementById('specialty-grid');
+    const doctorFilterInput = document.getElementById('doctor-filter');
     const doctorSelectionGrid = document.getElementById('doctor-selection-grid');
     const noResultsMessage = form.querySelector('.no-results-message');
+    const doctorNoResultsMessage = document.getElementById('doctor-no-results');
     const timeSlotsGrid = document.getElementById('time-slots');
     const patientNameInput = document.getElementById('patient-name');
     const patientEmailInput = document.getElementById('patient-email');
@@ -192,19 +194,24 @@
      */
     function goToPrevStep() {
       if (currentStep > 0) {
-        // Si retrocedemos desde el paso de fecha/hora (2) al de doctor (1)
-        if (currentStep === 2) {
+        // Dejando el Paso 2 (Doctor) para ir al Paso 1 (Especialidad)
+        if (currentStep === 1) {
           selection.doctorId = null;
           selection.doctorName = null;
+          if (doctorFilterInput) doctorFilterInput.value = '';
         }
-        // Si retrocedemos desde el paso de datos (3) al de fecha/hora (2)
-        if (currentStep === 3) {
+        // Dejando el Paso 3 (Fecha/Hora) para ir al Paso 2 (Doctor)
+        else if (currentStep === 2) {
           selection.date = null;
           selection.time = null;
           timeSlotsGrid.innerHTML = '<div class="no-time-selected"><p>Seleccione una fecha en el calendario para ver los horarios.</p></div>';
         }
-        // Si retrocedemos desde el paso de confirmación (4) al de datos (3)
-        if (currentStep === 4) {
+        // Dejando el Paso 4 (Datos) para ir al Paso 3 (Fecha/Hora)
+        else if (currentStep === 3) {
+          // Preservar los datos del paciente al retroceder
+        }
+        // Dejando el Paso 5 (Confirmación) para ir al Paso 4 (Datos)
+        else if (currentStep === 4) {
           selection.patientName = patientNameInput.value;
           selection.patientEmail = patientEmailInput.value;
           selection.patientPhone = patientPhoneInput.value;
@@ -237,6 +244,29 @@
     }
 
     /**
+     * Filtra las tarjetas de doctores según el texto introducido.
+     */
+    function filterDoctors() {
+      const searchTerm = doctorFilterInput.value.toLowerCase().trim();
+      const cards = doctorSelectionGrid.querySelectorAll('.selectable-card');
+      let visibleCount = 0;
+
+      cards.forEach((card) => {
+        const name = card.dataset.name.toLowerCase();
+        const isVisible = name.includes(searchTerm);
+        card.style.display = isVisible ? 'flex' : 'none';
+        if (isVisible) {
+          visibleCount++;
+        }
+      });
+
+      const hasContent = cards.length > 0;
+      doctorNoResultsMessage.style.display = visibleCount === 0 && hasContent ? 'block' : 'none';
+
+      adjustFormHeight();
+    }
+
+    /**
      * Maneja la selección de una tarjeta de especialidad.
      * @param {Event} e - El evento de clic.
      */
@@ -265,6 +295,9 @@
     function renderDoctors(specialtyId) {
       const doctors = doctorsData[specialtyId] || [];
       doctorSelectionGrid.innerHTML = ''; // Limpiar contenido previo (skeletons)
+      // Resetear el estado del filtro de doctores
+      doctorFilterInput.value = '';
+      doctorNoResultsMessage.style.display = 'none';
 
       if (doctors.length === 0) {
         doctorSelectionGrid.innerHTML = `<p class="no-results-message" style="display: block; grid-column: 1 / -1;">No hay doctores disponibles para esta especialidad.</p>`;
@@ -560,6 +593,7 @@
     prevBtn.addEventListener('click', goToPrevStep);
     specialtyFilterInput.addEventListener('input', debounce(filterSpecialties, 300));
     specialtyGrid.addEventListener('click', handleSpecialtySelection);
+    doctorFilterInput.addEventListener('input', debounce(filterDoctors, 300));
     doctorSelectionGrid.addEventListener('click', handleDoctorSelection);
     calendarGrid.addEventListener('click', handleDateSelection);
     prevMonthBtn.addEventListener('click', () => navigateMonth(-1));

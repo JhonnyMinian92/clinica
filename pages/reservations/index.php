@@ -102,10 +102,21 @@ include __DIR__ . '/../../public/shared/header/header.php';
         <!-- Paso 2: Seleccionar Doctor -->
         <div class="form-step">
           <h2 class="step-title">Seleccione un doctor</h2>
+          <div class="filter-wrapper">
+            <svg class="filter-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="doctor-filter" class="filter-input" placeholder="Buscar por nombre del doctor...">
+          </div>
           <div id="doctor-selection-grid" class="selection-grid doctor-grid">
             <!-- Los doctores se cargarán aquí con JS -->
             <div class="skeleton-card"></div>
             <div class="skeleton-card"></div>
+          </div>
+          <div id="doctor-no-results" class="no-results-message" style="display: none;">
+            No se encontraron doctores que coincidan con su búsqueda.
           </div>
         </div>
 
