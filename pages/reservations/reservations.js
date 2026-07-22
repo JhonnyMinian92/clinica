@@ -410,8 +410,8 @@
         } else {
           const timeSlotsHTML = filteredTimes
             .map(
-              (time) => `
-            <button type="button" class="selectable-card" data-value="${time}">
+              (time, index) => `
+            <button type="button" class="selectable-card" data-value="${time}" style="--animation-order: ${index};">
               <span class="card-title">${time}</span>
             </button>
           `,
@@ -428,16 +428,30 @@
      * @param {number} direction - 1 para siguiente, -1 para anterior.
      */
     function navigateMonth(direction) {
-      let newMonth = calendarState.currentMonth + direction;
-      let newYear = calendarState.currentYear;
-      if (newMonth < 0) {
-        newMonth = 11;
-        newYear--;
-      } else if (newMonth > 11) {
-        newMonth = 0;
-        newYear++;
-      }
-      renderCalendar(newYear, newMonth);
+      // Add a class to trigger the fade-out animation
+      calendarGrid.classList.add('is-changing');
+      // Disable nav buttons to prevent rapid clicking
+      prevMonthBtn.disabled = true;
+      nextMonthBtn.disabled = true;
+
+      // Wait for the animation to be halfway through before swapping content
+      setTimeout(() => {
+        let newMonth = calendarState.currentMonth + direction;
+        let newYear = calendarState.currentYear;
+        if (newMonth < 0) {
+          newMonth = 11;
+          newYear--;
+        } else if (newMonth > 11) {
+          newMonth = 0;
+          newYear++;
+        }
+        renderCalendar(newYear, newMonth);
+
+        // Remove the class to trigger the fade-in animation and re-enable buttons
+        calendarGrid.classList.remove('is-changing');
+        prevMonthBtn.disabled = false;
+        nextMonthBtn.disabled = false;
+      }, 150); // Half of 300ms transition
     }
 
     /**
