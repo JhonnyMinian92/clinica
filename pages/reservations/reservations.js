@@ -24,10 +24,15 @@
     const specialtyGrid = document.getElementById('specialty-grid');
     const doctorSelectionGrid = document.getElementById('doctor-selection-grid');
     const noResultsMessage = form.querySelector('.no-results-message');
-    const appointmentDateInput = document.getElementById('appointment-date');
     const timeSlotsGrid = document.getElementById('time-slots');
     const patientNameInput = document.getElementById('patient-name');
     const patientEmailInput = document.getElementById('patient-email');
+    // Calendar elements
+    const calendarMonthYear = document.getElementById('calendar-month-year');
+    const calendarGrid = document.getElementById('calendar-grid');
+    const prevMonthBtn = document.getElementById('prev-month-btn');
+    const nextMonthBtn = document.getElementById('next-month-btn');
+
     const patientPhoneInput = document.getElementById('patient-phone');
     const summarySpecialty = document.getElementById('summary-specialty');
     const summaryDoctor = document.getElementById('summary-doctor');
@@ -51,6 +56,11 @@
       patientEmail: '',
       patientPhone: '',
       patientNotes: '',
+    };
+    const calendarState = {
+      today: new Date(),
+      currentMonth: new Date().getMonth(),
+      currentYear: new Date().getFullYear(),
     };
 
     // --- Functions ---
@@ -168,6 +178,11 @@
           populateSummary();
         }
 
+        // Si hemos avanzado al paso 3 (índice 2), renderizamos el calendario.
+        if (currentStep === 2) {
+          renderCalendar(calendarState.currentYear, calendarState.currentMonth);
+        }
+
         updateFormUI();
       }
     }
@@ -186,7 +201,7 @@
         if (currentStep === 3) {
           selection.date = null;
           selection.time = null;
-          timeSlotsGrid.innerHTML = '<div class="skeleton-time"></div><div class="skeleton-time"></div><div class="skeleton-time"></div><div class="skeleton-time"></div>';
+          timeSlotsGrid.innerHTML = '<div class="no-time-selected"><p>Seleccione una fecha en el calendario para ver los horarios.</p></div>';
         }
         // Si retrocedemos desde el paso de confirmación (4) al de datos (3)
         if (currentStep === 4) {
@@ -254,7 +269,8 @@
       if (doctors.length === 0) {
         doctorSelectionGrid.innerHTML = `<p class="no-results-message" style="display: block; grid-column: 1 / -1;">No hay doctores disponibles para esta especialidad.</p>`;
       } else {
-        const doctorCardsHTML = doctors.map(doctor => {
+        const doctorCardsHTML = doctors
+          .map((doctor) => {
             const rating = doctor.valoracion || 0;
             const ratingStars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
             return `
@@ -266,7 +282,8 @@
                 </div>
               </div>
             `;
-          }).join('');
+          })
+          .join('');
         doctorSelectionGrid.innerHTML = doctorCardsHTML;
       }
 
@@ -294,36 +311,126 @@
     }
 
     /**
-     * Simula y renderiza los horarios disponibles para una fecha dada.
+     * Renderiza el calendario para un mes y año específicos.
+     * @param {number} year
+     * @param {number} month - 0-indexed (0 for January)
+     */
+    function renderCalendar(year, month) {
+      calendarState.currentYear = year;
+      calendarState.currentMonth = month;
+
+      const firstDayOfMonth = new Date(year, month, 1);
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const startDayOfWeek = (firstDayOfMonth.getDay() + 6) % 7; // 0=Monday, 6=Sunday
+
+      calendarMonthYear.textContent = firstDayOfMonth.toLocaleDateString('es-ES', {
+        month: 'long',
+        year: 'numeric',
+      });
+      calendarGrid.innerHTML = '';
+
+      // Add empty cells for days before the 1st of the month
+      for (let i = 0; i < startDayOfWeek; i++) {
+        calendarGrid.innerHTML += `<div class="calendar-day is-other-month"></div>`;
+      }
+
+      // Add days of the month
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day);
+        const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+        let classes = 'calendar-day';
+        if (date < calendarState.today.setHours(0, 0, 0, 0)) {
+          classes += ' is-disabled';
+        }
+        if (date.toDateString() === calendarState.today.toDateString()) {
+          classes += ' is-today';
+        }
+        if (dateString === selection.date) {
+          classes += ' is-selected';
+        }
+
+        calendarGrid.innerHTML += `<button type="button" class="${classes}" data-date="${dateString}">${day}</button>`;
+      }
+
+      // Adjust height after rendering
+      adjustFormHeight();
+    }
+
+    /**
+     * Maneja la selección de una fecha en el calendario.
+     * @param {Event} e
+     */
+    function handleDateSelection(e) {
+      const selectedDay = e.target.closest('.calendar-day:not(.is-disabled)');
+      if (!selectedDay) return;
+
+      selection.date = selectedDay.dataset.date;
+
+      // Update UI
+      calendarGrid.querySelectorAll('.calendar-day.is-selected').forEach((el) => el.classList.remove('is-selected'));
+      selectedDay.classList.add('is-selected');
+
+      // Render time slots for the selected date
+      renderTimeSlots();
+    }
+
+    /**
+     * Simula y renderiza los horarios disponibles para la fecha seleccionada.
      */
     function renderTimeSlots() {
-      selection.date = appointmentDateInput.value;
       selection.time = null; // Reset time on new date selection
       validateStep();
 
       timeSlotsGrid.innerHTML = '<div class="skeleton-time"></div><div class="skeleton-time"></div><div class="skeleton-time"></div><div class="skeleton-time"></div>';
       adjustFormHeight();
 
-      // Simulación de una llamada a la API
+      // Simulación de una llamada a la API para obtener horarios
       setTimeout(() => {
-        const availableTimes = ['09:00', '09:30', '10:00', '10:30', '11:00', '14:00', '14:30', '15:00', '16:30'];
+        let allTimes = ['09:00', '09:30', '10:00', '10:30', '11:00', '14:00', '14:30', '15:00', '16:30'];
+        let filteredTimes = allTimes;
 
-        if (availableTimes.length === 0) {
+        // Si la fecha seleccionada es hoy, filtrar los horarios que ya pasaron
+        const selectedDate = new Date(selection.date + 'T00:00:00');
+        if (selectedDate.toDateString() === calendarState.today.toDateString()) {
+          const now = new Date();
+          const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+          filteredTimes = allTimes.filter((time) => time > currentTime);
+        }
+
+        if (filteredTimes.length === 0) {
           timeSlotsGrid.innerHTML = `<p class="no-results-message" style="display: block;">No hay horarios disponibles para esta fecha.</p>`;
         } else {
-          const timeSlotsHTML = availableTimes
+          const timeSlotsHTML = filteredTimes
             .map(
               (time) => `
-            <div class="selectable-card" data-value="${time}">
+            <button type="button" class="selectable-card" data-value="${time}">
               <span class="card-title">${time}</span>
-            </div>
+            </button>
           `,
             )
             .join('');
           timeSlotsGrid.innerHTML = timeSlotsHTML;
         }
         adjustFormHeight();
-      }, 500); // Simular retardo de red
+      }, 600); // Simular retardo de red
+    }
+
+    /**
+     * Navega al mes anterior o siguiente en el calendario.
+     * @param {number} direction - 1 para siguiente, -1 para anterior.
+     */
+    function navigateMonth(direction) {
+      let newMonth = calendarState.currentMonth + direction;
+      let newYear = calendarState.currentYear;
+      if (newMonth < 0) {
+        newMonth = 11;
+        newYear--;
+      } else if (newMonth > 11) {
+        newMonth = 0;
+        newYear++;
+      }
+      renderCalendar(newYear, newMonth);
     }
 
     /**
@@ -331,7 +438,7 @@
      * @param {Event} e - El evento de clic.
      */
     function handleTimeSelection(e) {
-      const selectedCard = e.target.closest('.selectable-card');
+      const selectedCard = e.target.closest('.selectable-card:not(.is-disabled)');
       if (!selectedCard) return;
 
       timeSlotsGrid.querySelectorAll('.selectable-card').forEach((card) => card.classList.remove('active'));
@@ -427,21 +534,15 @@
       formWrapper.style.height = 'auto'; // Let the content define the height
     }
 
-    /**
-     * Configura el date picker para deshabilitar fechas pasadas.
-     */
-    function setupDatePicker() {
-      const today = new Date().toISOString().split('T')[0];
-      appointmentDateInput.setAttribute('min', today);
-    }
-
     // --- Event Listeners ---
     nextBtn.addEventListener('click', goToNextStep);
     prevBtn.addEventListener('click', goToPrevStep);
     specialtyFilterInput.addEventListener('input', debounce(filterSpecialties, 300));
     specialtyGrid.addEventListener('click', handleSpecialtySelection);
     doctorSelectionGrid.addEventListener('click', handleDoctorSelection);
-    appointmentDateInput.addEventListener('change', renderTimeSlots);
+    calendarGrid.addEventListener('click', handleDateSelection);
+    prevMonthBtn.addEventListener('click', () => navigateMonth(-1));
+    nextMonthBtn.addEventListener('click', () => navigateMonth(1));
     timeSlotsGrid.addEventListener('click', handleTimeSelection);
     patientNameInput.addEventListener('input', handlePatientDataInput);
     patientEmailInput.addEventListener('input', handlePatientDataInput);
@@ -457,9 +558,6 @@
 
     // Iniciar con el botón 'Siguiente' deshabilitado
     validateStep();
-
-    // Configurar el date picker
-    setupDatePicker();
 
     // TODO: Implementar lógica de pre-selección si viene de URL
     // const preselectedSpecialty = form.dataset.selectedSpecialtyId;

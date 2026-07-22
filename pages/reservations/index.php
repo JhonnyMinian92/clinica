@@ -113,18 +113,28 @@ include __DIR__ . '/../../public/shared/header/header.php';
         <div class="form-step">
           <h2 class="step-title">Seleccione fecha y hora</h2>
           <div class="date-time-container">
-            <div class="date-picker-wrapper">
-              <label for="appointment-date">Fecha de la cita</label>
-              <input type="date" id="appointment-date" name="appointment-date" class="form-input-styled">
+            <!-- Calendario Interactivo -->
+            <div class="calendar-container">
+              <div class="calendar-header">
+                <button type="button" id="prev-month-btn" class="calendar-nav-btn" aria-label="Mes anterior">‹</button>
+                <h3 id="calendar-month-year" class="calendar-title"></h3>
+                <button type="button" id="next-month-btn" class="calendar-nav-btn" aria-label="Mes siguiente">›</button>
+              </div>
+              <div class="calendar-weekdays">
+                <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
+              </div>
+              <div id="calendar-grid" class="calendar-grid">
+                <!-- Los días se generarán aquí con JS -->
+              </div>
             </div>
+
+            <!-- Horarios Disponibles -->
             <div class="time-slot-wrapper">
               <p class="time-slot-title">Horarios disponibles</p>
               <div id="time-slots" class="selection-grid time-grid">
-                <!-- Los horarios se cargarán aquí con JS -->
-                <div class="skeleton-time"></div>
-                <div class="skeleton-time"></div>
-                <div class="skeleton-time"></div>
-                <div class="skeleton-time"></div>
+                <div class="no-time-selected">
+                  <p>Seleccione una fecha en el calendario para ver los horarios.</p>
+                </div>
               </div>
             </div>
           </div>
