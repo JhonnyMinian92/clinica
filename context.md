@@ -115,9 +115,16 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 # BITÁCORA DE CAMBIOS Y TAREAS PENDIENTES
 # ==============================================
 
-## Cambios Realizados (v4.0)
+## Cambios Realizados
 
-- **v4.0 (Fecha Actual):**
+- **v4.1 (Fecha Actual):**
+  - **Mejora Avanzada del Agendamiento (Tareas 13.1-13.3):** Se ha implementado la lógica de disponibilidad real del doctor y se han mejorado las funcionalidades del formulario.
+    - **Filtro de Doctores (Paso 2):** Se añadió un campo de búsqueda para filtrar doctores por nombre.
+    - **Intervalos de 15 Minutos (Paso 3):** Se ajustó la generación de horarios a intervalos de 15 minutos.
+    - **Disponibilidad Real (Paso 3):** El calendario ahora deshabilita los días en que el doctor no trabaja. La lista de horarios respeta el turno del doctor (Mañana/Tarde/Completo) y muestra como "ocupados" los horarios ya reservados.
+    - **Mejoras de UX:** Se añadieron animaciones sutiles al cambiar de mes en el calendario y al mostrar los horarios.
+
+- **v4.0:**
   - **Implementación del Formulario de Reservaciones (Tareas 12.1-12.4):** Se ha construido el flujo completo del formulario de agendamiento de citas.
     - **HTML:** Se maquetó la estructura de 5 pasos, incluyendo el nuevo calendario interactivo y los contenedores para cada etapa.
     - **CSS:** Se diseñó la barra de progreso, las transiciones entre pasos y se creó un layout responsive y funcional para el calendario y la selección de horarios, con alturas fijas y scroll en escritorio.
@@ -173,15 +180,10 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 
 ## Tareas Pendientes (Backlog Priorizado)
 
-### Tareas para v4.1
+### Tareas para v4.2
 
-#### Tarea 13: Mejora Avanzada del Agendamiento de Citas
-- **13.1 - Filtro de Doctores en Paso 2:** Implementar un campo de búsqueda en el paso de selección de doctor para permitir al usuario filtrar la lista de especialistas por nombre, mejorando la usabilidad cuando hay muchos doctores en una especialidad.
-- **13.2 - Ajuste de Intervalos de Cita a 15 Minutos:** Modificar la lógica de generación de horarios en `reservations.js` para que los intervalos de tiempo sean de 15 minutos (ej. 09:00, 09:15, 09:30) en lugar de 30, aumentando la granularidad de la oferta.
-- **13.3 - Lógica de Disponibilidad Real del Doctor:** Conectar la selección de fecha y hora con la disponibilidad real de cada doctor.
-    - **Calendario Inteligente:** El calendario en el Paso 3 deberá leer el `horario_semanal` del doctor seleccionado y deshabilitar los días de la semana en los que no trabaja.
-    - **Horarios por Turno:** La lista de horarios generada deberá respetar el turno del doctor para el día seleccionado (ej. 'Mañana', 'Tarde' o 'Completo').
-    - **Visualización de Citas Ocupadas:** Simular una base de datos de citas existentes y reflejarlo en la UI, mostrando los horarios ya reservados en un estado "deshabilitado" o visualmente distinto, para que el paciente solo pueda seleccionar los disponibles.
+#### Tarea 14: Corrección de Layout en Formulario de Reservaciones
+- **14.1 - Visibilidad de Botones de Navegación:** Investigar y corregir el problema de layout que oculta los botones "Siguiente" y "Anterior" entre los pasos del formulario, especialmente al navegar desde el paso 4. La altura del contenedor no se está ajustando correctamente para incluir los botones.
 
 #### Tarea 12: Refinamiento del Formulario de Reservaciones
 - **12.5 - Auditoría y Refinamiento:** Realizar una auditoría completa de accesibilidad (WCAG) para el nuevo calendario y los flujos. Mejorar el manejo de casos borde (ej. cambiar de especialidad o doctor después de haber avanzado). Implementar la funcionalidad de pre-selección de doctor/especialidad si se llega desde una URL con parámetros.

@@ -93,6 +93,16 @@
     }
 
     /**
+     * Valida un número de teléfono (solo dígitos, 7-15 caracteres).
+     * @param {string} phone
+     * @returns {boolean}
+     */
+    function isValidPhone(phone) {
+      const re = /^\d{7,15}$/;
+      return re.test(String(phone).trim());
+    }
+
+    /**
      * Valida el paso actual y habilita/deshabilita el botón 'Siguiente'.
      */
     function validateStep() {
@@ -108,7 +118,7 @@
           isValid = !!selection.date && !!selection.time;
           break;
         case 3:
-          isValid = selection.patientName.trim() !== '' && isValidEmail(selection.patientEmail) && selection.patientPhone.trim() !== '';
+          isValid = selection.patientName.trim() !== '' && isValidEmail(selection.patientEmail) && isValidPhone(selection.patientPhone);
           break;
         case 4:
           isValid = true; // El último paso siempre es válido para confirmar.
@@ -459,12 +469,14 @@
 
         // 2. Generar horarios según el turno
         if (shift === 'Mañana' || shift === 'Completo') {
-          for (let h = 7; h < 13; h++) { // 7:00 a 12:45
+          for (let h = 7; h < 13; h++) {
+            // 7:00 a 12:45
             ['00', '15', '30', '45'].forEach((m) => availableTimes.push(`${String(h).padStart(2, '0')}:${m}`));
           }
         }
         if (shift === 'Tarde' || shift === 'Completo') {
-          for (let h = 13; h < 22; h++) { // 13:00 a 21:45
+          for (let h = 13; h < 22; h++) {
+            // 13:00 a 21:45
             ['00', '15', '30', '45'].forEach((m) => availableTimes.push(`${String(h).padStart(2, '0')}:${m}`));
           }
         }
@@ -485,18 +497,16 @@
           timeSlotsGrid.innerHTML = `<p class="no-results-message" style="display: block;">No hay horarios disponibles para este turno.</p>`;
         } else {
           const timeSlotsHTML = filteredTimes
-            .map(
-              (time, index) => {
-                const isBooked = bookedSlots.includes(time);
-                const bookedClass = isBooked ? 'is-booked is-disabled' : '';
-                const disabledAttr = isBooked ? 'disabled' : '';
-                return `
+            .map((time, index) => {
+              const isBooked = bookedSlots.includes(time);
+              const bookedClass = isBooked ? 'is-booked is-disabled' : '';
+              const disabledAttr = isBooked ? 'disabled' : '';
+              return `
                   <button type="button" class="selectable-card ${bookedClass}" data-value="${time}" style="--animation-order: ${index};" ${disabledAttr}>
                     <span class="card-title">${time}</span>
                   </button>
                 `;
-              },
-            )
+            })
             .join('');
           timeSlotsGrid.innerHTML = timeSlotsHTML;
         }
@@ -573,7 +583,7 @@
           break;
         case 'patient-phone':
           selection.patientPhone = value;
-          fieldIsValid = value.trim() !== '';
+          fieldIsValid = isValidPhone(value);
           break;
       }
 

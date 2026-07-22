@@ -99,14 +99,14 @@ include __DIR__ . '/../../public/shared/header/header.php';
 
           <div class="selection-grid" id="specialty-grid">
             <?php foreach ($especialidades as $item): ?>
-              <div class="selectable-card" data-value="<?php echo $item['id']; ?>"
-                data-name="<?php echo $item['titulo']; ?>">
-                <div class="card-icon">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round"><?php echo $item['icono']; ?></svg>
-                </div>
-                <span class="card-title"><?php echo $item['titulo']; ?></span>
+            <div class="selectable-card" data-value="<?php echo $item['id']; ?>"
+              data-name="<?php echo $item['titulo']; ?>">
+              <div class="card-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round"><?php echo $item['icono']; ?></svg>
               </div>
+              <span class="card-title"><?php echo $item['titulo']; ?></span>
+            </div>
             <?php endforeach; ?>
           </div>
           <div class="no-results-message" style="display: none;">
@@ -177,10 +177,13 @@ include __DIR__ . '/../../public/shared/header/header.php';
             <div class="form-group-styled">
               <input type="email" id="patient-email" name="patient-email" required placeholder=" ">
               <label for="patient-email">Correo Electrónico</label>
+              <div class="form-error-message">Por favor, ingrese un correo válido.</div>
             </div>
             <div class="form-group-styled">
-              <input type="tel" id="patient-phone" name="patient-phone" required placeholder=" ">
-              <label for="patient-phone">Teléfono</label>
+              <input type="tel" id="patient-phone" name="patient-phone" required placeholder=" " inputmode="numeric"
+                pattern="[0-9]{7,10}" title="Ingrese solo números (de 7 a 10 dígitos).">
+              <label for="patient-phone">Teléfono (solo números)</label>
+              <div class="form-error-message">Debe ser un número válido de 7 a 10 dígitos.</div>
             </div>
             <div class="form-group-styled">
               <textarea id="patient-notes" name="patient-notes" rows="3" placeholder=" "></textarea>
@@ -221,8 +224,8 @@ include __DIR__ . '/../../public/shared/header/header.php';
 
 <!-- Datos de doctores para JS, debe estar antes del footer que carga el script -->
 <script>
-  const doctorsData = <?php echo json_encode($doctores); ?>;
-  const bookedAppointmentsData = <?php echo json_encode($citas_reservadas); ?>;
+const doctorsData = <?php echo json_encode($doctores); ?>;
+const bookedAppointmentsData = <?php echo json_encode($citas_reservadas); ?>;
 </script>
 
 <?php

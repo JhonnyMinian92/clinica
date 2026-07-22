@@ -461,6 +461,22 @@ body {
   box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.2);
 }
 
+.form-error-message {
+  color: #e53e3e; /* Rojo de error */
+  font-size: var(--font-size-small);
+  padding-left: calc(var(--spacing-unit) * 1.5);
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: all var(--transition-duration-fast) var(--ease-out-cubic);
+}
+
+.form-group-styled.has-error .form-error-message {
+  margin-top: calc(var(--spacing-unit) * 0.5);
+  max-height: 20px; /* Altura suficiente para una línea de texto */
+  opacity: 1;
+}
+
 /* --- Tarjeta de Resumen --- */
 .summary-card {
   background-color: var(--color-background-light);
