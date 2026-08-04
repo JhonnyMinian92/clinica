@@ -1,0 +1,5 @@
+@import url('../gestion.css');
+
+.gestion-shell[data-resource='clinic'] .gestion-stat {
+  border-left-color: #14b8a6;
+}

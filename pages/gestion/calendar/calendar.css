@@ -1,0 +1,5 @@
+@import url('../gestion.css');
+
+.gestion-shell[data-resource='schedules'] .gestion-stat {
+  border-left-color: #db2777;
+}

@@ -31,6 +31,12 @@ if ($action === 'login') {
     clinica_json(['success' => false, 'error' => 'Usuario o contraseña incorrectos.'], 401);
   }
 
+  if (!in_array($user['role'] ?? '', clinica_dashboard_roles(), true)) {
+    clinica_json(['success' => false, 'error' => 'El usuario no tiene un rol operativo permitido.'], 403);
+  }
+
+  $redirect = clinica_resolve_login_redirect((string) ($payload['redirect'] ?? ''), $user);
+
   unset($user['password']);
   session_regenerate_id(true);
   $_SESSION['user'] = $user;
@@ -39,7 +45,7 @@ if ($action === 'login') {
   clinica_json([
     'success' => true,
     'user' => clinica_public_user($user),
-    'redirect' => '/clinica/pages/dashboard/',
+    'redirect' => $redirect,
   ]);
 }
 

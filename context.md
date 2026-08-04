@@ -233,14 +233,183 @@ Comandos/verificaciones:
   - Dashboard con cookie autenticada: 200.
 - Verificacion visual con navegador integrado: no disponible en esta sesion (`agent.browsers.list()` devolvio lista vacia). Queda pendiente revisar screenshots reales en navegador cuando el entorno lo permita.
 
+## Gestion de Base de Datos Simulada
+
+Se agrego un modulo administrativo completo bajo `pages/gestion/` para gestionar la informacion publica y operativa que antes estaba repetida en arreglos por pagina. Como el proyecto aun no tiene MySQL ni migraciones, la persistencia se implementa como una base JSON versionada en:
+
+- `api/storage/gestion-data.json`
+
+La capa compartida vive en `api/data.php`. Si el archivo JSON no existe o esta corrupto, se regenera desde `clinica_default_database()`.
+
+### Recursos Administrables
+
+- `pages/gestion/clinic/`
+  - Administra nombre comercial/legal, texto del logo, SEO, hero, titulos de secciones, contacto, telefonos, emergencia, WhatsApp y redes.
+  - Header, footer y home leen estos datos desde `clinica_get_clinic_settings()`.
+- `pages/gestion/comment/`
+  - CRUD de resenas/testimonios visibles en home.
+  - Campos: autor, detalle, comentario, rating, avatar, destacado y activo.
+- `pages/gestion/doctors/`
+  - CRUD de doctores.
+  - Campos: nombre, foto, especialidad vinculada, subespecialidad, experiencia, formacion, idiomas, reconocimientos, rating, pacientes, destacado y activo.
+  - Alimenta home, catalogo de doctores y seleccion de doctor en reservas.
+- `pages/gestion/specialties/`
+  - CRUD de especialidades.
+  - Campos: nombre, resumen, descripcion, icono SVG, destacado y activo.
+  - Alimenta home, catalogo de especialidades y paso de especialidad en reservas.
+- `pages/gestion/users/`
+  - CRUD de usuarios operativos.
+  - Roles permitidos: `ADMINISTRATOR`, `SECRETARIA`, `DOCTOR`.
+  - Login demo ahora lee desde este recurso via `clinica_demo_users()`.
+  - Los usuarios con rol `DOCTOR` deben vincularse a un doctor.
+- `pages/gestion/services/`
+  - CRUD de servicios clinicos.
+  - Campos: servicio, descripcion, icono SVG, destacado y activo.
+  - Alimenta la seccion de servicios del home.
+- `pages/gestion/calendar/`
+  - CRUD de horarios por doctor.
+  - Campos: doctor, dia ISO de semana, hora inicio, hora fin, duracion de cupo y activo.
+  - Reservas usa estos horarios por numero de dia (`1` lunes a `7` domingo), evitando depender de nombres con acentos.
+
+### API de Gestion
+
+Nuevo endpoint:
+
+- `api/gestion/index.php`
+
+Contrato:
+
+- Requiere sesion con rol `ADMINISTRATOR`.
+- `GET ?resource=clinic|comments|doctors|specialties|users|services|schedules`
+  - Devuelve `data` y `metadata` para selects (`roles`, `weekdays`, `specialties`, `doctors`).
+- `POST { action: "save", record: {...} }`
+  - Crea o actualiza registros.
+  - En `clinic` actualiza el registro maestro.
+- `POST { action: "delete", id: "..." }`
+  - Elimina registros de colecciones.
+  - No permite eliminar el registro maestro de clinica.
+  - No permite eliminar el usuario actual ni dejar el sistema sin administradores activos.
+
+### UI de Gestion
+
+Se agregaron:
+
+- `pages/gestion/_shared/page.php`
+  - Plantilla protegida por admin, nav de gestion y layout comun.
+- `pages/gestion/gestion.css`
+  - Sistema visual responsive para modulos CRUD.
+- `pages/gestion/gestion.js`
+  - Motor CRUD compartido: carga, filtros, stats, formulario dinamico, crear, editar, eliminar y toast.
+- Cada componente mantiene su propio `index.php`, `.css` y `.js` con configuracion especifica.
+
+### Paginas Publicas Conectadas
+
+- `index.php`
+  - Reescrito para tomar clinic, servicios, especialidades, doctores y comentarios desde `api/data.php`.
+- `public/shared/header/header.php`
+  - Lee nombre, SEO/canonical y marca desde clinic.
+- `public/shared/footer/footer.php`
+  - Lee nombre, tagline, direccion, correo, telefono, emergencia, WhatsApp y redes desde clinic.
+- `pages/specialties/index.php`
+  - Sobrescribe el catalogo desde `clinica_public_specialties_for_catalog()`.
+- `pages/doctors/index.php`
+  - Sobrescribe el catalogo desde `clinica_public_doctors_for_catalog()`.
+- `pages/reservations/index.php`
+  - Sobrescribe especialidades, doctores agrupados y cupos ocupados desde la capa compartida.
+- `pages/reservations/reservations.js`
+  - La disponibilidad usa dia ISO numerico del calendario.
+
+### Verificacion Gestion
+
+Servidor local usado:
+
+- `http://127.0.0.1:8096/clinica/`
+
+Validaciones realizadas:
+
+- `php -l` en todos los `.php`: sin errores.
+- `node --check` en todos los `.js`: sin errores.
+- Smoke HTTP publico:
+  - `/clinica/`: 200
+  - `/clinica/pages/specialties/`: 200
+  - `/clinica/pages/doctors/`: 200
+  - `/clinica/pages/reservations/?specialty=neurologia`: 200
+- API gestion con login admin:
+  - `clinic`: 200
+  - `comments`: 4 registros
+  - `doctors`: 8 registros
+  - `specialties`: 8 registros
+  - `users`: 3 registros
+  - `services`: 6 registros
+  - `schedules`: 23 registros
+  - Crear/eliminar servicio temporal: success.
+- Verificacion headless Chrome:
+  - Gestion `clinic`, `doctors`, `calendar`: renderizan filas, formularios y navegacion sin errores de consola.
+  - Gestion movil `doctors`: sin overflow horizontal.
+  - Home: renderiza 6 servicios, 4 especialidades destacadas, 4 doctores destacados y 4 resenas desde la fuente administrable.
+  - Reservas con `?doctor_id=doc3`: preselecciona doctor, avanza al paso calendario y genera dias habilitados desde horarios.
+
+## Politica de Acceso por Rol
+
+La politica central vive en `api/data.php`:
+
+- `clinica_can_access_management($role)`
+  - Solo `ADMINISTRATOR` puede abrir `pages/gestion/*` y `api/gestion/*`.
+- `clinica_can_see_all_appointments($role)`
+  - `ADMINISTRATOR` y `SECRETARIA` ven citas de todos los doctores en fechas pasadas, presentes y futuras.
+- `clinica_can_see_past_appointments($role)`
+  - Solo roles con agenda global pueden consultar historico.
+- `clinica_resolve_login_redirect($requestedRedirect, $user)`
+  - Normaliza redirects internos desde login.
+  - Bloquea rutas externas, login como destino final, APIs y gestion cuando el rol no es administrador.
+
+### Flujo desde Login
+
+- `ADMINISTRATOR`
+  - Si entra con `redirect=/clinica/pages/gestion/clinic/`, el login respeta el destino.
+  - En dashboard ve el boton `Gestion`.
+  - Dashboard carga por defecto `Todas`, con todas las citas de todos los doctores.
+- `SECRETARIA`
+  - Si intenta entrar a gestion desde login, el redirect se reemplaza por `/clinica/pages/dashboard/`.
+  - No ve boton `Gestion`.
+  - Ve selector de doctor y filtros de fechas `Anteriores` y `Todas`.
+  - `api/gestion/*` responde `403`.
+- `DOCTOR`
+  - Si intenta entrar a gestion desde login, el redirect se reemplaza por `/clinica/pages/dashboard/`.
+  - No ve boton `Gestion`, selector de doctor, `Anteriores` ni `Todas`.
+  - Dashboard carga por defecto `Proximas`; en backend `future` significa hoy en adelante.
+  - Si fuerza `date_scope=past` o `date_scope=all`, el backend normaliza a `future`.
+  - Si fuerza `doctor_id` de otro medico, el backend lo ignora.
+  - Si consulta una fecha exacta pasada, recibe cero citas.
+  - `api/gestion/*` responde `403`.
+
+### Verificacion de Roles
+
+Servidor local usado:
+
+- `http://127.0.0.1:8096/clinica/`
+
+Resultados de smoke por sesion:
+
+- Admin: redirect a gestion permitido; `api/gestion` 200; `date_scope=all` devuelve 11 citas; historico devuelve 2.
+- Secretaria: redirect a gestion cae en dashboard; `api/gestion` 403; `date_scope=all` devuelve 11 citas; historico devuelve 2.
+- Doctor `dr.herrera`: redirect a gestion cae en dashboard; `api/gestion` 403; `date_scope=all` y `past` normalizan a `future`; solo devuelve 4 citas propias presentes/futuras; fecha exacta pasada devuelve 0.
+- HTML dashboard:
+  - Admin tiene link de gestion y `Todas` activo.
+  - Secretaria no tiene link de gestion, tiene selector de doctor y `Todas` activo.
+  - Doctor no tiene selector de doctor ni filtros `Anteriores`/`Todas`, y `Proximas` queda activo.
+- Verificacion global:
+  - `php -l` en todos los `.php`: OK.
+  - `node --check` en todos los `.js`: OK.
+
 ## Checklist Pendiente
 
 ### P0 - Antes de backend real
 
-- [ ] Definir si `ADMINISTRATOR` y `SECRETARIA` tendran permisos identicos o distintos.
+- [x] Definir permisos por rol: `ADMINISTRATOR` gestiona datos y agenda global; `SECRETARIA` solo agenda global; `DOCTOR` solo agenda propia presente/futura.
 - [ ] Sustituir contraseñas demo por `password_hash` / `password_verify`.
 - [ ] Agregar CSRF para acciones autenticadas.
-- [ ] Mover datos simulados de todas las paginas publicas a una fuente compartida temporal o al futuro modelo de BD.
+- [x] Mover datos simulados de paginas publicas clave a una fuente compartida temporal administrable.
 - [ ] Definir esquema de base de datos: usuarios, roles, doctores, especialidades, horarios, pacientes, citas y estados.
 
 ### P1 - Funcionalidad
@@ -249,11 +418,11 @@ Comandos/verificaciones:
 - [ ] Agregar cancelacion/reprogramacion de citas si el flujo operativo lo requiere.
 - [ ] Definir si el backend real conservara los mismos rangos de fecha por rol o agregara reglas por sede/turno.
 - [x] Agregar busqueda y filtros por fecha en dashboard.
-- [ ] Normalizar acentos y nombres de doctores/especialidades desde una sola fuente.
+- [x] Normalizar nombres de doctores/especialidades desde una sola fuente administrable.
 
 ### P2 - UX, Accesibilidad y Responsive
 
-- [ ] Validar visualmente con navegador en movil, tablet y escritorio cuando haya navegador disponible.
+- [x] Validar visualmente gestion y flujos clave con navegador headless en movil y escritorio.
 - [ ] Revisar navegacion por teclado en stepper de reservas, dashboard y menu movil.
 - [ ] Reemplazar `alert()` de reservas por un mensaje accesible dentro del formulario.
 - [ ] Revisar contraste de badges y botones secundarios.

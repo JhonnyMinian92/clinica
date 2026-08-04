@@ -102,6 +102,7 @@
             action: 'login',
             username: dom.usernameInput.value.trim(),
             password: dom.passwordInput.value,
+            redirect: getRequestedRedirect(),
           }),
         });
 
@@ -125,8 +126,7 @@
     }
 
     function getSafeRedirect(apiRedirect) {
-      const params = new URLSearchParams(window.location.search);
-      const requestedRedirect = params.get('redirect') || apiRedirect || '/clinica/pages/dashboard/';
+      const requestedRedirect = apiRedirect || '/clinica/pages/dashboard/';
 
       try {
         const target = new URL(requestedRedirect, window.location.origin);
@@ -138,6 +138,10 @@
       }
 
       return '/clinica/pages/dashboard/';
+    }
+
+    function getRequestedRedirect() {
+      return new URLSearchParams(window.location.search).get('redirect') || '';
     }
 
     /**

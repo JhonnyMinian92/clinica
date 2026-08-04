@@ -167,6 +167,7 @@
               });
 
               Promise.all([imageLoadPromise, minTimePromise]).then(() => {
+                el.style.backgroundImage = `url("${bgUrl}")`;
                 el.classList.add('is-loaded');
                 el.classList.remove('skeleton', 'skeleton-dark');
               });

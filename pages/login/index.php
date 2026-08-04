@@ -4,7 +4,8 @@ require_once __DIR__ . '/../../api/data.php';
 
 $user = $_SESSION['user'] ?? null;
 if (is_array($user) && in_array($user['role'] ?? '', clinica_dashboard_roles(), true)) {
-  header('Location: /clinica/pages/dashboard/');
+  $target = clinica_resolve_login_redirect((string) ($_GET['redirect'] ?? ''), $user);
+  header('Location: ' . $target);
   exit();
 }
 ?>

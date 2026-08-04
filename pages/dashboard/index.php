@@ -13,6 +13,14 @@ if (!is_array($user) || !in_array($user['role'] ?? '', clinica_dashboard_roles()
 $page_specific_css = 'dashboard.css';
 $page_specific_js = 'dashboard.js';
 $can_see_all = clinica_can_see_all_appointments($user['role']);
+$can_manage = clinica_can_access_management((string) ($user['role'] ?? ''));
+$default_date_scope = $can_see_all ? 'all' : 'future';
+$dashboard_subtitle = match ($user['role']) {
+  'ADMINISTRATOR' => 'Administracion: acceso a gestion y a todas las citas presentes, pasadas y futuras.',
+  'SECRETARIA' => 'Secretaria: agenda completa de todos los doctores en fechas pasadas, presentes y futuras.',
+  'DOCTOR' => 'Doctor: solo sus citas presentes y futuras, protegidas por su perfil medico.',
+  default => 'Panel de citas programadas segun los permisos del rol.',
+};
 $name_parts = preg_split('/\s+/', trim($user['name']));
 $display_name = $name_parts[0] ?? $user['name'];
 $role_label = $user['label'] ?? $user['role'];
@@ -27,9 +35,14 @@ include __DIR__ . '/../../public/shared/header/header.php';
       <div>
         <span class="dashboard-role-badge"><?php echo htmlspecialchars($role_label); ?></span>
         <h1 class="dashboard-title">Bienvenido, <?php echo htmlspecialchars($display_name); ?></h1>
-        <p class="dashboard-subtitle">Panel de citas programadas para hoy, dias siguientes y fechas autorizadas.</p>
+        <p class="dashboard-subtitle"><?php echo htmlspecialchars($dashboard_subtitle); ?></p>
       </div>
-      <button type="button" id="logout-btn" class="btn btn-tertiary dashboard-logout">Cerrar sesion</button>
+      <div class="dashboard-header-actions">
+        <?php if ($can_manage): ?>
+          <a href="/clinica/pages/gestion/clinic/" class="btn btn-primary dashboard-management-link">Gestion</a>
+        <?php endif; ?>
+        <button type="button" id="logout-btn" class="btn btn-tertiary dashboard-logout">Cerrar sesion</button>
+      </div>
     </div>
 
     <div class="kpi-grid" id="kpi-grid" aria-label="Resumen rapido de citas">
@@ -117,12 +130,12 @@ include __DIR__ . '/../../public/shared/header/header.php';
 
       <div class="date-filter-row">
         <div class="date-filter-controls" id="date-filter-controls" aria-label="Filtrar citas por fecha">
-          <button type="button" class="btn date-filter-btn active" data-date-scope="today">Hoy</button>
-          <button type="button" class="btn date-filter-btn" data-date-scope="tomorrow">Manana</button>
-          <button type="button" class="btn date-filter-btn" data-date-scope="future">Proximas</button>
+          <button type="button" class="btn date-filter-btn <?php echo $default_date_scope === 'today' ? 'active' : ''; ?>" data-date-scope="today">Hoy</button>
+          <button type="button" class="btn date-filter-btn <?php echo $default_date_scope === 'tomorrow' ? 'active' : ''; ?>" data-date-scope="tomorrow">Manana</button>
+          <button type="button" class="btn date-filter-btn <?php echo $default_date_scope === 'future' ? 'active' : ''; ?>" data-date-scope="future">Proximas</button>
           <?php if ($can_see_all): ?>
             <button type="button" class="btn date-filter-btn" data-date-scope="past">Anteriores</button>
-            <button type="button" class="btn date-filter-btn" data-date-scope="all">Todas</button>
+            <button type="button" class="btn date-filter-btn <?php echo $default_date_scope === 'all' ? 'active' : ''; ?>" data-date-scope="all">Todas</button>
           <?php endif; ?>
         </div>
 

@@ -442,11 +442,10 @@
         const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
         // Obtener el nombre del día en español para verificar el horario
-        const dayName = date.toLocaleDateString('es-ES', { weekday: 'long' });
-        const capitalizedDayName = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+        const isoWeekday = String(date.getDay() === 0 ? 7 : date.getDay());
 
         // Verificar si el doctor trabaja en este día de la semana
-        const worksOnThisDay = Object.keys(selection.doctorSchedule).includes(capitalizedDayName);
+        const worksOnThisDay = Object.prototype.hasOwnProperty.call(selection.doctorSchedule, isoWeekday);
 
         let classes = 'calendar-day';
         if (date < calendarState.today.setHours(0, 0, 0, 0) || !worksOnThisDay) {
@@ -498,9 +497,8 @@
       setTimeout(() => {
         // 1. Determinar el turno del doctor para el día seleccionado
         const selectedDateObj = new Date(selection.date + 'T00:00:00');
-        const dayName = selectedDateObj.toLocaleDateString('es-ES', { weekday: 'long' });
-        const capitalizedDayName = dayName.charAt(0).toUpperCase() + dayName.slice(1);
-        const shift = selection.doctorSchedule[capitalizedDayName];
+        const isoWeekday = String(selectedDateObj.getDay() === 0 ? 7 : selectedDateObj.getDay());
+        const shift = selection.doctorSchedule[isoWeekday];
 
         let availableTimes = [];
 

@@ -51,6 +51,10 @@ $especialidades = [
   ]
 ];
 
+require_once __DIR__ . '/../../api/data.php';
+
+$especialidades = clinica_public_specialties_for_catalog();
+
 // Definir assets específicos para esta página.
 // El header y footer compartidos los usarán para cargar los archivos correctos.
 $page_specific_css = 'specialties.css';

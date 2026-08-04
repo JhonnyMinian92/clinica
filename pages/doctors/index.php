@@ -126,6 +126,11 @@ $doctores = [
   ],
 ];
 
+require_once __DIR__ . '/../../api/data.php';
+
+$dia_actual = (string) date('N');
+$doctores = clinica_public_doctors_for_catalog();
+
 // Extraer datos para los filtros
 $especialidades_filtro = array_unique(array_column($doctores, 'especialidad'));
 $idiomas_filtro = array_unique(array_merge(...array_column($doctores, 'idiomas')));

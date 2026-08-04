@@ -53,6 +53,12 @@ $citas_reservadas = [
   ]
 ];
 
+require_once __DIR__ . '/../../api/data.php';
+
+$especialidades = clinica_public_specialties_for_catalog();
+$doctores = clinica_public_doctors_grouped_by_specialty();
+$citas_reservadas = clinica_public_booked_slots();
+
 $especialidad_seleccionada_id = '';
 $doctor_seleccionado_id = isset($_GET['doctor_id']) ? trim((string) $_GET['doctor_id']) : '';
 $specialty_param = isset($_GET['specialty']) ? trim((string) $_GET['specialty']) : '';
