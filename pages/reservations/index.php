@@ -1,35 +1,41 @@
 <?php
 // Simulación de datos que vendrían de una base de datos
 $especialidades = [
-  ['id' => 'cardio', 'titulo' => 'Cardiología', 'icono' => '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>'],
-  ['id' => 'pediatria', 'titulo' => 'Pediatría', 'icono' => '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>'], // doc3
-  ['id' => 'neuro', 'titulo' => 'Neurología', 'icono' => '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>'],
-  ['id' => 'derma', 'titulo' => 'Dermatología', 'icono' => '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>'],
-  ['id' => 'gine', 'titulo' => 'Ginecología', 'icono' => '<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line>'],
-  ['id' => 'onco', 'titulo' => 'Oncología', 'icono' => '<path d="M12 2a2 2 0 0 0-2 2v2H8a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2h2a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2V4a2 2 0 0 0-2-2h-2z"></path>'],
+  ['id' => 'cardiologia', 'titulo' => 'Cardiología', 'icono' => '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>'],
+  ['id' => 'neurologia', 'titulo' => 'Neurología', 'icono' => '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>'],
+  ['id' => 'pediatria', 'titulo' => 'Pediatría', 'icono' => '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>'],
+  ['id' => 'oncologia', 'titulo' => 'Oncología', 'icono' => '<path d="M12 2a2 2 0 0 0-2 2v2H8a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2h2a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2V4a2 2 0 0 0-2-2h-2z"></path>'],
+  ['id' => 'dermatologia', 'titulo' => 'Dermatología', 'icono' => '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>'],
+  ['id' => 'ginecologia', 'titulo' => 'Ginecología', 'icono' => '<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line>'],
+  ['id' => 'traumatologia', 'titulo' => 'Traumatología', 'icono' => '<path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3z"></path>'],
+  ['id' => 'psiquiatria', 'titulo' => 'Psiquiatría', 'icono' => '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"></path>'],
 ];
 
 $doctores = [
-  'cardio' => [
-    ['id' => 'doc1', 'nombre' => 'Dr. Alejandro Vargas', 'foto' => 'https://randomuser.me/api/portraits/men/75.jpg', 'valoracion' => 5, 'horario_semanal' => ['Lunes' => 'Mañana', 'Miércoles' => 'Mañana', 'Viernes' => 'Tarde']],
-    ['id' => 'doc2', 'nombre' => 'Dra. Sofía Castillo', 'foto' => 'https://randomuser.me/api/portraits/women/75.jpg', 'valoracion' => 4, 'horario_semanal' => ['Martes' => 'Tarde', 'Jueves' => 'Tarde', 'Sábado' => 'Mañana']]
+  'cardiologia' => [
+    ['id' => 'doc1', 'nombre' => 'Dr. Alejandro Vargas', 'foto' => '/clinica/public/assets/avatar.png', 'valoracion' => 5, 'horario_semanal' => ['Lunes' => 'Mañana', 'Miércoles' => 'Mañana', 'Viernes' => 'Tarde']]
+  ],
+  'neurologia' => [
+    ['id' => 'doc3', 'nombre' => 'Dr. Mateo Herrera', 'foto' => '/clinica/public/assets/avatar.png', 'valoracion' => 5, 'horario_semanal' => ['Lunes' => 'Completo', 'Martes' => 'Completo', 'Miércoles' => 'Completo', 'Jueves' => 'Completo', 'Viernes' => 'Completo']]
   ],
   'pediatria' => [
-    ['id' => 'doc3', 'nombre' => 'Dra. Isabela Rojas', 'foto' => 'https://randomuser.me/api/portraits/women/76.jpg', 'valoracion' => 5, 'horario_semanal' => ['Lunes' => 'Completo', 'Martes' => 'Completo', 'Miércoles' => 'Completo', 'Jueves' => 'Completo', 'Viernes' => 'Completo']]
+    ['id' => 'doc2', 'nombre' => 'Dra. Sofía Castillo', 'foto' => '/clinica/public/assets/avatar.png', 'valoracion' => 5, 'horario_semanal' => ['Martes' => 'Tarde', 'Jueves' => 'Tarde', 'Sábado' => 'Mañana']]
   ],
-  'neuro' => [
-    ['id' => 'doc4', 'nombre' => 'Dr. Mateo Herrera', 'foto' => 'https://randomuser.me/api/portraits/men/76.jpg', 'valoracion' => 5, 'horario_semanal' => ['Lunes' => 'Tarde', 'Miércoles' => 'Tarde', 'Viernes' => 'Tarde']]
+  'oncologia' => [
+    ['id' => 'doc7', 'nombre' => 'Dr. Sebastián Peña', 'foto' => '/clinica/public/assets/avatar.png', 'valoracion' => 5, 'horario_semanal' => ['Martes' => 'Tarde', 'Jueves' => 'Tarde']]
   ],
-  'derma' => [
-    ['id' => 'doc5', 'nombre' => 'Dra. Valentina Morales', 'foto' => 'https://randomuser.me/api/portraits/women/77.jpg', 'valoracion' => 4, 'horario_semanal' => ['Martes' => 'Mañana', 'Jueves' => 'Mañana']],
-    ['id' => 'doc6', 'nombre' => 'Dr. Lucas Jiménez', 'foto' => 'https://randomuser.me/api/portraits/men/77.jpg', 'valoracion' => 5, 'horario_semanal' => ['Lunes' => 'Tarde', 'Miércoles' => 'Completo', 'Viernes' => 'Mañana']]
+  'dermatologia' => [
+    ['id' => 'doc4', 'nombre' => 'Dra. Valentina Morales', 'foto' => '/clinica/public/assets/avatar.png', 'valoracion' => 4, 'horario_semanal' => ['Lunes' => 'Tarde', 'Miércoles' => 'Tarde', 'Viernes' => 'Tarde']]
   ],
-  'gine' => [
-    ['id' => 'doc7', 'nombre' => 'Dra. Camila Ríos', 'foto' => 'https://randomuser.me/api/portraits/women/78.jpg', 'valoracion' => 5, 'horario_semanal' => ['Martes' => 'Tarde', 'Jueves' => 'Tarde']]
+  'ginecologia' => [
+    ['id' => 'doc6', 'nombre' => 'Dra. Camila Ríos', 'foto' => '/clinica/public/assets/avatar.png', 'valoracion' => 5, 'horario_semanal' => ['Lunes' => 'Tarde', 'Miércoles' => 'Completo', 'Viernes' => 'Mañana']]
   ],
-  'onco' => [
-    ['id' => 'doc8', 'nombre' => 'Dr. Sebastián Peña', 'foto' => 'https://randomuser.me/api/portraits/men/78.jpg', 'valoracion' => 5, 'horario_semanal' => ['Lunes' => 'Mañana', 'Jueves' => 'Mañana']]
-  ]
+  'traumatologia' => [
+    ['id' => 'doc5', 'nombre' => 'Dr. Lucas Jiménez', 'foto' => '/clinica/public/assets/avatar.png', 'valoracion' => 5, 'horario_semanal' => ['Martes' => 'Mañana', 'Jueves' => 'Mañana']]
+  ],
+  'psiquiatria' => [
+    ['id' => 'doc8', 'nombre' => 'Dra. Isabella Gómez', 'foto' => '/clinica/public/assets/avatar.png', 'valoracion' => 4, 'horario_semanal' => ['Lunes' => 'Mañana', 'Jueves' => 'Mañana']]
+  ],
 ];
 
 // Simulación de citas ya reservadas para la demo
@@ -47,14 +53,39 @@ $citas_reservadas = [
   ]
 ];
 
-$especialidad_seleccionada_titulo = isset($_GET['especialidad']) ? htmlspecialchars($_GET['especialidad']) : null;
 $especialidad_seleccionada_id = '';
+$doctor_seleccionado_id = isset($_GET['doctor_id']) ? trim((string) $_GET['doctor_id']) : '';
+$specialty_param = isset($_GET['specialty']) ? trim((string) $_GET['specialty']) : '';
+$especialidad_param = isset($_GET['especialidad']) ? trim((string) $_GET['especialidad']) : '';
+$aliases_especialidad = [
+  'cardio' => 'cardiologia',
+  'neuro' => 'neurologia',
+  'derma' => 'dermatologia',
+  'gine' => 'ginecologia',
+  'onco' => 'oncologia',
+];
 
-if ($especialidad_seleccionada_titulo) {
-  // Create a map of titulo => id for easier lookup
-  $titulo_a_id_map = array_column($especialidades, 'id', 'titulo');
-  if (isset($titulo_a_id_map[$especialidad_seleccionada_titulo])) {
-    $especialidad_seleccionada_id = $titulo_a_id_map[$especialidad_seleccionada_titulo];
+if ($specialty_param !== '') {
+  $especialidad_seleccionada_id = $aliases_especialidad[$specialty_param] ?? $specialty_param;
+}
+
+if ($especialidad_seleccionada_id === '' && $especialidad_param !== '') {
+  foreach ($especialidades as $especialidad) {
+    if (strcasecmp($especialidad['titulo'], $especialidad_param) === 0 || $especialidad['id'] === $especialidad_param) {
+      $especialidad_seleccionada_id = $especialidad['id'];
+      break;
+    }
+  }
+}
+
+if ($doctor_seleccionado_id !== '') {
+  foreach ($doctores as $especialidad_id => $lista_doctores) {
+    foreach ($lista_doctores as $doctor) {
+      if ($doctor['id'] === $doctor_seleccionado_id) {
+        $especialidad_seleccionada_id = $especialidad_seleccionada_id ?: $especialidad_id;
+        break 2;
+      }
+    }
   }
 }
 
@@ -81,7 +112,8 @@ include __DIR__ . '/../../public/shared/header/header.php';
       </div>
 
       <form id="reservation-form" class="reservation-form" novalidate
-        data-selected-specialty-id="<?php echo $especialidad_seleccionada_id; ?>">
+        data-selected-specialty-id="<?php echo htmlspecialchars($especialidad_seleccionada_id); ?>"
+        data-selected-doctor-id="<?php echo htmlspecialchars($doctor_seleccionado_id); ?>">
 
         <!-- Paso 1: Seleccionar Especialidad -->
         <div class="form-step active">

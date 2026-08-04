@@ -1,8 +1,14 @@
 <?php
-// Establecer la configuración regional a español para obtener los nombres de los días correctamente.
-setlocale(LC_TIME, 'es_ES.UTF-8', 'Spanish_Spain.1252', 'es_ES', 'Spanish');
-// Obtener el nombre del día actual, capitalizado (ej. "Lunes").
-$dia_actual = ucfirst(strftime('%A'));
+$dias_semana = [
+  1 => 'Lunes',
+  2 => 'Martes',
+  3 => 'Miércoles',
+  4 => 'Jueves',
+  5 => 'Viernes',
+  6 => 'Sábado',
+  7 => 'Domingo',
+];
+$dia_actual = $dias_semana[(int) date('N')];
 
 // Simulación de una base de datos de doctores
 $doctores = [

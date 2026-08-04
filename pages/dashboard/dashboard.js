@@ -1,323 +1,713 @@
 /*
  * dashboard.js
- * Lógica de frontend para el panel de control de doctores y administradores.
- * Clínica Estándar
+ * Bandeja de citas para doctores, secretaria y administracion.
  */
 
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('Dashboard script loaded.');
+(function () {
+  'use strict';
 
-  let allAppointments = []; // Caché de citas para filtros y KPIs
-  let user; // Objeto de usuario para lógica condicional
-  let userRole = ''; // Rol del usuario para lógica condicional
+  document.addEventListener('DOMContentLoaded', () => {
+    const DASHBOARD_API = '/clinica/api/dashboard/';
+    const GENERAL_API = '/clinica/api/general/';
+    const STAFF_ROLES = ['ADMINISTRATOR', 'SECRETARIA'];
 
-  const modal = document.getElementById('confirmation-modal');
-  const modalTitle = document.getElementById('modal-title');
-  const modalMessage = document.getElementById('modal-message');
-  const modalConfirmBtn = document.getElementById('modal-confirm-btn');
-  const modalCancelBtn = document.getElementById('modal-cancel-btn');
-  const modalCloseBtn = modal?.querySelector('.modal-close-btn');
-  let confirmCallback = null;
+    let allAppointments = [];
+    let user = null;
+    let userRole = '';
+    let eventsReady = false;
+    let confirmCallback = null;
+    let lastFocusedElement = null;
+    let toastTimer = null;
 
-  const appointmentsTbody = document.getElementById('appointments-tbody');
-  const kpiValues = {
-    total: document.querySelector('#kpi-total .kpi-value'),
-    pending: document.querySelector('#kpi-pending .kpi-value'),
-    attended: document.querySelector('#kpi-attended .kpi-value'),
-    absent: document.querySelector('#kpi-absent .kpi-value'),
-  };
-
-  function renderKPIs(appointments) {
-    const counts = {
-      // Recalcula los contadores desde el array de citas
-      total: appointments.length,
-      pending: appointments.filter((c) => c.estado === 'pendiente').length,
-      attended: appointments.filter((c) => c.estado === 'atendida').length,
-      absent: appointments.filter((c) => c.estado === 'no-presentado').length,
+    const dom = {
+      appointmentsList: document.getElementById('appointments-list'),
+      searchInput: document.getElementById('patient-search-input'),
+      kpiGrid: document.getElementById('kpi-grid'),
+      filterControls: document.getElementById('filter-controls'),
+      filterCounts: document.querySelectorAll('[data-filter-count]'),
+      dateControls: document.getElementById('date-filter-controls'),
+      dateInput: document.getElementById('date-filter-input'),
+      doctorSelect: document.getElementById('doctor-filter-select'),
+      logoutBtn: document.getElementById('logout-btn'),
+      toast: document.getElementById('dashboard-toast'),
+      modal: document.getElementById('confirmation-modal'),
+      modalTitle: document.getElementById('modal-title'),
+      modalMessage: document.getElementById('modal-message'),
+      modalConfirmBtn: document.getElementById('modal-confirm-btn'),
+      modalCancelBtn: document.getElementById('modal-cancel-btn'),
+      modalCloseBtn: document.querySelector('#confirmation-modal .modal-close-btn'),
+      kpiValues: {
+        total: document.querySelector('#kpi-total .kpi-value'),
+        pending: document.querySelector('#kpi-pending .kpi-value'),
+        attended: document.querySelector('#kpi-attended .kpi-value'),
+        absent: document.querySelector('#kpi-absent .kpi-value'),
+        rejected: document.querySelector('#kpi-rejected .kpi-value'),
+      },
+      insights: {
+        nextTitle: document.querySelector('[data-insight="next-title"]'),
+        nextDetail: document.querySelector('[data-insight="next-detail"]'),
+        queueTitle: document.querySelector('[data-insight="queue-title"]'),
+        queueDetail: document.querySelector('[data-insight="queue-detail"]'),
+        resolutionTitle: document.querySelector('[data-insight="resolution-title"]'),
+        resolutionDetail: document.querySelector('[data-insight="resolution-detail"]'),
+      },
     };
 
-    kpiValues.total.textContent = counts.total;
-    kpiValues.pending.textContent = counts.pending;
-    kpiValues.attended.textContent = counts.attended;
-    kpiValues.absent.textContent = counts.absent;
-  }
-
-  function renderAppointmentsTable(appointments, userRole) {
-    if (!appointmentsTbody) return;
-
-    appointmentsTbody.innerHTML = ''; // Limpiar el contenido actual
-
-    if (appointments.length === 0) {
-      const colspan = document.querySelectorAll('.appointments-table th').length || 5;
-      appointmentsTbody.innerHTML = `
-                <tr>
-                    <td colspan="${colspan}" class="no-results-cell">No tiene citas programadas para hoy.</td>
-                </tr>
-            `;
-      return;
-    }
-
-    const rows = appointments
-      .map((cita) => {
-        const isAdmin = userRole === 'ADMINISTRATOR';
-        const doctorColumn = isAdmin ? `<td>${escapeHtml(cita.doctor_info.nombre)}</td>` : '';
-
-        const actionsHtml = {
-          pendiente: `
-                    <button class="btn btn-sm btn-icon btn-action-positive" title="Marcar como Atendida" data-action="attend">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    </button>
-                    <button class="btn btn-sm btn-icon btn-action-negative" title="Marcar como No Presentado" data-action="no-show">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    </button>
-                `,
-          atendida: `<span class="action-text">Completada</span>`,
-          'no-presentado': `<span class="action-text">Ausente</span>`,
-          rechazada: `<span class="action-text">Rechazada</span>`,
-        };
-
-        return `
-                <tr data-id="${escapeHtml(cita.id)}" data-status="${escapeHtml(cita.estado)}" data-patient-name="${escapeHtml(cita.nombre_paciente.toLowerCase())}">
-                    <td>${escapeHtml(cita.hora)}</td>
-                    <td>${escapeHtml(cita.nombre_paciente)}</td>
-                    ${doctorColumn}
-                    <td>${escapeHtml(cita.motivo_consulta)}</td>
-                    <td><span class="status-badge status-${escapeHtml(cita.estado)}">${escapeHtml(cita.estado.replace('-', ' '))}</span></td>
-                    <td class="actions-cell">
-                        ${actionsHtml[cita.estado] || ''}
-                    </td>
-                </tr>
-            `;
-      })
-      .join('');
-
-    appointmentsTbody.innerHTML = rows;
-  }
-
-  function escapeHtml(str) {
-    return str.replace(/[&<>"']/g, function (match) {
-      return {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;',
-      }[match];
-    });
-  }
-
-  function debounce(func, delay) {
-    let timeout;
-    return function (...args) {
-      const context = this;
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func.apply(context, args), delay);
+    const statusLabels = {
+      pendiente: 'Pendiente',
+      atendida: 'Atendida',
+      'no-presentado': 'No se presento',
+      rechazada: 'Rechazada',
     };
-  }
 
-  function openModal({ title, message, confirmText = 'Confirmar', confirmClass = 'btn-primary', onConfirm }) {
-    if (!modal) return;
-    modalTitle.textContent = title;
-    modalMessage.innerHTML = message; // Usar innerHTML para permitir etiquetas como <strong>
-    modalConfirmBtn.textContent = confirmText;
+    const finalStateCopy = {
+      atendida: {
+        title: 'Atendida',
+        description: 'Paciente atendido y cierre registrado.',
+      },
+      'no-presentado': {
+        title: 'No se presento',
+        description: 'Ausencia registrada en la agenda.',
+      },
+      rechazada: {
+        title: 'Rechazada',
+        description: 'Cita cerrada sin atencion.',
+      },
+    };
 
-    modalConfirmBtn.classList.remove('btn-primary', 'btn-danger');
-    modalConfirmBtn.classList.add(confirmClass);
+    const filterEmptyCopy = {
+      all: {
+        title: 'No hay citas para mostrar.',
+        description: 'Cambie la fecha, el doctor o borre la busqueda del paciente.',
+      },
+      pendiente: {
+        title: 'No hay citas pendientes.',
+        description: 'La agenda seleccionada no tiene pacientes en espera.',
+      },
+      atendida: {
+        title: 'No hay citas atendidas.',
+        description: 'Cuando se marque una cita como atendida aparecera aqui.',
+      },
+      'no-presentado': {
+        title: 'No hay no presentados.',
+        description: 'No se registran ausencias para este rango.',
+      },
+      rechazada: {
+        title: 'No hay citas rechazadas.',
+        description: 'No se registran rechazos para este rango.',
+      },
+    };
 
-    confirmCallback = onConfirm;
-    modal.setAttribute('aria-hidden', 'false');
-    modalConfirmBtn.focus();
-  }
-
-  function closeModal() {
-    if (!modal) return;
-    modal.setAttribute('aria-hidden', 'true');
-    confirmCallback = null;
-  }
-
-  function initializeEventListeners() {
-    const searchInput = document.getElementById('patient-search-input');
-    if (searchInput) {
-      searchInput.addEventListener('input', debounce(applyFilters, 300));
+    function init() {
+      attachEventListeners();
+      fetchDashboardData();
     }
 
-    const filterControls = document.getElementById('filter-controls');
-    if (filterControls) {
-      filterControls.addEventListener('click', handleFilterClick);
-    }
+    function attachEventListeners() {
+      if (eventsReady) return;
 
-    if (modal) {
-      modalCancelBtn.addEventListener('click', closeModal);
-      modalCloseBtn.addEventListener('click', closeModal);
-      modalConfirmBtn.addEventListener('click', () => {
-        if (typeof confirmCallback === 'function') {
-          confirmCallback();
-        }
-        closeModal();
-      });
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal.getAttribute('aria-hidden') === 'false') closeModal();
-      });
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal) closeModal();
-      });
-    }
+      dom.searchInput?.addEventListener('input', debounce(applyFilters, 250));
+      dom.filterControls?.addEventListener('click', handleFilterClick);
+      dom.kpiGrid?.addEventListener('click', handleKpiClick);
+      dom.dateControls?.addEventListener('click', handleDateScopeClick);
+      dom.dateInput?.addEventListener('change', handleExactDateChange);
+      dom.appointmentsList?.addEventListener('click', handleActionClick);
+      dom.doctorSelect?.addEventListener('change', () => fetchDashboardData());
+      dom.logoutBtn?.addEventListener('click', handleLogout);
 
-    if (appointmentsTbody) {
-      appointmentsTbody.addEventListener('click', handleActionClick);
-    }
-  }
-
-  function handleFilterClick(event) {
-    const filterButton = event.target.closest('.btn-filter');
-    if (!filterButton) return;
-
-    // Actualizar estado activo del botón
-    document.querySelectorAll('.btn-filter').forEach((btn) => btn.classList.remove('active'));
-    filterButton.classList.add('active');
-
-    applyFilters();
-  }
-
-  function applyFilters() {
-    const statusFilter = document.querySelector('.btn-filter.active').dataset.filter;
-    const searchTerm = document.getElementById('patient-search-input').value.toLowerCase().trim();
-    const rows = appointmentsTbody.querySelectorAll('tr');
-
-    let visibleRows = 0;
-    rows.forEach((row) => {
-      if (!row.dataset.id) return; // Ignorar filas de mensajes
-
-      const rowStatus = row.dataset.status;
-      const rowPatientName = row.dataset.patientName;
-
-      const statusMatch = statusFilter === 'all' || statusFilter === rowStatus;
-      const searchMatch = searchTerm === '' || rowPatientName.includes(searchTerm);
-
-      if (statusMatch && searchMatch) {
-        row.style.display = '';
-        visibleRows++;
-      } else {
-        row.style.display = 'none';
+      if (dom.modal) {
+        dom.modalCancelBtn?.addEventListener('click', closeModal);
+        dom.modalCloseBtn?.addEventListener('click', closeModal);
+        dom.modalConfirmBtn?.addEventListener('click', () => {
+          if (typeof confirmCallback === 'function') {
+            confirmCallback();
+          }
+          closeModal();
+        });
+        dom.modal.addEventListener('click', (event) => {
+          if (event.target === dom.modal) closeModal();
+        });
+        document.addEventListener('keydown', handleModalKeydown);
       }
-    });
 
-    // Manejar mensaje de "sin resultados para el filtro"
-    const noResultsRow = appointmentsTbody.querySelector('.no-results-cell');
-    if (noResultsRow) noResultsRow.remove();
-
-    if (visibleRows === 0 && allAppointments.length > 0) {
-      const colspan = user.role === 'ADMINISTRATOR' ? 6 : 5;
-      appointmentsTbody.insertAdjacentHTML(
-        'beforeend',
-        `
-                <tr>
-                    <td colspan="${colspan}" class="no-results-cell">No se encontraron citas que coincidan con los filtros.</td>
-                </tr>
-            `,
-      );
+      eventsReady = true;
     }
-  }
 
-  async function handleActionClick(event) {
-    const actionButton = event.target.closest('[data-action]');
-    if (!actionButton) return;
+    function renderKPIs(appointments) {
+      const counts = getStatusCounts(appointments);
 
-    const row = actionButton.closest('tr');
-    const appointmentId = row.dataset.id;
-    const action = actionButton.dataset.action;
-    const patientName = row.cells[1].textContent;
+      Object.entries(counts).forEach(([key, value]) => {
+        if (dom.kpiValues[key]) dom.kpiValues[key].textContent = value;
+      });
+    }
 
-    const newStatus = action === 'attend' ? 'atendida' : action === 'no-show' ? 'no-presentado' : null;
-    if (!newStatus) return;
+    function renderFilterCounts(appointments) {
+      const counts = getStatusCounts(appointments);
 
-    if (action === 'no-show') {
+      dom.filterCounts.forEach((countElement) => {
+        const key = countElement.dataset.filterCount || 'all';
+        countElement.textContent = counts[key] ?? 0;
+      });
+    }
+
+    function renderAgendaInsights(appointments) {
+      const counts = getStatusCounts(appointments);
+      const nextPending = appointments.find((appointment) => appointment.estado === 'pendiente');
+      const closedCount = counts.atendida + counts['no-presentado'] + counts.rechazada;
+      const resolution = counts.all > 0 ? Math.round((closedCount / counts.all) * 100) : 0;
+
+      if (nextPending) {
+        const specialty = nextPending.especialidad ? ` - ${nextPending.especialidad}` : '';
+        dom.insights.nextTitle.textContent = `${nextPending.hora} - ${nextPending.nombre_paciente || 'Paciente'}`;
+        dom.insights.nextDetail.textContent = `${formatDate(nextPending.fecha)}${specialty}`;
+      } else {
+        dom.insights.nextTitle.textContent = 'Sin pendientes';
+        dom.insights.nextDetail.textContent = counts.all > 0 ? 'Todas las citas estan cerradas' : 'No hay citas en este rango';
+      }
+
+      dom.insights.queueTitle.textContent = `${counts.pendiente} ${counts.pendiente === 1 ? 'pendiente' : 'pendientes'}`;
+      dom.insights.queueDetail.textContent = counts.pendiente > 0 ? 'Listas para atencion' : 'Bandeja despejada';
+      dom.insights.resolutionTitle.textContent = `${resolution}%`;
+      dom.insights.resolutionDetail.textContent = `${closedCount} de ${counts.all} citas cerradas`;
+    }
+
+    function renderDoctorSelect(doctors) {
+      if (!dom.doctorSelect || !Array.isArray(doctors)) return;
+
+      const selectedValue = dom.doctorSelect.value;
+      const options = doctors
+        .map((doctor) => `<option value="${escapeHtml(doctor.id)}">${escapeHtml(doctor.nombre)}</option>`)
+        .join('');
+
+      dom.doctorSelect.innerHTML = `<option value="">Todos los doctores</option>${options}`;
+      dom.doctorSelect.value = selectedValue;
+    }
+
+    function renderAppointmentsList(appointments) {
+      if (!dom.appointmentsList) return;
+
+      if (appointments.length === 0) {
+        dom.appointmentsList.innerHTML = `
+          <div class="appointments-empty">
+            <span class="empty-kicker">Sin citas</span>
+            <h3>No hay citas para mostrar.</h3>
+            <p>Cambie la fecha, el estado o la busqueda para revisar otra parte de la agenda.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const nextPendingId = appointments.find((appointment) => appointment.estado === 'pendiente')?.id || '';
+
+      dom.appointmentsList.innerHTML = appointments
+        .map((appointment) => renderAppointmentCard(appointment, appointment.id === nextPendingId))
+        .join('');
+    }
+
+    function renderAppointmentCard(appointment, isNext) {
+      const adminView = STAFF_ROLES.includes(userRole);
+      const status = appointment.estado || 'pendiente';
+      const patient = appointment.nombre_paciente || 'Paciente sin nombre';
+      const doctorName = appointment.doctor_info?.nombre || '';
+      const searchIndex = buildAppointmentSearchIndex(appointment, doctorName);
+      const details = [
+        adminView && doctorName ? renderDetail('Doctor', doctorName) : '',
+        appointment.especialidad ? renderDetail('Especialidad', appointment.especialidad) : '',
+      ].join('');
+
+      return `
+        <article class="appointment-card status-card-${escapeHtml(status)} ${isNext ? 'is-next' : ''}" data-id="${escapeHtml(appointment.id)}" data-status="${escapeHtml(status)}" data-search-index="${escapeHtml(searchIndex)}">
+          <div class="appointment-card-top">
+            <div class="appointment-time-block">
+              <span class="appointment-date">${escapeHtml(formatDate(appointment.fecha))}</span>
+              <strong class="appointment-time">${escapeHtml(appointment.hora)}</strong>
+            </div>
+            <div class="appointment-state">
+              ${isNext ? '<span class="next-pill">Siguiente cita</span>' : ''}
+              <span class="status-badge status-${escapeHtml(status)}">${escapeHtml(getStatusLabel(status))}</span>
+            </div>
+          </div>
+
+          <div class="appointment-body">
+            <p class="appointment-label">Paciente</p>
+            <h3 class="appointment-patient">${escapeHtml(patient)}</h3>
+            <p class="appointment-reason">${escapeHtml(appointment.motivo_consulta || 'Sin motivo registrado')}</p>
+          </div>
+
+          ${details ? `<div class="appointment-details">${details}</div>` : ''}
+
+          <div class="appointment-actions" aria-label="Acciones para ${escapeHtml(patient)}">
+            ${getActionsHtml(appointment)}
+          </div>
+        </article>
+      `;
+    }
+
+    function renderDetail(label, value) {
+      return `
+        <div class="appointment-detail">
+          <span>${escapeHtml(label)}</span>
+          <strong>${escapeHtml(value)}</strong>
+        </div>
+      `;
+    }
+
+    function getActionsHtml(appointment) {
+      if (appointment.estado !== 'pendiente') {
+        return renderFinalState(appointment.estado);
+      }
+
+      return `
+        <button type="button" class="appointment-action appointment-action-attend" data-action="attend">
+          <span class="action-title">Atender cita</span>
+          <span class="action-help">Paciente atendido</span>
+        </button>
+        <button type="button" class="appointment-action appointment-action-no-show" data-action="no-show">
+          <span class="action-title">No se presento</span>
+          <span class="action-help">Paciente ausente</span>
+        </button>
+        <button type="button" class="appointment-action appointment-action-reject" data-action="reject">
+          <span class="action-title">Rechazar cita</span>
+          <span class="action-help">No atender</span>
+        </button>
+      `;
+    }
+
+    function renderFinalState(status) {
+      const copy = finalStateCopy[status] || {
+        title: getStatusLabel(status),
+        description: 'Estado cerrado en la agenda.',
+      };
+
+      return `
+        <div class="appointment-final-state final-state-${escapeHtml(status)}">
+          <span class="final-state-icon" aria-hidden="true"></span>
+          <span class="final-state-copy">
+            <span>Estado registrado</span>
+            <strong>${escapeHtml(copy.title)}</strong>
+            <em>${escapeHtml(copy.description)}</em>
+          </span>
+        </div>
+      `;
+    }
+
+    function handleFilterClick(event) {
+      const filterButton = event.target.closest('.btn-filter');
+      if (!filterButton) return;
+
+      setStatusFilter(filterButton.dataset.filter || 'all');
+    }
+
+    function handleKpiClick(event) {
+      const kpiButton = event.target.closest('[data-kpi-filter]');
+      if (!kpiButton) return;
+
+      setStatusFilter(kpiButton.dataset.kpiFilter || 'all');
+    }
+
+    function applyFilters() {
+      if (!dom.appointmentsList) return;
+
+      const activeFilter = dom.filterControls?.querySelector('.btn-filter.active');
+      const statusFilter = activeFilter?.dataset.filter || 'all';
+      const searchTerm = (dom.searchInput?.value || '').toLowerCase().trim();
+      const cards = Array.from(dom.appointmentsList.querySelectorAll('.appointment-card'));
+      let visibleCards = 0;
+
+      dom.appointmentsList.querySelector('.filter-empty-card')?.remove();
+
+      cards.forEach((card) => {
+        const statusMatch = statusFilter === 'all' || card.dataset.status === statusFilter;
+        const searchMatch = searchTerm === '' || (card.dataset.searchIndex || '').includes(searchTerm);
+        const visible = statusMatch && searchMatch;
+
+        card.hidden = !visible;
+        if (visible) visibleCards++;
+      });
+
+      if (visibleCards === 0 && cards.length > 0) {
+        const emptyCopy = filterEmptyCopy[statusFilter] || filterEmptyCopy.all;
+        dom.appointmentsList.insertAdjacentHTML(
+          'beforeend',
+          `
+            <div class="appointments-empty filter-empty-card">
+              <span class="empty-kicker">Sin coincidencias</span>
+              <h3>${escapeHtml(emptyCopy.title)}</h3>
+              <p>${escapeHtml(emptyCopy.description)}</p>
+            </div>
+          `,
+        );
+      }
+    }
+
+    function setStatusFilter(statusFilter, shouldApply = true) {
+      const buttons = Array.from(dom.filterControls?.querySelectorAll('.btn-filter') || []);
+      const target = buttons.find((button) => button.dataset.filter === statusFilter) || buttons[0];
+      const activeStatus = target?.dataset.filter || 'all';
+
+      buttons.forEach((button) => {
+        const isActive = button === target;
+        button.classList.toggle('active', isActive);
+        button.setAttribute('aria-pressed', String(isActive));
+      });
+
+      dom.kpiGrid?.querySelectorAll('[data-kpi-filter]').forEach((button) => {
+        const isActive = button.dataset.kpiFilter === activeStatus;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-pressed', String(isActive));
+      });
+
+      if (shouldApply) applyFilters();
+    }
+
+    function handleDateScopeClick(event) {
+      const dateButton = event.target.closest('.date-filter-btn');
+      if (!dateButton) return;
+
+      dom.dateControls.querySelectorAll('.date-filter-btn').forEach((button) => {
+        button.classList.toggle('active', button === dateButton);
+      });
+
+      if (dom.dateInput) dom.dateInput.value = '';
+      fetchDashboardData();
+    }
+
+    function handleExactDateChange() {
+      if (dom.dateInput?.value) {
+        dom.dateControls?.querySelectorAll('.date-filter-btn').forEach((button) => button.classList.remove('active'));
+      } else {
+        activateDateScope('today');
+      }
+
+      fetchDashboardData();
+    }
+
+    function activateDateScope(scope) {
+      const buttons = Array.from(dom.dateControls?.querySelectorAll('.date-filter-btn') || []);
+      if (buttons.length === 0) return;
+
+      const target = buttons.find((button) => button.dataset.dateScope === scope) || buttons[0];
+      buttons.forEach((button) => {
+        button.classList.toggle('active', button === target);
+      });
+    }
+
+    function handleActionClick(event) {
+      const actionButton = event.target.closest('[data-action]');
+      if (!actionButton) return;
+
+      const card = actionButton.closest('.appointment-card');
+      const appointmentId = card?.dataset.id;
+      const appointment = allAppointments.find((item) => item.id === appointmentId);
+      const patientName = appointment?.nombre_paciente || 'este paciente';
+      const action = actionButton.dataset.action;
+
+      const actions = {
+        attend: {
+          status: 'atendida',
+          title: 'Atender cita',
+          message: `Confirme que <strong>${escapeHtml(patientName)}</strong> ya fue atendido.`,
+          confirmText: 'Si, atender',
+          confirmClass: 'btn-primary',
+          successText: `Cita de ${patientName} marcada como atendida.`,
+        },
+        'no-show': {
+          status: 'no-presentado',
+          title: 'Paciente ausente',
+          message: `Confirme que <strong>${escapeHtml(patientName)}</strong> no se presento a la cita.`,
+          confirmText: 'Si, no se presento',
+          confirmClass: 'btn-danger',
+          successText: `Cita de ${patientName} marcada como no presentada.`,
+        },
+        reject: {
+          status: 'rechazada',
+          title: 'Rechazar cita',
+          message: `Confirme que la cita de <strong>${escapeHtml(patientName)}</strong> debe quedar rechazada.`,
+          confirmText: 'Si, rechazar',
+          confirmClass: 'btn-danger',
+          successText: `Cita de ${patientName} rechazada.`,
+        },
+      };
+
+      const config = actions[action];
+      if (!config || !appointmentId) return;
+
       openModal({
-        title: 'Confirmar Ausencia',
-        message: `¿Está seguro de que desea marcar la cita del paciente <strong>${escapeHtml(patientName)}</strong> como "No Presentado"? Esta acción no se puede deshacer.`,
-        confirmText: 'Sí, confirmar',
-        confirmClass: 'btn-danger',
-        onConfirm: () => updateAppointmentStatus(row, appointmentId, newStatus),
+        title: config.title,
+        message: config.message,
+        confirmText: config.confirmText,
+        confirmClass: config.confirmClass,
+        onConfirm: () => updateAppointmentStatus(card, appointmentId, config.status, config.successText),
       });
-    } else {
-      updateAppointmentStatus(row, appointmentId, newStatus);
     }
-  }
-  async function updateAppointmentStatus(row, appointmentId, newStatus) {
-    const actionsCell = row.querySelector('.actions-cell');
-    const originalActionsHTML = actionsCell.innerHTML;
 
-    row.classList.add('is-updating');
-    actionsCell.innerHTML = '<div class="spinner"></div>';
+    async function updateAppointmentStatus(card, appointmentId, newStatus, successText) {
+      const actionsArea = card?.querySelector('.appointment-actions');
+      const originalActionsHTML = actionsArea?.innerHTML || '';
 
-    try {
-      const response = await fetch('/clinica/api/dashboard_handler.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ appointmentId, newStatus }),
-      });
+      card?.classList.add('is-updating');
+      if (actionsArea) {
+        actionsArea.innerHTML = '<div class="action-updating"><div class="spinner"></div><span>Actualizando cita...</span></div>';
+      }
 
-      if (!response.ok) throw new Error('La respuesta del servidor no fue exitosa.');
+      try {
+        const response = await fetch(DASHBOARD_API, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({ appointmentId, newStatus }),
+        });
 
-      const result = await response.json();
-      if (!result.success) throw new Error(result.error || 'Ocurrió un error al actualizar.');
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'No se pudo actualizar la cita.');
+        }
 
-      // Actualizar caché local
-      const appointment = allAppointments.find((c) => c.id === appointmentId);
-      if (appointment) appointment.estado = newStatus;
-
-      renderKPIs(allAppointments);
-
-      // Actualizar la fila específica
-      const statusBadge = row.querySelector('.status-badge');
-      row.dataset.status = newStatus;
-      statusBadge.className = `status-badge status-${newStatus}`;
-      statusBadge.textContent = newStatus.replace('-', ' ');
-      actionsCell.innerHTML = `<span class="action-text">${newStatus === 'atendida' ? 'Completada' : 'Ausente'}</span>`;
-
-      // Ocultar la fila si ya no coincide con el filtro activo
-      applyFilters();
-    } catch (error) {
-      console.error('Error al actualizar el estado de la cita:', error);
-      alert('No se pudo actualizar la cita. Por favor, intente de nuevo.');
-      actionsCell.innerHTML = originalActionsHTML; // Revertir solo la celda de acciones
-    } finally {
-      row.classList.remove('is-updating');
+        showToast(successText || 'Cita actualizada correctamente.', 'success');
+        await fetchDashboardData();
+      } catch (error) {
+        if (actionsArea) actionsArea.innerHTML = originalActionsHTML;
+        showToast(error.message || 'No se pudo actualizar la cita. Intente nuevamente.', 'error');
+      } finally {
+        card?.classList.remove('is-updating');
+      }
     }
-  }
 
-  async function fetchDashboardData() {
-    try {
-      const response = await fetch('/clinica/api/dashboard_handler.php');
+    async function fetchDashboardData() {
+      setLoadingState();
 
-      if (!response.ok) {
+      try {
+        const query = buildDashboardQuery();
+        const response = await fetch(`${DASHBOARD_API}${query}`, {
+          credentials: 'same-origin',
+          headers: { Accept: 'application/json' },
+        });
+
         if (response.status === 401) {
-          window.location.href = '/clinica/pages/login/';
+          window.location.href = '/clinica/pages/login/?redirect=/clinica/pages/dashboard/';
           return;
         }
-        throw new Error(`Error en la red: ${response.statusText}`);
-      }
 
-      const data = await response.json();
-      console.log('Datos recibidos:', data);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || 'Error al cargar el dashboard.');
+        }
 
-      allAppointments = data.appointments.sort((a, b) => a.hora.localeCompare(b.hora));
-      user = data.user;
-      userRole = data.user.role;
+        user = data.user;
+        userRole = data.user?.role || '';
+        allAppointments = Array.isArray(data.appointments) ? data.appointments : [];
 
-      renderKPIs(allAppointments);
-      renderAppointmentsTable(allAppointments, userRole);
-      initializeEventListeners();
-    } catch (error) {
-      console.error('Error al cargar los datos del dashboard:', error);
-      if (appointmentsTbody) {
-        const colspan = document.querySelectorAll('.appointments-table th').length || 5;
-        appointmentsTbody.innerHTML = `
-                    <tr><td colspan="${colspan}" class="no-results-cell" style="color: red;">Error al cargar los datos. Intente recargar.</td></tr>
-                `;
+        renderDoctorSelect(data.doctors || []);
+        renderKPIs(allAppointments);
+        renderFilterCounts(allAppointments);
+        renderAgendaInsights(allAppointments);
+        renderAppointmentsList(allAppointments);
+        setStatusFilter(getActiveStatusFilter(), false);
+        applyFilters();
+      } catch (error) {
+        showListError(error.message || 'Error al cargar los datos. Intente recargar.');
       }
     }
-  }
 
-  fetchDashboardData();
-});
+    function buildDashboardQuery() {
+      const params = new URLSearchParams();
+      const doctorId = dom.doctorSelect?.value || '';
+      const exactDate = dom.dateInput?.value || '';
+      const activeDateButton = dom.dateControls?.querySelector('.date-filter-btn.active');
+      const dateScope = activeDateButton?.dataset.dateScope || 'today';
+
+      if (doctorId) params.set('doctor_id', doctorId);
+
+      if (exactDate) {
+        params.set('date', exactDate);
+      } else {
+        params.set('date_scope', dateScope);
+      }
+
+      const query = params.toString();
+      return query ? `?${query}` : '';
+    }
+
+    async function handleLogout() {
+      dom.logoutBtn.disabled = true;
+
+      try {
+        const response = await fetch(GENERAL_API, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({ action: 'logout' }),
+        });
+        const result = await response.json().catch(() => ({}));
+        window.location.href = result.redirect || '/clinica/pages/login/';
+      } catch (error) {
+        window.location.href = '/clinica/pages/login/';
+      }
+    }
+
+    function setLoadingState() {
+      if (!dom.appointmentsList) return;
+
+      dom.appointmentsList.innerHTML = `
+        <div class="appointments-loading">
+          <div class="spinner"></div>
+          <span>Cargando citas...</span>
+        </div>
+      `;
+    }
+
+    function showListError(message) {
+      if (!dom.appointmentsList) return;
+      dom.appointmentsList.innerHTML = `
+        <div class="appointments-empty appointments-error">
+          <span class="empty-kicker">Error</span>
+          <h3>No se pudieron cargar las citas.</h3>
+          <p>${escapeHtml(message)}</p>
+        </div>
+      `;
+    }
+
+    function showToast(message, type = 'success') {
+      if (!dom.toast) return;
+
+      clearTimeout(toastTimer);
+      dom.toast.textContent = message;
+      dom.toast.className = `dashboard-toast is-visible ${type === 'error' ? 'is-error' : 'is-success'}`;
+      toastTimer = setTimeout(() => {
+        dom.toast.classList.remove('is-visible');
+      }, 4200);
+    }
+
+    function openModal({ title, message, confirmText, confirmClass, onConfirm }) {
+      if (!dom.modal) return;
+
+      lastFocusedElement = document.activeElement;
+      dom.modalTitle.textContent = title;
+      dom.modalMessage.innerHTML = message;
+      dom.modalConfirmBtn.textContent = confirmText;
+      dom.modalConfirmBtn.classList.remove('btn-primary', 'btn-danger');
+      dom.modalConfirmBtn.classList.add(confirmClass);
+      confirmCallback = onConfirm;
+      dom.modal.setAttribute('aria-hidden', 'false');
+      dom.modalConfirmBtn.focus();
+    }
+
+    function closeModal() {
+      if (!dom.modal) return;
+
+      dom.modal.setAttribute('aria-hidden', 'true');
+      confirmCallback = null;
+      if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+        lastFocusedElement.focus();
+      }
+    }
+
+    function handleModalKeydown(event) {
+      if (!dom.modal || dom.modal.getAttribute('aria-hidden') === 'true') return;
+
+      if (event.key === 'Escape') {
+        closeModal();
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+
+      const focusable = Array.from(dom.modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')).filter(
+        (element) => !element.disabled,
+      );
+
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    function getStatusLabel(status) {
+      return statusLabels[status] || status;
+    }
+
+    function getStatusCounts(appointments) {
+      return {
+        total: appointments.length,
+        pending: appointments.filter((appointment) => appointment.estado === 'pendiente').length,
+        attended: appointments.filter((appointment) => appointment.estado === 'atendida').length,
+        absent: appointments.filter((appointment) => appointment.estado === 'no-presentado').length,
+        rejected: appointments.filter((appointment) => appointment.estado === 'rechazada').length,
+        all: appointments.length,
+        pendiente: appointments.filter((appointment) => appointment.estado === 'pendiente').length,
+        atendida: appointments.filter((appointment) => appointment.estado === 'atendida').length,
+        'no-presentado': appointments.filter((appointment) => appointment.estado === 'no-presentado').length,
+        rechazada: appointments.filter((appointment) => appointment.estado === 'rechazada').length,
+      };
+    }
+
+    function getActiveStatusFilter() {
+      return dom.filterControls?.querySelector('.btn-filter.active')?.dataset.filter || 'all';
+    }
+
+    function buildAppointmentSearchIndex(appointment, doctorName) {
+      return [
+        appointment.id,
+        appointment.nombre_paciente,
+        appointment.email_paciente,
+        appointment.telefono_paciente,
+        appointment.motivo_consulta,
+        doctorName,
+        appointment.especialidad,
+        getStatusLabel(appointment.estado),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+    }
+
+    function formatDate(value) {
+      if (!value) return '';
+
+      const date = new Date(`${value}T00:00:00`);
+      if (Number.isNaN(date.getTime())) return value;
+
+      return date.toLocaleDateString('es-EC', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, (match) => {
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;',
+        }[match];
+      });
+    }
+
+    function debounce(func, delay = 250) {
+      let timeout;
+      return function (...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), delay);
+      };
+    }
+
+    init();
+  });
+})();

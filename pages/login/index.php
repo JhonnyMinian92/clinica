@@ -1,3 +1,13 @@
+<?php
+session_start();
+require_once __DIR__ . '/../../api/data.php';
+
+$user = $_SESSION['user'] ?? null;
+if (is_array($user) && in_array($user['role'] ?? '', clinica_dashboard_roles(), true)) {
+  header('Location: /clinica/pages/dashboard/');
+  exit();
+}
+?>
 <!doctype html>
 <html lang="es">
 
@@ -6,7 +16,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <title>Ingreso | Clínica Estándar</title>
-  <link rel="icon" href="favicon.ico" type="image/x-icon" />
+  <link rel="icon" href="/clinica/favicon.ico" type="image/x-icon" />
   <meta name="description"
     content="Acceso seguro al portal de pacientes y personal de Clínica Estándar. Tecnología y cuidado a su servicio." />
 

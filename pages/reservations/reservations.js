@@ -30,6 +30,7 @@
     const timeSlotsGrid = document.getElementById('time-slots');
     const patientNameInput = document.getElementById('patient-name');
     const patientEmailInput = document.getElementById('patient-email');
+    const patientNotesInput = document.getElementById('patient-notes');
     // Calendar elements
     const calendarMonthYear = document.getElementById('calendar-month-year');
     const calendarGrid = document.getElementById('calendar-grid');
@@ -45,6 +46,7 @@
     const summaryEmail = document.getElementById('summary-email');
     const summaryPhone = document.getElementById('summary-phone');
     const totalSteps = formSteps.length;
+    const GENERAL_API = '/clinica/api/general/';
 
     // --- State ---
     let currentStep = 0;
@@ -81,6 +83,10 @@
         clearTimeout(timeoutId);
         timeoutId = setTimeout(() => func.apply(this, args), delay);
       };
+    }
+
+    function findCardByValue(container, value) {
+      return Array.from(container.querySelectorAll('.selectable-card')).find((card) => card.dataset.value === value) || null;
     }
 
     /**
@@ -296,6 +302,10 @@
       const selectedCard = e.target.closest('.selectable-card');
       if (!selectedCard) return;
 
+      selectSpecialtyCard(selectedCard, true);
+    }
+
+    function selectSpecialtyCard(selectedCard, autoAdvance = false) {
       specialtyGrid.querySelectorAll('.selectable-card').forEach((card) => card.classList.remove('active'));
       selectedCard.classList.add('active');
 
@@ -307,6 +317,8 @@
         selection.doctorId = null;
         selection.doctorName = null;
         selection.doctorSchedule = {};
+        selection.date = null;
+        selection.time = null;
       }
 
       selection.specialtyId = specialtyId;
@@ -315,9 +327,11 @@
       // Validate the step to enable the next button internally
       validateStep();
 
-      // Automatically proceed to the next step for a smoother UX.
-      // A short delay allows the user to see their selection.
-      setTimeout(goToNextStep, 400);
+      if (autoAdvance) {
+        setTimeout(goToNextStep, 400);
+      }
+
+      return true;
     }
 
     /**
@@ -364,6 +378,10 @@
       const selectedCard = e.target.closest('.selectable-card');
       if (!selectedCard) return;
 
+      selectDoctorCard(selectedCard, true);
+    }
+
+    function selectDoctorCard(selectedCard, autoAdvance = false) {
       doctorSelectionGrid.querySelectorAll('.selectable-card').forEach((card) => card.classList.remove('active'));
       selectedCard.classList.add('active');
 
@@ -381,9 +399,17 @@
         selection.doctorSchedule = {};
       }
 
+      selection.date = null;
+      selection.time = null;
+      timeSlotsGrid.innerHTML = '<div class="no-time-selected"><p>Seleccione una fecha en el calendario para ver los horarios.</p></div>';
+
       // Validate and automatically proceed
       validateStep();
-      setTimeout(goToNextStep, 400);
+      if (autoAdvance) {
+        setTimeout(goToNextStep, 400);
+      }
+
+      return true;
     }
 
     /**
@@ -599,6 +625,10 @@
           selection.patientPhone = value;
           fieldIsValid = isValidPhone(value);
           break;
+        case 'patient-notes':
+          selection.patientNotes = value;
+          fieldIsValid = true;
+          break;
       }
 
       input.parentElement.classList.toggle('has-error', !fieldIsValid);
@@ -627,16 +657,48 @@
     /**
      * Simulates the form submission and displays the success message.
      */
-    function submitForm() {
+    async function submitForm() {
       nextBtn.disabled = true;
       prevBtn.style.visibility = 'hidden';
       nextBtn.innerHTML = '<span class="btn-loader"></span>'; // Add a loader
       nextBtn.classList.add('is-loading');
 
-      // Simulate an API call
-      setTimeout(() => {
+      try {
+        const response = await fetch(GENERAL_API, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'create_appointment',
+            specialtyId: selection.specialtyId,
+            specialtyName: selection.specialtyName,
+            doctorId: selection.doctorId,
+            doctorName: selection.doctorName,
+            date: selection.date,
+            time: selection.time,
+            patientName: selection.patientName,
+            patientEmail: selection.patientEmail,
+            patientPhone: selection.patientPhone,
+            patientNotes: selection.patientNotes,
+          }),
+        });
+
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'No se pudo crear la cita.');
+        }
+
         showSuccessMessage();
-      }, 2000); // Simulate 2-second network delay
+      } catch (error) {
+        nextBtn.disabled = false;
+        prevBtn.style.visibility = 'visible';
+        nextBtn.textContent = 'Confirmar Cita';
+        nextBtn.classList.remove('is-loading');
+        alert(error.message || 'No se pudo crear la cita. Intente nuevamente.');
+      }
     }
 
     /**
@@ -674,6 +736,7 @@
     patientNameInput.addEventListener('input', handlePatientDataInput);
     patientEmailInput.addEventListener('input', handlePatientDataInput);
     patientPhoneInput.addEventListener('input', handlePatientDataInput);
+    patientNotesInput.addEventListener('input', handlePatientDataInput);
 
     // --- Initialization ---
 
@@ -683,11 +746,42 @@
     // Reajustar la altura si cambia el tamaño de la ventana (responsive)
     window.addEventListener('resize', adjustFormHeight);
 
-    // Iniciar con el botón 'Siguiente' deshabilitado
+    applyUrlPreselection();
     validateStep();
 
-    // TODO: Implementar lógica de pre-selección si viene de URL
-    // const preselectedSpecialty = form.dataset.selectedSpecialtyId;
-    // if (preselectedSpecialty) { ... }
+    function applyUrlPreselection() {
+      const preselectedDoctorId = form.dataset.selectedDoctorId;
+      let preselectedSpecialtyId = form.dataset.selectedSpecialtyId;
+
+      if (!preselectedSpecialtyId && preselectedDoctorId) {
+        Object.entries(doctorsData).some(([specialtyId, doctors]) => {
+          const doctorExists = doctors.some((doctor) => doctor.id === preselectedDoctorId);
+          if (doctorExists) {
+            preselectedSpecialtyId = specialtyId;
+          }
+          return doctorExists;
+        });
+      }
+
+      if (!preselectedSpecialtyId) return;
+
+      const specialtyCard = findCardByValue(specialtyGrid, preselectedSpecialtyId);
+      if (!specialtyCard) return;
+
+      selectSpecialtyCard(specialtyCard, false);
+      renderDoctors(preselectedSpecialtyId);
+      currentStep = 1;
+
+      if (preselectedDoctorId) {
+        const doctorCard = findCardByValue(doctorSelectionGrid, preselectedDoctorId);
+        if (doctorCard) {
+          selectDoctorCard(doctorCard, false);
+          currentStep = 2;
+          renderCalendar(calendarState.currentYear, calendarState.currentMonth);
+        }
+      }
+
+      updateFormUI();
+    }
   });
 })();

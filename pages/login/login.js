@@ -78,7 +78,7 @@
      * Handles the form submission event.
      * @param {Event} e The submission event.
      */
-    function handleFormSubmit(e) {
+    async function handleFormSubmit(e) {
       e.preventDefault();
 
       if (isButtonBusy()) return;
@@ -90,20 +90,54 @@
 
       setButtonState('loading');
 
-      // Simulate a network request to the backend
-      setTimeout(() => {
-        // This is a dummy validation. In a real app, this would be an API call.
-        if (dom.usernameInput.value === 'admin' && dom.passwordInput.value === 'password123') {
-          setButtonState('success');
-          handleRememberMe();
-          // In a real application, you would redirect the user after success.
-          // setTimeout(() => window.location.href = '/dashboard', 1000);
-        } else {
-          displayFormError('Usuario o contraseña incorrectos.');
-          setButtonState('default');
-          triggerErrorShake();
+      try {
+        const response = await fetch('/clinica/api/general/', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'login',
+            username: dom.usernameInput.value.trim(),
+            password: dom.passwordInput.value,
+          }),
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'No se pudo iniciar sesión.');
         }
-      }, 2000); // Simulate a 2-second network delay
+
+        setButtonState('success');
+        handleRememberMe();
+
+        setTimeout(() => {
+          window.location.href = getSafeRedirect(result.redirect);
+        }, 450);
+      } catch (error) {
+        displayFormError(error.message || 'No se pudo iniciar sesión.');
+        setButtonState('default');
+        triggerErrorShake();
+      }
+    }
+
+    function getSafeRedirect(apiRedirect) {
+      const params = new URLSearchParams(window.location.search);
+      const requestedRedirect = params.get('redirect') || apiRedirect || '/clinica/pages/dashboard/';
+
+      try {
+        const target = new URL(requestedRedirect, window.location.origin);
+        if (target.origin === window.location.origin && target.pathname.startsWith('/clinica/')) {
+          return `${target.pathname}${target.search}${target.hash}`;
+        }
+      } catch (error) {
+        return '/clinica/pages/dashboard/';
+      }
+
+      return '/clinica/pages/dashboard/';
     }
 
     /**
@@ -201,11 +235,13 @@
       dom.submitBtn.classList.remove('loading', 'success');
       // By default, the button is enabled.
       dom.submitBtn.disabled = false;
+      dom.submitBtn.setAttribute('aria-busy', 'false');
 
       switch (state) {
         case 'loading':
           dom.submitBtn.classList.add('loading');
           dom.submitBtn.disabled = true;
+          dom.submitBtn.setAttribute('aria-busy', 'true');
           break;
         case 'success':
           dom.submitBtn.classList.add('success');
