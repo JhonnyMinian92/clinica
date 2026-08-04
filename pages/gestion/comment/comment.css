@@ -1,5 +1,1 @@
 @import url('../gestion.css');
-
-.gestion-shell[data-resource='comments'] .gestion-stat {
-  border-left-color: #f59e0b;
-}

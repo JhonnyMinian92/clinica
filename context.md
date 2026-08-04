@@ -26,7 +26,7 @@ Tecnologias usadas:
 
 ## Arquitectura Actual
 
-La aplicacion corre como sitio PHP tradicional servido desde XAMPP. Las paginas publicas renderizan HTML desde PHP y usan JavaScript por pagina. El backend real aun no existe, pero la demo ya usa endpoints JSON.
+La aplicacion corre como sitio PHP tradicional servido desde XAMPP. Las paginas publicas usan PHP para layout, SEO y datos iniciales cuando conviene, pero la home ya hidrata su contenido principal desde una API JSON publica. El backend real aun no existe, pero la demo ya usa endpoints JSON.
 
 ### Estructura
 
@@ -89,6 +89,11 @@ clinica/
   - `POST action=logout`: destruye sesion y devuelve redirect al login.
   - `POST action=create_appointment`: crea una cita pendiente desde el formulario de reservas y la agrega a la sesion.
 
+- `api/public/index.php`
+  - Endpoint publico sin sesion para informacion visible en la web.
+  - `GET resource=home`: entrega `clinic`, `about_cards`, `stats`, `services`, `specialties`, `doctors` y `comments`.
+  - La fuente temporal sigue siendo `api/data.php` / `api/storage/gestion-data.json`; al conectar la base de datos, este endpoint debe leer de repositorios/modelos reales sin cambiar el contrato del frontend.
+
 - `api/dashboard/index.php`
   - Requiere usuario con rol `DOCTOR`, `ADMINISTRATOR` o `SECRETARIA`.
   - `GET`: devuelve citas filtradas por rol; doctores solo ven sus citas de hoy, manana, futuras o una fecha exacta no anterior; secretaria/administracion ven anteriores, actuales y futuras, y pueden filtrar por `doctor_id`.
@@ -105,7 +110,7 @@ Estas credenciales son solo para la simulacion front/back:
 
 ## Paginas y Responsabilidades
 
-- `index.php`: home publica con hero, servicios, especialidades destacadas, doctores destacados y testimonios.
+- `index.php`: home publica con estructura base, SEO y contenedores vacios; el contenido principal se carga por Fetch desde `/clinica/api/public/?resource=home`.
 - `pages/specialties/`: catalogo de especialidades con buscador. Enlaza reservas usando `?specialty={id}`.
 - `pages/doctors/`: catalogo de doctores con filtros. Enlaza reservas usando `?doctor_id={id}`.
 - `pages/reservations/`: stepper de reserva. Ahora acepta preseleccion por `?specialty=`, `?especialidad=` y `?doctor_id=`. Al confirmar, crea cita via `api/general/`.
@@ -305,7 +310,11 @@ Se agregaron:
 ### Paginas Publicas Conectadas
 
 - `index.php`
-  - Reescrito para tomar clinic, servicios, especialidades, doctores y comentarios desde `api/data.php`.
+  - Reescrito como shell dinamico: mantiene SEO/header/footer con PHP, pero hero, about, stats, servicios, especialidades, doctores y comentarios se hidratan desde `/clinica/api/public/?resource=home`.
+- `api/public/index.php`
+  - Publica el contrato JSON para la home y reutiliza la capa compartida `api/data.php`.
+- `public/js/app.js`
+  - Consume la API publica de home, pinta tarjetas/secciones, reinicia animaciones, contadores, lazy loading y carrusel despues de recibir datos.
 - `public/shared/header/header.php`
   - Lee nombre, SEO/canonical y marca desde clinic.
 - `public/shared/footer/footer.php`
@@ -315,9 +324,10 @@ Se agregaron:
 - `pages/doctors/index.php`
   - Sobrescribe el catalogo desde `clinica_public_doctors_for_catalog()`.
 - `pages/reservations/index.php`
-  - Sobrescribe especialidades, doctores agrupados y cupos ocupados desde la capa compartida.
+  - Lee especialidades, doctores agrupados, copy de reserva y cupos ocupados desde la capa compartida.
 - `pages/reservations/reservations.js`
   - La disponibilidad usa dia ISO numerico del calendario.
+  - Los cupos se generan desde `horarios_detallados` (`start_time`, `end_time`, `slot_minutes`) publicados por `clinica_schedule_rules_for_doctor()`.
 
 ### Verificacion Gestion
 
@@ -402,7 +412,197 @@ Resultados de smoke por sesion:
   - `php -l` en todos los `.php`: OK.
   - `node --check` en todos los `.js`: OK.
 
+## Refinamiento UI Gestion
+
+- `pages/gestion/gestion.css`
+  - Rediseño sobrio orientado a herramienta operativa: fondo neutro, paneles planos, sombras suaves, tipografia mas compacta y botones menos grandes.
+  - Acciones de filas reemplazadas por iconos accesibles de editar/eliminar; se eliminaron letras grandes `E`/`X`.
+  - KPIs de modulos CRUD reducidos a una barra compacta; se eliminaron colores por modulo y bordes saturados.
+  - Responsive mejorado: navegacion superior compacta en tablet, filas con labels por celda en movil y acciones alineadas sin overflow.
+- `pages/gestion/_shared/page.php`
+  - `clinic` se trata como singleton: no renderiza listado, filtros, boton Nuevo ni numeraciones.
+  - Los modulos de coleccion mantienen listado, busqueda, estado, Nuevo y Actualizar.
+- `pages/gestion/gestion.js`
+  - Distingue `is-singleton` e `is-collection`.
+  - El formulario de `clinic` usa grilla amplia para editar datos institucionales sin una lista innecesaria al lado.
+- `pages/gestion/calendar/`
+  - `calendar.js` usa `view: schedule-board`.
+  - `gestion.js` renderiza una matriz semanal para horarios: doctores por filas, dias por columnas y bloques editables por celda.
+  - Incluye filtros especificos por especialidad y doctor, ademas de busqueda y estado.
+  - Cada celda permite agregar un horario prellenando doctor, dia, hora inicio, hora fin, duracion de cupo y estado.
+  - `calendar.css` define responsive propio: tablero semanal en desktop y agenda apilada por doctor/dia en tablet y movil.
+- CSS internos de `clinic`, `comment`, `doctors`, `specialties`, `users`, `services` y `calendar`
+  - Quedaron como import del sistema compartido, sin colores decorativos por modulo.
+
+Validacion Gestion UI:
+
+- `php -l` en `pages/gestion/**/*.php`: OK.
+- `node --check` en `pages/gestion/**/*.js`: OK.
+- Smoke autenticado admin:
+  - `clinic`, `comment`, `doctors`, `specialties`, `users`, `services`, `calendar`: 200, sin fatal errors y con shell de gestion.
+  - `clinic`: sin `gestion-filters`, sin `gestion-list-panel`, sin `gestion-stats` y sin `gestion-new-btn`.
+  - API `resource=schedules`: 23 horarios, 8 doctores, 8 especialidades y 7 dias de metadata.
+  - Busqueda de restos visuales antiguos: sin `border-left-color`, sin botones `>E<`/`>X<`, sin textos `Campos completos`/`Registro maestro`.
+
+## Mejoras Dashboard y Auditoria Dinamica
+
+### Paginacion de Citas
+
+- `api/dashboard/index.php`
+  - `GET` acepta `page`, `per_page`, `status`, `search`, `date_scope`, `date` y `doctor_id`.
+  - Devuelve solo la pagina solicitada en `appointments`.
+  - Devuelve `pagination` con `page`, `per_page`, `total`, `total_pages`, `from`, `to`.
+  - Devuelve `summary.counts` y `summary.next_pending` calculados sobre el rango filtrado completo, no solo sobre la pagina actual.
+- `pages/dashboard/dashboard.js`
+  - Los filtros de estado, busqueda y KPIs disparan nuevas consultas al servidor.
+  - La paginacion conserva permisos por rol y reinicia a pagina 1 cuando cambian filtros o fecha.
+  - Selector de tamano: 6, 12, 24 o 48 citas por pagina.
+
+### Acceso a Gestion
+
+- El boton simple `Gestion` fue reemplazado por una entrada administrativa con icono, titulo y descripcion.
+- Sigue visible solo para `ADMINISTRATOR`.
+- Link directo: `/clinica/pages/gestion/clinic/`.
+
+### Refinamiento Visual
+
+- Dashboard con paleta mas sobria: fondos neutros, sombras menos pesadas y menos degradados.
+- KPIs e insights reducen saturacion y usan color como senal funcional.
+- Acciones de cita (`Atender`, `No se presento`, `Rechazar`) usan estilo suave con fondo claro, borde y texto de color.
+- Paginacion compacta bajo la lista, sin competir con el contenido operativo.
+- Nueva iteracion dashboard:
+  - Header alineado al lenguaje visual de Gestion: superficie blanca, bordes mate, tipografia mas compacta y boton de Gestion menos dominante.
+  - KPIs e insights agrupados en `dashboard-summary-panel` con separacion inferior clara y colores de estado apagados.
+  - Panel de citas enmarcado como herramienta operativa; filtros, fechas, busqueda, tarjetas y paginacion reducen escala y saturacion.
+  - Tarjetas de cita con menos sombra, borde lateral mas delgado, badges suaves y acciones compactas.
+
+### Auditoria Dinamica
+
+Paginas revisadas:
+
+- Home `index.php`
+  - Dinamico por API: `index.php` solo deja contenedores y `data-home-api`; `public/js/app.js` consulta `/clinica/api/public/?resource=home`.
+  - Datos hidratados: clinic, servicios, especialidades destacadas, doctores destacados, resenas, stats y tarjetas about desde la capa compartida.
+- Header/footer compartidos
+  - Dinamico: nombre, SEO/canonical, marca, direccion, correo, telefono, emergencia, WhatsApp y redes desde clinic.
+- Especialidades `pages/specialties/index.php`
+  - Se eliminaron arreglos simulados locales.
+  - Dinamico: titulo/subtitulo desde clinic y catalogo desde `clinica_public_specialties_for_catalog()`.
+- Doctores `pages/doctors/index.php`
+  - Se eliminaron arreglos simulados locales.
+  - Dinamico: titulo/subtitulo desde clinic; doctores, especialidades, idiomas, fotos, rating, pacientes y disponibilidad desde `clinica_public_doctors_for_catalog()`.
+- Reservas `pages/reservations/index.php`
+  - Se eliminaron arreglos simulados locales.
+  - Dinamico: titulo/subtitulo/nota de confirmacion desde clinic; especialidades, doctores, citas ocupadas y horarios detallados desde la capa compartida.
+  - Preseleccion por `specialty` / `especialidad` resuelve contra IDs o nombres administrados, sin alias quemados por especialidad.
+  - Mensajes de exito y labels principales de navegacion de reserva salen de la configuracion clinic (`reservation_success_*`, `reservation_*_label`).
+  - `pages/reservations/reservations.js` genera cupos solo desde `horarios_detallados`; no quedan rangos fijos tipo manana/tarde en el frontend.
+- Gestion clinic
+  - Nuevos campos editables: `reservation_title`, `reservation_subtitle`, `reservation_summary_note`, `reservation_success_title`, `reservation_success_text`, `reservation_back_home_label`, `reservation_next_label`, `reservation_confirm_label`, `reservation_previous_label`.
+
+### Editor Modal en Gestion
+
+- El editor CRUD compartido de `pages/gestion/_shared/page.php` ya no ocupa una columna fija en la maqueta.
+- Todas las paginas de Gestion abren el formulario en un modal responsive al crear o editar registros.
+- El modal soporta cierre por boton, fondo oscuro, tecla Escape y boton `Cancelar`; al guardar o eliminar vuelve al listado/resumen.
+- `pages/gestion/clinic/` queda como vista resumen de la unica clinica, sin filtros, sin numeraciones y sin lista artificial.
+- `pages/gestion/calendar/` mantiene la agenda semanal a ancho completo; los bloques de horario y botones `Agregar` abren el editor modal.
+
+### Auditoria Integral 2026-08-04
+
+Estado: no se detectaron errores funcionales ni de logica de negocio en la maqueta actual.
+
+Validaciones ejecutadas:
+
+- Lint y parseo:
+  - `php -l` en todos los archivos PHP del proyecto: OK.
+  - `node --check` en todos los archivos JS del proyecto: OK.
+  - `api/storage/gestion-data.json` parsea correctamente como JSON: OK.
+  - Escaneo estatico sin `Fatal error`, `Parse error`, `Warning`, `Notice`, `TODO`, `FIXME`, `console.log` ni `debugger` en codigo PHP/JS revisado.
+- Smoke HTTP publico:
+  - `/clinica/`, `/pages/login/`, `/pages/specialties/`, `/pages/doctors/`, `/pages/reservations/`, `/pages/reservations/?doctor_id=doc3` y `/pages/reservations/?specialty=Neurologia`: 200 sin errores PHP visibles.
+  - `/api/public/?resource=home`: OK, devuelve servicios, especialidades y doctores dinamicos.
+- Login, dashboard y roles:
+  - Login admin, secretaria y doctor: OK.
+  - Admin y secretaria consultan dashboard con `date_scope=all`: OK.
+  - Doctor con `date_scope=all` se normaliza a `future`: OK.
+  - Doctor recibe solo citas propias futuras: `CITA002`, `CITA003`, `CITA005`, `CITA010`: OK.
+  - Doctor no recibe `doctor_id` ni `doctor_info` en la respuesta transformada: OK.
+- Permisos negativos:
+  - Login invalido: 401.
+  - API dashboard sin sesion: 401.
+  - API Gestion sin sesion: 403.
+  - Secretaria y doctor no acceden a API Gestion: 403.
+  - Secretaria y doctor al abrir Gestion son redirigidos al dashboard, sin recibir `gestion-editor-modal`.
+  - Doctor no puede consultar fecha pasada exacta ni actualizar cita de otro doctor: OK.
+- Gestion:
+  - APIs admin de `clinic`, `comments`, `doctors`, `specialties`, `users`, `services` y `schedules`: OK.
+  - Paginas admin `clinic`, `calendar`, `comment`, `doctors`, `services`, `specialties` y `users`: 200, modal CRUD presente y sin errores PHP visibles.
+- Integridad de datos temporales:
+  - Relaciones validas: 8 especialidades, 8 doctores, 6 servicios, 3 usuarios y 23 horarios.
+  - Doctores referencian especialidades existentes.
+  - Horarios referencian doctores existentes y tienen rangos de hora validos.
+  - Usuario doctor referencia doctor existente.
+  - Existe al menos un administrador activo.
+- Auditoria dinamica:
+  - Sin alias publicos quemados `cardio/neuro/derma/gine/onco`.
+  - Sin rangos fijos `7-13` / `13-22` en paginas publicas revisadas.
+  - Sin nombre fijo `Clinica Estandar` / `Clínica Estándar` en paginas publicas clave revisadas.
+- Limpieza:
+  - `tmp-codex-shots/` era solo artefacto temporal de capturas y perfiles headless.
+  - Se verifico ruta absoluta dentro de `C:\xampp\htdocs\clinica`, se cerraron 22 procesos Chrome headless asociados y se elimino el directorio.
+
+Validacion realizada:
+
+- API publica home:
+  - `/api/public/?resource=home`: `success=true`, 6 servicios, 4 especialidades, 4 doctores y 4 comentarios.
+  - `/clinica/`: 200, contiene `data-home-api` y no imprime tarjetas `.service-card` estaticas en el HTML inicial.
+  - Chrome headless valido el hero hidratado desde la API; las capturas temporales fueron eliminadas junto con `tmp-codex-shots/`.
+- API paginada admin:
+  - `date_scope=all&page=1&per_page=6`: 6 citas, total 11, 2 paginas.
+  - `page=2`: 5 citas.
+  - `status=pendiente&search=ana`: total 1.
+- API doctor:
+  - Forzar `date_scope=all&doctor_id=doc1` normaliza a `future` y devuelve solo 4 citas propias.
+- Smoke publico:
+  - `/pages/specialties/`: 200.
+  - `/pages/doctors/`: 200.
+  - `/pages/reservations/?doctor_id=doc3`: 200.
+  - `/pages/reservations/?specialty=Neurologia`: 200, preselecciona `neurologia`, trae `reservationConfig` y `horarios_detallados`.
+  - Auditoria de strings: sin alias `cardio/neuro/derma/gine/onco`, sin generacion de horarios 7-13/13-22 en JS y sin nombre de clinica fijo visible en `pages/specialties`, `pages/doctors` o `pages/reservations`.
+- Smoke Gestion:
+  - `php -l` sin errores en todos los `index.php` de `pages/gestion/` y en `_shared/page.php`.
+  - `node --check` sin errores en todos los JS de `pages/gestion/`.
+  - Login admin por API correcto y carga 200 de `clinic`, `calendar`, `comment`, `doctors`, `services`, `specialties` y `users`.
+  - Todas esas rutas tienen `#gestion-editor-modal` y no imprimen el editor antiguo dentro del workspace.
+- Chrome headless:
+  - Dashboard: acceso a Gestion visible para admin, paginacion 1/2, siguiente pagina y filtro pendientes sin errores de consola.
+  - Reservas: `doc3` trae 5 dias con `horarios_detallados`; al seleccionar fecha se generaron 32 cupos desde reglas detalladas, sin errores de consola.
+  - Chrome headless valido dashboard y reservas; las capturas temporales fueron eliminadas junto con `tmp-codex-shots/`.
+
 ## Checklist Pendiente
+
+### P0 - Backend y Base de Datos - Arranque
+
+- [ ] Elegir motor inicial de BD para XAMPP, recomendado MySQL/MariaDB.
+- [ ] Definir `.env` o archivo de configuracion fuera de versionado para credenciales de BD, base URL y entorno.
+- [ ] Crear conexion PDO centralizada con charset `utf8mb4`, excepciones habilitadas y helper transaccional.
+- [ ] Crear migraciones versionadas para `clinics`, `services`, `specialties`, `doctors`, `comments`, `users`, `doctor_schedules`, `patients`, `appointments`, `appointment_status_history` y `audit_logs`.
+- [ ] Definir claves foraneas: doctores-especialidades, horarios-doctores, usuarios-doctores, citas-pacientes/doctores/especialidades.
+- [ ] Crear indices iniciales para agenda: `appointments(fecha, hora)`, `appointments(doctor_id, fecha, hora)`, `appointments(status, fecha)`, `doctor_schedules(doctor_id, weekday, start_time)` y `users(username)`.
+- [ ] Crear seed idempotente desde `api/storage/gestion-data.json` para poblar la primera version de la BD.
+- [ ] Sustituir lectura/escritura JSON en `api/data.php` por repositorios/servicios con la misma forma de respuesta actual.
+- [ ] Mantener contratos JSON actuales de `/api/public/`, `/api/dashboard/`, `/api/gestion/` y `/api/general/` para no reescribir el frontend.
+- [ ] Persistir citas creadas desde `pages/reservations/` en BD con validacion de disponibilidad real.
+- [ ] Validar conflictos de horario en servidor: no duplicar doctor-fecha-hora, no reservar fuera de horario, no reservar bloque inactivo y respetar `slot_minutes`.
+- [ ] Migrar autenticacion demo a `password_hash` / `password_verify`.
+- [ ] Agregar CSRF a endpoints autenticados de Gestion y Dashboard.
+- [ ] Crear middleware comun de sesion, permisos y respuestas JSON.
+- [ ] Registrar cambios criticos en `audit_logs`: CRUD Gestion, cambio de estado de cita, login fallido y login exitoso.
+- [ ] Normalizar validaciones backend por recurso: requeridos, email, URL, imagen, rating, rango de hora, rol y doctor asociado.
+- [ ] Definir politica de borrado: hard delete, soft delete o `active=false` por recurso.
+- [ ] Crear backups/exportacion de datos antes de migrar desde JSON a BD.
+- [ ] Preparar pruebas automatizadas minimas para contratos API, permisos por rol, reserva de cita y CRUD de Gestion.
 
 ### P0 - Antes de backend real
 
@@ -418,7 +618,10 @@ Resultados de smoke por sesion:
 - [ ] Agregar cancelacion/reprogramacion de citas si el flujo operativo lo requiere.
 - [ ] Definir si el backend real conservara los mismos rangos de fecha por rol o agregara reglas por sede/turno.
 - [x] Agregar busqueda y filtros por fecha en dashboard.
+- [x] Agregar paginacion server-side para la lista de citas del dashboard.
+- [x] Mover filtros de estado y busqueda de citas al endpoint del dashboard.
 - [x] Normalizar nombres de doctores/especialidades desde una sola fuente administrable.
+- [x] Generar cupos de reservas desde horarios administrados con hora inicio, hora fin y duracion.
 
 ### P2 - UX, Accesibilidad y Responsive
 
@@ -429,6 +632,8 @@ Resultados de smoke por sesion:
 - [ ] Agregar soporte `prefers-reduced-motion`.
 - [x] Reemplazar tabla del dashboard por tarjetas responsive sin scroll horizontal.
 - [x] Reducir escala visual del dashboard a tamanos normales en textos, tarjetas, botones y modal.
+- [x] Refinar paleta del dashboard para una lectura mas sobria y operativa.
+- [x] Mejorar acceso visual a Gestion para administradores.
 
 ### P2 - Rendimiento/UI
 

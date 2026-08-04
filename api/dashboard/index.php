@@ -23,8 +23,37 @@ if ($method === 'GET') {
   $exactDate = isset($_GET['date']) ? trim((string) $_GET['date']) : null;
   $exactDate = clinica_is_valid_dashboard_date($exactDate) ? $exactDate : null;
   $dateScope = clinica_normalize_date_scope($dateScope, $user['role']);
+  $statusFilter = clinica_normalize_dashboard_status((string) ($_GET['status'] ?? 'all'));
+  $search = trim((string) ($_GET['search'] ?? ''));
+  $page = max(1, (int) ($_GET['page'] ?? 1));
+  $perPage = max(6, min(48, (int) ($_GET['per_page'] ?? 6)));
 
-  $appointments = clinica_filter_dashboard_appointments($_SESSION['appointments'], $user, $doctorId, $dateScope, $exactDate);
+  $dateRecords = clinica_filter_dashboard_appointment_records($_SESSION['appointments'], $user, $doctorId, $dateScope, $exactDate);
+  $searchRecords = array_values(array_filter(
+    $dateRecords,
+    static fn(array $appointment): bool => clinica_matches_dashboard_search($appointment, $search),
+  ));
+  $statusCounts = clinica_dashboard_status_counts($searchRecords);
+  $statusRecords = array_values(array_filter(
+    $searchRecords,
+    static fn(array $appointment): bool => clinica_matches_dashboard_status($appointment, $statusFilter),
+  ));
+  $totalRecords = count($statusRecords);
+  $totalPages = max(1, (int) ceil($totalRecords / $perPage));
+  $page = min($page, $totalPages);
+  $offset = ($page - 1) * $perPage;
+  $pageRecords = array_slice($statusRecords, $offset, $perPage);
+  $appointments = array_map(
+    static fn(array $appointment): array => clinica_transform_appointment($appointment, $user),
+    $pageRecords,
+  );
+  $nextPending = null;
+  foreach ($searchRecords as $appointment) {
+    if (($appointment['estado'] ?? '') === 'pendiente') {
+      $nextPending = clinica_transform_appointment($appointment, $user);
+      break;
+    }
+  }
   $doctors = $canSeeAllAppointments ? clinica_doctors_from_appointments($_SESSION['appointments']) : [];
 
   clinica_json([
@@ -35,6 +64,21 @@ if ($method === 'GET') {
     'filters' => [
       'date_scope' => $dateScope,
       'date' => $exactDate,
+      'status' => $statusFilter,
+      'search' => $search,
+    ],
+    'summary' => [
+      'counts' => $statusCounts,
+      'next_pending' => $nextPending,
+      'filtered_total' => $totalRecords,
+    ],
+    'pagination' => [
+      'page' => $page,
+      'per_page' => $perPage,
+      'total' => $totalRecords,
+      'total_pages' => $totalPages,
+      'from' => $totalRecords === 0 ? 0 : $offset + 1,
+      'to' => min($offset + $perPage, $totalRecords),
     ],
   ]);
 }

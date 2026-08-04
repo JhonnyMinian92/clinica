@@ -12,6 +12,14 @@
     const STAFF_ROLES = ['ADMINISTRATOR', 'SECRETARIA'];
 
     let allAppointments = [];
+    let pagination = {
+      page: 1,
+      perPage: 6,
+      total: 0,
+      totalPages: 1,
+      from: 0,
+      to: 0,
+    };
     let user = null;
     let userRole = '';
     let eventsReady = false;
@@ -28,6 +36,12 @@
       dateControls: document.getElementById('date-filter-controls'),
       dateInput: document.getElementById('date-filter-input'),
       doctorSelect: document.getElementById('doctor-filter-select'),
+      pagination: document.getElementById('appointments-pagination'),
+      paginationSummary: document.getElementById('pagination-summary'),
+      paginationPrev: document.getElementById('pagination-prev'),
+      paginationNext: document.getElementById('pagination-next'),
+      paginationPages: document.getElementById('pagination-pages'),
+      pageSizeSelect: document.getElementById('page-size-select'),
       logoutBtn: document.getElementById('logout-btn'),
       toast: document.getElementById('dashboard-toast'),
       modal: document.getElementById('confirmation-modal'),
@@ -106,13 +120,23 @@
     function attachEventListeners() {
       if (eventsReady) return;
 
-      dom.searchInput?.addEventListener('input', debounce(applyFilters, 250));
+      dom.searchInput?.addEventListener('input', debounce(handleSearchInput, 350));
       dom.filterControls?.addEventListener('click', handleFilterClick);
       dom.kpiGrid?.addEventListener('click', handleKpiClick);
       dom.dateControls?.addEventListener('click', handleDateScopeClick);
       dom.dateInput?.addEventListener('change', handleExactDateChange);
       dom.appointmentsList?.addEventListener('click', handleActionClick);
-      dom.doctorSelect?.addEventListener('change', () => fetchDashboardData());
+      dom.doctorSelect?.addEventListener('change', () => {
+        pagination.page = 1;
+        fetchDashboardData();
+      });
+      dom.paginationPrev?.addEventListener('click', () => goToPage(pagination.page - 1));
+      dom.paginationNext?.addEventListener('click', () => goToPage(pagination.page + 1));
+      dom.pageSizeSelect?.addEventListener('change', () => {
+        pagination.perPage = Number(dom.pageSizeSelect.value) || 6;
+        pagination.page = 1;
+        fetchDashboardData();
+      });
       dom.logoutBtn?.addEventListener('click', handleLogout);
 
       if (dom.modal) {
@@ -133,16 +157,18 @@
       eventsReady = true;
     }
 
-    function renderKPIs(appointments) {
-      const counts = getStatusCounts(appointments);
+    function renderKPIs(counts) {
+      counts = normalizeCounts(counts);
 
-      Object.entries(counts).forEach(([key, value]) => {
-        if (dom.kpiValues[key]) dom.kpiValues[key].textContent = value;
-      });
+      if (dom.kpiValues.total) dom.kpiValues.total.textContent = counts.all;
+      if (dom.kpiValues.pending) dom.kpiValues.pending.textContent = counts.pendiente;
+      if (dom.kpiValues.attended) dom.kpiValues.attended.textContent = counts.atendida;
+      if (dom.kpiValues.absent) dom.kpiValues.absent.textContent = counts['no-presentado'];
+      if (dom.kpiValues.rejected) dom.kpiValues.rejected.textContent = counts.rechazada;
     }
 
-    function renderFilterCounts(appointments) {
-      const counts = getStatusCounts(appointments);
+    function renderFilterCounts(counts) {
+      counts = normalizeCounts(counts);
 
       dom.filterCounts.forEach((countElement) => {
         const key = countElement.dataset.filterCount || 'all';
@@ -150,9 +176,9 @@
       });
     }
 
-    function renderAgendaInsights(appointments) {
-      const counts = getStatusCounts(appointments);
-      const nextPending = appointments.find((appointment) => appointment.estado === 'pendiente');
+    function renderAgendaInsights(summary) {
+      const counts = normalizeCounts(summary?.counts);
+      const nextPending = summary?.next_pending || null;
       const closedCount = counts.atendida + counts['no-presentado'] + counts.rechazada;
       const resolution = counts.all > 0 ? Math.round((closedCount / counts.all) * 100) : 0;
 
@@ -187,11 +213,13 @@
       if (!dom.appointmentsList) return;
 
       if (appointments.length === 0) {
+        const activeFilter = getActiveStatusFilter();
+        const emptyCopy = filterEmptyCopy[activeFilter] || filterEmptyCopy.all;
         dom.appointmentsList.innerHTML = `
           <div class="appointments-empty">
             <span class="empty-kicker">Sin citas</span>
-            <h3>No hay citas para mostrar.</h3>
-            <p>Cambie la fecha, el estado o la busqueda para revisar otra parte de la agenda.</p>
+            <h3>${escapeHtml(emptyCopy.title)}</h3>
+            <p>${escapeHtml(emptyCopy.description)}</p>
           </div>
         `;
         return;
@@ -204,19 +232,46 @@
         .join('');
     }
 
+    function renderPagination(pageData) {
+      if (!dom.pagination) return;
+
+      const hasRecords = pageData.total > 0;
+      dom.pagination.hidden = !hasRecords;
+      if (!hasRecords) return;
+
+      if (dom.paginationSummary) {
+        dom.paginationSummary.textContent = `Mostrando ${pageData.from}-${pageData.to} de ${pageData.total} citas`;
+      }
+
+      if (dom.paginationPages) {
+        dom.paginationPages.textContent = `${pageData.page} / ${pageData.totalPages}`;
+      }
+
+      if (dom.pageSizeSelect) {
+        dom.pageSizeSelect.value = String(pageData.perPage);
+      }
+
+      if (dom.paginationPrev) {
+        dom.paginationPrev.disabled = pageData.page <= 1;
+      }
+
+      if (dom.paginationNext) {
+        dom.paginationNext.disabled = pageData.page >= pageData.totalPages;
+      }
+    }
+
     function renderAppointmentCard(appointment, isNext) {
       const adminView = STAFF_ROLES.includes(userRole);
       const status = appointment.estado || 'pendiente';
       const patient = appointment.nombre_paciente || 'Paciente sin nombre';
       const doctorName = appointment.doctor_info?.nombre || '';
-      const searchIndex = buildAppointmentSearchIndex(appointment, doctorName);
       const details = [
         adminView && doctorName ? renderDetail('Doctor', doctorName) : '',
         appointment.especialidad ? renderDetail('Especialidad', appointment.especialidad) : '',
       ].join('');
 
       return `
-        <article class="appointment-card status-card-${escapeHtml(status)} ${isNext ? 'is-next' : ''}" data-id="${escapeHtml(appointment.id)}" data-status="${escapeHtml(status)}" data-search-index="${escapeHtml(searchIndex)}">
+        <article class="appointment-card status-card-${escapeHtml(status)} ${isNext ? 'is-next' : ''}" data-id="${escapeHtml(appointment.id)}" data-status="${escapeHtml(status)}">
           <div class="appointment-card-top">
             <div class="appointment-time-block">
               <span class="appointment-date">${escapeHtml(formatDate(appointment.fecha))}</span>
@@ -305,39 +360,9 @@
       setStatusFilter(kpiButton.dataset.kpiFilter || 'all');
     }
 
-    function applyFilters() {
-      if (!dom.appointmentsList) return;
-
-      const activeFilter = dom.filterControls?.querySelector('.btn-filter.active');
-      const statusFilter = activeFilter?.dataset.filter || 'all';
-      const searchTerm = (dom.searchInput?.value || '').toLowerCase().trim();
-      const cards = Array.from(dom.appointmentsList.querySelectorAll('.appointment-card'));
-      let visibleCards = 0;
-
-      dom.appointmentsList.querySelector('.filter-empty-card')?.remove();
-
-      cards.forEach((card) => {
-        const statusMatch = statusFilter === 'all' || card.dataset.status === statusFilter;
-        const searchMatch = searchTerm === '' || (card.dataset.searchIndex || '').includes(searchTerm);
-        const visible = statusMatch && searchMatch;
-
-        card.hidden = !visible;
-        if (visible) visibleCards++;
-      });
-
-      if (visibleCards === 0 && cards.length > 0) {
-        const emptyCopy = filterEmptyCopy[statusFilter] || filterEmptyCopy.all;
-        dom.appointmentsList.insertAdjacentHTML(
-          'beforeend',
-          `
-            <div class="appointments-empty filter-empty-card">
-              <span class="empty-kicker">Sin coincidencias</span>
-              <h3>${escapeHtml(emptyCopy.title)}</h3>
-              <p>${escapeHtml(emptyCopy.description)}</p>
-            </div>
-          `,
-        );
-      }
+    function handleSearchInput() {
+      pagination.page = 1;
+      fetchDashboardData();
     }
 
     function setStatusFilter(statusFilter, shouldApply = true) {
@@ -357,7 +382,10 @@
         button.setAttribute('aria-pressed', String(isActive));
       });
 
-      if (shouldApply) applyFilters();
+      if (shouldApply) {
+        pagination.page = 1;
+        fetchDashboardData();
+      }
     }
 
     function handleDateScopeClick(event) {
@@ -369,6 +397,7 @@
       });
 
       if (dom.dateInput) dom.dateInput.value = '';
+      pagination.page = 1;
       fetchDashboardData();
     }
 
@@ -379,6 +408,7 @@
         activateDateScope('today');
       }
 
+      pagination.page = 1;
       fetchDashboardData();
     }
 
@@ -499,14 +529,15 @@
         user = data.user;
         userRole = data.user?.role || '';
         allAppointments = Array.isArray(data.appointments) ? data.appointments : [];
+        pagination = normalizePagination(data.pagination);
 
         renderDoctorSelect(data.doctors || []);
-        renderKPIs(allAppointments);
-        renderFilterCounts(allAppointments);
-        renderAgendaInsights(allAppointments);
+        setStatusFilter(data.filters?.status || getActiveStatusFilter(), false);
+        renderKPIs(data.summary?.counts);
+        renderFilterCounts(data.summary?.counts);
+        renderAgendaInsights(data.summary || {});
         renderAppointmentsList(allAppointments);
-        setStatusFilter(getActiveStatusFilter(), false);
-        applyFilters();
+        renderPagination(pagination);
       } catch (error) {
         showListError(error.message || 'Error al cargar los datos. Intente recargar.');
       }
@@ -518,8 +549,14 @@
       const exactDate = dom.dateInput?.value || '';
       const activeDateButton = dom.dateControls?.querySelector('.date-filter-btn.active');
       const dateScope = activeDateButton?.dataset.dateScope || 'today';
+      const status = getActiveStatusFilter();
+      const search = dom.searchInput?.value.trim() || '';
 
       if (doctorId) params.set('doctor_id', doctorId);
+      if (status && status !== 'all') params.set('status', status);
+      if (search) params.set('search', search);
+      params.set('page', String(pagination.page));
+      params.set('per_page', String(pagination.perPage));
 
       if (exactDate) {
         params.set('date', exactDate);
@@ -554,6 +591,7 @@
     function setLoadingState() {
       if (!dom.appointmentsList) return;
 
+      if (dom.pagination) dom.pagination.hidden = true;
       dom.appointmentsList.innerHTML = `
         <div class="appointments-loading">
           <div class="spinner"></div>
@@ -564,6 +602,7 @@
 
     function showListError(message) {
       if (!dom.appointmentsList) return;
+      if (dom.pagination) dom.pagination.hidden = true;
       dom.appointmentsList.innerHTML = `
         <div class="appointments-empty appointments-error">
           <span class="empty-kicker">Error</span>
@@ -638,6 +677,35 @@
 
     function getStatusLabel(status) {
       return statusLabels[status] || status;
+    }
+
+    function normalizeCounts(counts = {}) {
+      return {
+        all: Number(counts.all || 0),
+        pendiente: Number(counts.pendiente || 0),
+        atendida: Number(counts.atendida || 0),
+        'no-presentado': Number(counts['no-presentado'] || 0),
+        rechazada: Number(counts.rechazada || 0),
+      };
+    }
+
+    function normalizePagination(pageData = {}) {
+      return {
+        page: Math.max(1, Number(pageData.page || 1)),
+        perPage: Math.max(6, Number(pageData.per_page || pageData.perPage || pagination.perPage || 6)),
+        total: Math.max(0, Number(pageData.total || 0)),
+        totalPages: Math.max(1, Number(pageData.total_pages || pageData.totalPages || 1)),
+        from: Math.max(0, Number(pageData.from || 0)),
+        to: Math.max(0, Number(pageData.to || 0)),
+      };
+    }
+
+    function goToPage(nextPage) {
+      const targetPage = Math.max(1, Math.min(Number(nextPage) || 1, pagination.totalPages));
+      if (targetPage === pagination.page) return;
+
+      pagination.page = targetPage;
+      fetchDashboardData();
     }
 
     function getStatusCounts(appointments) {

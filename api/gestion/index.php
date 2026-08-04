@@ -21,7 +21,7 @@ if ($method === 'GET') {
   clinica_json([
     'success' => true,
     'resource' => $resource,
-    'data' => clinica_get_database_resource($resource),
+    'data' => $resource === 'clinic' ? clinica_get_clinic_settings() : clinica_get_database_resource($resource),
     'metadata' => clinica_gestion_metadata(),
   ]);
 }
@@ -235,6 +235,15 @@ function clinica_normalize_clinic_record(array $record): array
     'doctors_subtitle',
     'comments_title',
     'comments_subtitle',
+    'reservation_title',
+    'reservation_subtitle',
+    'reservation_summary_note',
+    'reservation_success_title',
+    'reservation_success_text',
+    'reservation_back_home_label',
+    'reservation_next_label',
+    'reservation_confirm_label',
+    'reservation_previous_label',
     'address',
     'email',
     'phone_display',

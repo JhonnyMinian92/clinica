@@ -39,62 +39,81 @@ include __DIR__ . '/../../public/shared/header/header.php';
       </div>
       <div class="dashboard-header-actions">
         <?php if ($can_manage): ?>
-          <a href="/clinica/pages/gestion/clinic/" class="btn btn-primary dashboard-management-link">Gestion</a>
+          <a href="/clinica/pages/gestion/clinic/" class="dashboard-management-link" aria-label="Abrir gestion administrativa">
+            <span class="management-link-icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3H5a2 2 0 0 0-2 2v7"></path>
+                <path d="M21 12V5a2 2 0 0 0-2-2h-3"></path>
+                <path d="M3 16v3a2 2 0 0 0 2 2h3"></path>
+                <path d="M16 21h3a2 2 0 0 0 2-2v-3"></path>
+                <path d="M8 8h8"></path>
+                <path d="M8 12h5"></path>
+                <path d="M8 16h3"></path>
+              </svg>
+            </span>
+            <span>
+              <strong>Gestion</strong>
+              <small>Contenido, horarios y usuarios</small>
+            </span>
+          </a>
         <?php endif; ?>
         <button type="button" id="logout-btn" class="btn btn-tertiary dashboard-logout">Cerrar sesion</button>
       </div>
     </div>
 
-    <div class="kpi-grid" id="kpi-grid" aria-label="Resumen rapido de citas">
-      <button type="button" class="kpi-card is-active" id="kpi-total" data-kpi-filter="all" aria-label="Ver todas las citas" aria-pressed="true">
-        <div class="kpi-icon-wrapper total">
-          <div class="kpi-icon total"></div>
-        </div>
-        <div class="kpi-content"><span class="kpi-value">0</span><span class="kpi-label">Citas Totales</span></div>
-      </button>
-      <button type="button" class="kpi-card" id="kpi-pending" data-kpi-filter="pendiente" aria-label="Ver citas pendientes" aria-pressed="false">
-        <div class="kpi-icon-wrapper pending">
-          <div class="kpi-icon pending"></div>
-        </div>
-        <div class="kpi-content"><span class="kpi-value">0</span><span class="kpi-label">Pendientes</span></div>
-      </button>
-      <button type="button" class="kpi-card" id="kpi-attended" data-kpi-filter="atendida" aria-label="Ver citas atendidas" aria-pressed="false">
-        <div class="kpi-icon-wrapper attended">
-          <div class="kpi-icon attended"></div>
-        </div>
-        <div class="kpi-content"><span class="kpi-value">0</span><span class="kpi-label">Atendidas</span></div>
-      </button>
-      <button type="button" class="kpi-card" id="kpi-absent" data-kpi-filter="no-presentado" aria-label="Ver citas no presentadas" aria-pressed="false">
-        <div class="kpi-icon-wrapper absent">
-          <div class="kpi-icon absent"></div>
-        </div>
-        <div class="kpi-content"><span class="kpi-value">0</span><span class="kpi-label">No Presentado</span></div>
-      </button>
-      <button type="button" class="kpi-card" id="kpi-rejected" data-kpi-filter="rechazada" aria-label="Ver citas rechazadas" aria-pressed="false">
-        <div class="kpi-icon-wrapper rejected">
-          <div class="kpi-icon rejected"></div>
-        </div>
-        <div class="kpi-content"><span class="kpi-value">0</span><span class="kpi-label">Rechazadas</span></div>
-      </button>
-    </div>
+    <section class="dashboard-summary-panel" aria-label="Resumen operativo">
+      <div class="kpi-grid" id="kpi-grid" aria-label="Resumen rapido de citas">
+        <button type="button" class="kpi-card is-active" id="kpi-total" data-kpi-filter="all" aria-label="Ver todas las citas" aria-pressed="true">
+          <div class="kpi-icon-wrapper total">
+            <div class="kpi-icon total"></div>
+          </div>
+          <div class="kpi-content"><span class="kpi-value">0</span><span class="kpi-label">Citas Totales</span></div>
+        </button>
+        <button type="button" class="kpi-card" id="kpi-pending" data-kpi-filter="pendiente" aria-label="Ver citas pendientes" aria-pressed="false">
+          <div class="kpi-icon-wrapper pending">
+            <div class="kpi-icon pending"></div>
+          </div>
+          <div class="kpi-content"><span class="kpi-value">0</span><span class="kpi-label">Pendientes</span></div>
+        </button>
+        <button type="button" class="kpi-card" id="kpi-attended" data-kpi-filter="atendida" aria-label="Ver citas atendidas" aria-pressed="false">
+          <div class="kpi-icon-wrapper attended">
+            <div class="kpi-icon attended"></div>
+          </div>
+          <div class="kpi-content"><span class="kpi-value">0</span><span class="kpi-label">Atendidas</span></div>
+        </button>
+        <button type="button" class="kpi-card" id="kpi-absent" data-kpi-filter="no-presentado" aria-label="Ver citas no presentadas" aria-pressed="false">
+          <div class="kpi-icon-wrapper absent">
+            <div class="kpi-icon absent"></div>
+          </div>
+          <div class="kpi-content"><span class="kpi-value">0</span><span class="kpi-label">No Presentado</span></div>
+        </button>
+        <button type="button" class="kpi-card" id="kpi-rejected" data-kpi-filter="rechazada" aria-label="Ver citas rechazadas" aria-pressed="false">
+          <div class="kpi-icon-wrapper rejected">
+            <div class="kpi-icon rejected"></div>
+          </div>
+          <div class="kpi-content"><span class="kpi-value">0</span><span class="kpi-label">Rechazadas</span></div>
+        </button>
+      </div>
 
-    <div class="agenda-insights" id="agenda-insights" aria-live="polite">
-      <div class="agenda-insight">
-        <span class="insight-kicker">Siguiente cita</span>
-        <strong data-insight="next-title">Cargando...</strong>
-        <span data-insight="next-detail">Agenda en revision</span>
+      <div class="agenda-insights" id="agenda-insights" aria-live="polite">
+        <div class="agenda-insight">
+          <span class="insight-kicker">Siguiente cita</span>
+          <strong data-insight="next-title">Cargando...</strong>
+          <span data-insight="next-detail">Agenda en revision</span>
+        </div>
+        <div class="agenda-insight">
+          <span class="insight-kicker">En cola</span>
+          <strong data-insight="queue-title">0 pendientes</strong>
+          <span data-insight="queue-detail">Listas para atencion</span>
+        </div>
+        <div class="agenda-insight">
+          <span class="insight-kicker">Resolucion</span>
+          <strong data-insight="resolution-title">0%</strong>
+          <span data-insight="resolution-detail">Citas cerradas del rango</span>
+        </div>
       </div>
-      <div class="agenda-insight">
-        <span class="insight-kicker">En cola</span>
-        <strong data-insight="queue-title">0 pendientes</strong>
-        <span data-insight="queue-detail">Listas para atencion</span>
-      </div>
-      <div class="agenda-insight">
-        <span class="insight-kicker">Resolucion</span>
-        <strong data-insight="resolution-title">0%</strong>
-        <span data-insight="resolution-detail">Citas cerradas del rango</span>
-      </div>
-    </div>
+    </section>
 
     <section class="dashboard-content" aria-labelledby="appointments-title">
       <div class="appointments-panel-header">
@@ -175,6 +194,24 @@ include __DIR__ . '/../../public/shared/header/header.php';
         <div class="appointments-loading">
           <div class="spinner"></div>
           <span>Cargando citas...</span>
+        </div>
+      </div>
+
+      <div id="appointments-pagination" class="appointments-pagination" aria-label="Paginacion de citas" hidden>
+        <p id="pagination-summary" class="pagination-summary">Mostrando 0 citas</p>
+        <div class="pagination-controls">
+          <label class="page-size-control" for="page-size-select">
+            <span>Por pagina</span>
+            <select id="page-size-select" class="page-size-select">
+              <option value="6">6</option>
+              <option value="12">12</option>
+              <option value="24">24</option>
+              <option value="48">48</option>
+            </select>
+          </label>
+          <button type="button" class="pagination-btn" id="pagination-prev" aria-label="Pagina anterior">Anterior</button>
+          <span id="pagination-pages" class="pagination-pages">1 / 1</span>
+          <button type="button" class="pagination-btn" id="pagination-next" aria-label="Pagina siguiente">Siguiente</button>
         </div>
       </div>
     </section>

@@ -1,5 +1,1 @@
 @import url('../gestion.css');
-
-.gestion-shell[data-resource='specialties'] .gestion-stat {
-  border-left-color: #7c3aed;
-}

@@ -1,7 +1,7 @@
 /*
  * doctors.js
  * Lógica para el catálogo de doctores
- * Clínica Estándar
+ * Sitio publico
  */
 
 (function () {

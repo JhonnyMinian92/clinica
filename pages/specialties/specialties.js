@@ -1,7 +1,7 @@
 /*
  * specialties.js
  * Lógica para el filtro interactivo del catálogo de especialidades.
- * Clínica Estándar
+ * Sitio publico
  */
 
 (function () {

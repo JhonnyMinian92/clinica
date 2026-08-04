@@ -31,6 +31,15 @@ function clinica_default_database(): array
       'doctors_subtitle' => 'Profesionales que combinan conocimiento, experiencia y vocacion.',
       'comments_title' => 'La Voz de Nuestros Pacientes',
       'comments_subtitle' => 'Historias reales de quienes han confiado su salud en nuestras manos.',
+      'reservation_title' => 'Agendar una Cita',
+      'reservation_subtitle' => 'Siga los pasos para encontrar un horario conveniente para usted.',
+      'reservation_summary_note' => 'Recibira una confirmacion por correo electronico. Por favor, llegue 15 minutos antes de su cita.',
+      'reservation_success_title' => 'Cita Agendada',
+      'reservation_success_text' => 'Su cita ha sido confirmada exitosamente. Recibira un correo electronico con todos los detalles. Gracias por confiar en {clinic}.',
+      'reservation_back_home_label' => 'Volver al Inicio',
+      'reservation_next_label' => 'Siguiente',
+      'reservation_confirm_label' => 'Confirmar Cita',
+      'reservation_previous_label' => 'Anterior',
       'address' => 'Buenavista y Tarqui, Machala, Ecuador',
       'email' => 'info@clinicaestandar.com',
       'phone_display' => '(07) 293-3888',
@@ -196,7 +205,8 @@ function clinica_is_active_record(array $record): bool
 function clinica_get_clinic_settings(): array
 {
   $clinic = clinica_get_database_resource('clinic');
-  return is_array($clinic) ? $clinic : clinica_default_database()['clinic'];
+  $default = clinica_default_database()['clinic'];
+  return is_array($clinic) ? array_replace_recursive($default, $clinic) : $default;
 }
 
 function clinica_get_specialties(bool $activeOnly = false): array
@@ -297,6 +307,10 @@ function clinica_schedule_shift_label(string $startTime, string $endTime): strin
   }
 
   if ($endTime <= '13:00') {
+    return 'Manana';
+  }
+
+  if ($endTime <= '13:00') {
     return 'MaÃ±ana';
   }
 
@@ -323,6 +337,30 @@ function clinica_schedule_map_for_doctor(string $doctorId): array
   return $map;
 }
 
+function clinica_schedule_rules_for_doctor(string $doctorId): array
+{
+  $rules = [];
+
+  foreach (clinica_get_schedules(true) as $schedule) {
+    if (($schedule['doctor_id'] ?? '') !== $doctorId) {
+      continue;
+    }
+
+    $weekday = (string) ((int) ($schedule['weekday'] ?? 0));
+    if ($weekday === '0') {
+      continue;
+    }
+
+    $rules[$weekday][] = [
+      'start_time' => (string) ($schedule['start_time'] ?? ''),
+      'end_time' => (string) ($schedule['end_time'] ?? ''),
+      'slot_minutes' => max(5, (int) ($schedule['slot_minutes'] ?? 15)),
+    ];
+  }
+
+  return $rules;
+}
+
 function clinica_public_doctor(array $doctor): array
 {
   $specialtyId = (string) ($doctor['specialty_id'] ?? '');
@@ -341,6 +379,7 @@ function clinica_public_doctor(array $doctor): array
     'valoracion' => (int) ($doctor['rating'] ?? 0),
     'pacientes' => (int) ($doctor['patients'] ?? 0),
     'horario_semanal' => clinica_schedule_map_for_doctor((string) ($doctor['id'] ?? '')),
+    'horarios_detallados' => clinica_schedule_rules_for_doctor((string) ($doctor['id'] ?? '')),
     'featured' => (bool) ($doctor['featured'] ?? false),
     'active' => (bool) ($doctor['active'] ?? true),
   ];
@@ -365,6 +404,7 @@ function clinica_public_doctors_grouped_by_specialty(): array
       'foto' => $publicDoctor['foto'],
       'valoracion' => $publicDoctor['valoracion'],
       'horario_semanal' => $publicDoctor['horario_semanal'],
+      'horarios_detallados' => $publicDoctor['horarios_detallados'],
     ];
   }
 
@@ -738,7 +778,7 @@ function clinica_matches_date_filter(array $appointment, array $user, string $da
   };
 }
 
-function clinica_filter_dashboard_appointments(array $appointments, array $user, ?string $doctorId = null, string $dateScope = 'today', ?string $exactDate = null): array
+function clinica_filter_dashboard_appointment_records(array $appointments, array $user, ?string $doctorId = null, string $dateScope = 'today', ?string $exactDate = null): array
 {
   $filtered = [];
 
@@ -755,7 +795,7 @@ function clinica_filter_dashboard_appointments(array $appointments, array $user,
       continue;
     }
 
-    $filtered[] = clinica_transform_appointment($appointment, $user);
+    $filtered[] = $appointment;
   }
 
   usort($filtered, static function (array $a, array $b): int {
@@ -764,6 +804,71 @@ function clinica_filter_dashboard_appointments(array $appointments, array $user,
   });
 
   return $filtered;
+}
+
+function clinica_filter_dashboard_appointments(array $appointments, array $user, ?string $doctorId = null, string $dateScope = 'today', ?string $exactDate = null): array
+{
+  return array_map(
+    static fn(array $appointment): array => clinica_transform_appointment($appointment, $user),
+    clinica_filter_dashboard_appointment_records($appointments, $user, $doctorId, $dateScope, $exactDate),
+  );
+}
+
+function clinica_normalize_dashboard_status(?string $status): string
+{
+  $status = trim((string) $status);
+  return in_array($status, clinica_statuses(), true) ? $status : 'all';
+}
+
+function clinica_matches_dashboard_status(array $appointment, string $status): bool
+{
+  return $status === 'all' || ($appointment['estado'] ?? '') === $status;
+}
+
+function clinica_dashboard_search_text(array $appointment): string
+{
+  return strtolower(implode(' ', array_filter([
+    $appointment['id'] ?? '',
+    $appointment['fecha'] ?? '',
+    $appointment['hora'] ?? '',
+    $appointment['nombre_paciente'] ?? '',
+    $appointment['email_paciente'] ?? '',
+    $appointment['telefono_paciente'] ?? '',
+    $appointment['motivo_consulta'] ?? '',
+    $appointment['estado'] ?? '',
+    $appointment['doctor_nombre'] ?? '',
+    $appointment['especialidad'] ?? '',
+  ], static fn(mixed $value): bool => trim((string) $value) !== '')));
+}
+
+function clinica_matches_dashboard_search(array $appointment, string $search): bool
+{
+  $search = strtolower(trim($search));
+  if ($search === '') {
+    return true;
+  }
+
+  return str_contains(clinica_dashboard_search_text($appointment), $search);
+}
+
+function clinica_dashboard_status_counts(array $appointments): array
+{
+  $counts = [
+    'all' => count($appointments),
+    'pendiente' => 0,
+    'atendida' => 0,
+    'no-presentado' => 0,
+    'rechazada' => 0,
+  ];
+
+  foreach ($appointments as $appointment) {
+    $status = (string) ($appointment['estado'] ?? '');
+    if (array_key_exists($status, $counts)) {
+      $counts[$status]++;
+    }
+  }
+
+  return $counts;
 }
 
 function clinica_doctors_from_appointments(array $appointments): array

@@ -1,7 +1,7 @@
 /*
  * reservations.js
  * Lógica para el formulario de agendamiento de citas por pasos.
- * Clínica Estándar
+ * Sitio publico
  */
 
 (function () {
@@ -47,6 +47,7 @@
     const summaryPhone = document.getElementById('summary-phone');
     const totalSteps = formSteps.length;
     const GENERAL_API = '/clinica/api/general/';
+    const config = typeof reservationConfig !== 'undefined' ? reservationConfig : {};
 
     // --- State ---
     let currentStep = 0;
@@ -56,6 +57,7 @@
       doctorId: null,
       doctorName: null,
       doctorSchedule: {},
+      doctorScheduleRules: {},
       date: null,
       time: null,
       patientName: '',
@@ -154,7 +156,7 @@
 
       // 4. Actualizar la visibilidad y texto de los botones
       prevBtn.style.visibility = currentStep > 0 ? 'visible' : 'hidden';
-      nextBtn.textContent = currentStep === totalSteps - 1 ? 'Confirmar Cita' : 'Siguiente';
+      nextBtn.textContent = currentStep === totalSteps - 1 ? getConfigText('confirmLabel', 'Confirmar Cita') : getConfigText('nextLabel', 'Siguiente');
 
       // 5. Ajustar la altura del contenedor para una transición suave
       adjustFormHeight();
@@ -392,11 +394,13 @@
         selection.doctorId = selectedDoctor.id;
         selection.doctorName = selectedDoctor.nombre;
         selection.doctorSchedule = selectedDoctor.horario_semanal || {};
+        selection.doctorScheduleRules = selectedDoctor.horarios_detallados || {};
       } else {
         // Fallback si el doctor no se encuentra (no debería ocurrir)
         selection.doctorId = doctorId;
         selection.doctorName = selectedCard.dataset.name;
         selection.doctorSchedule = {};
+        selection.doctorScheduleRules = {};
       }
 
       selection.date = null;
@@ -498,24 +502,9 @@
         // 1. Determinar el turno del doctor para el día seleccionado
         const selectedDateObj = new Date(selection.date + 'T00:00:00');
         const isoWeekday = String(selectedDateObj.getDay() === 0 ? 7 : selectedDateObj.getDay());
-        const shift = selection.doctorSchedule[isoWeekday];
+        const rules = selection.doctorScheduleRules[isoWeekday] || [];
 
-        let availableTimes = [];
-
-        // 2. Generar horarios según el turno
-        if (shift === 'Mañana' || shift === 'Completo') {
-          for (let h = 7; h < 13; h++) {
-            // 7:00 a 12:45
-            ['00', '15', '30', '45'].forEach((m) => availableTimes.push(`${String(h).padStart(2, '0')}:${m}`));
-          }
-        }
-        if (shift === 'Tarde' || shift === 'Completo') {
-          for (let h = 13; h < 22; h++) {
-            // 13:00 a 21:45
-            ['00', '15', '30', '45'].forEach((m) => availableTimes.push(`${String(h).padStart(2, '0')}:${m}`));
-          }
-        }
-
+        const availableTimes = generateTimesFromRules(rules);
         let filteredTimes = availableTimes;
 
         // Si la fecha seleccionada es hoy, filtrar los horarios que ya pasaron
@@ -550,6 +539,39 @@
         timeSlotWrapper.classList.remove('is-loading');
         adjustFormHeight();
       }, 600); // Simular retardo de red
+    }
+
+    function generateTimesFromRules(rules) {
+      const times = [];
+
+      rules.forEach((rule) => {
+        const start = timeToMinutes(rule.start_time);
+        const end = timeToMinutes(rule.end_time);
+        const slotMinutes = Number(rule.slot_minutes || 15);
+
+        if (start === null || end === null || slotMinutes <= 0 || start >= end) {
+          return;
+        }
+
+        for (let current = start; current < end; current += slotMinutes) {
+          times.push(minutesToTime(current));
+        }
+      });
+
+      return Array.from(new Set(times)).sort();
+    }
+
+    function timeToMinutes(value) {
+      const match = String(value || '').match(/^(\d{2}):(\d{2})$/);
+      if (!match) return null;
+
+      return Number(match[1]) * 60 + Number(match[2]);
+    }
+
+    function minutesToTime(value) {
+      const hours = Math.floor(value / 60);
+      const minutes = value % 60;
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
     }
 
     /**
@@ -693,7 +715,7 @@
       } catch (error) {
         nextBtn.disabled = false;
         prevBtn.style.visibility = 'visible';
-        nextBtn.textContent = 'Confirmar Cita';
+        nextBtn.textContent = getConfigText('confirmLabel', 'Confirmar Cita');
         nextBtn.classList.remove('is-loading');
         alert(error.message || 'No se pudo crear la cita. Intente nuevamente.');
       }
@@ -704,6 +726,13 @@
      */
     function showSuccessMessage() {
       const formWrapper = document.querySelector('.reservation-form-wrapper');
+      const clinicName = getConfigText('clinicName', 'la clinica');
+      const successTitle = getConfigText('successTitle', 'Cita Agendada');
+      const successText = getConfigText(
+        'successText',
+        'Su cita ha sido confirmada exitosamente. Recibira un correo electronico con todos los detalles. Gracias por confiar en {clinic}.',
+      ).replaceAll('{clinic}', clinicName);
+      const backHomeLabel = getConfigText('backHomeLabel', 'Volver al Inicio');
       const successHTML = `
         <div class="success-message-container">
           <div class="success-icon">
@@ -712,12 +741,29 @@
               <polyline points="22 4 12 14.01 9 11.01"></polyline>
             </svg>
           </div>
-          <h2 class="success-title">¡Cita Agendada!</h2>
-          <p class="success-text">Su cita ha sido confirmada exitosamente. Recibirá un correo electrónico con todos los detalles. Gracias por confiar en Clínica Estándar.</p>
-          <a href="/clinica/" class="btn btn-primary">Volver al Inicio</a>
+          <h2 class="success-title">${escapeHtml(successTitle)}</h2>
+          <p class="success-text">${escapeHtml(successText)}</p>
+          <a href="/clinica/" class="btn btn-primary">${escapeHtml(backHomeLabel)}</a>
         </div>`;
       formWrapper.innerHTML = successHTML;
       formWrapper.style.height = 'auto'; // Let the content define the height
+    }
+
+    function getConfigText(key, fallback) {
+      const value = String(config[key] ?? '').trim();
+      return value !== '' ? value : fallback;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, (match) => {
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;',
+        }[match];
+      });
     }
 
     // --- Event Listeners ---

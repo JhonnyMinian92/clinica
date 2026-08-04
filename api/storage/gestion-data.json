@@ -23,6 +23,15 @@
         "doctors_subtitle": "Profesionales que combinan conocimiento, experiencia y vocacion.",
         "comments_title": "La Voz de Nuestros Pacientes",
         "comments_subtitle": "Historias reales de quienes han confiado su salud en nuestras manos.",
+        "reservation_title": "Agendar una Cita",
+        "reservation_subtitle": "Siga los pasos para encontrar un horario conveniente para usted.",
+        "reservation_summary_note": "Recibira una confirmacion por correo electronico. Por favor, llegue 15 minutos antes de su cita.",
+        "reservation_success_title": "Cita Agendada",
+        "reservation_success_text": "Su cita ha sido confirmada exitosamente. Recibira un correo electronico con todos los detalles. Gracias por confiar en {clinic}.",
+        "reservation_back_home_label": "Volver al Inicio",
+        "reservation_next_label": "Siguiente",
+        "reservation_confirm_label": "Confirmar Cita",
+        "reservation_previous_label": "Anterior",
         "address": "Buenavista y Tarqui, Machala, Ecuador",
         "email": "info@clinicaestandar.com",
         "phone_display": "(07) 293-3888",
@@ -336,13 +345,15 @@
         },
         {
             "id": "doc8",
-            "name": "Dra. Isabella Gomez",
+            "name": "Dra. Laura Gomez",
             "photo": "/clinica/public/assets/doctora_avatar.png",
             "specialty_id": "psiquiatria",
             "sub_specialty": "Psicoterapia",
             "experience_years": 9,
             "university": "Universidad de Barcelona",
-            "recognitions": [],
+            "recognitions": [
+                "Demasiado Hermosa"
+            ],
             "languages": [
                 "Espanol",
                 "Catalan"
