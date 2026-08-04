@@ -187,6 +187,50 @@ Esta sección funciona como tu memoria y mapa del sistema. Describe el estado ac
 
 ## Tareas Pendientes (Backlog Priorizado)
 
+### Tareas para v4.4
+
+#### Tarea 15: Implementación del Dashboard de Doctor/Administrador
+*Objetivo: Crear un panel de control profesional, intuitivo y responsive que sirva como centro de operaciones para doctores y administradores.*
+
+- **15.1 - Backend y Estructura de Datos (PHP):**
+  - Crear los archivos base: `pages/dashboard/index.php`, `pages/dashboard/dashboard.css`, y `pages/dashboard/dashboard.js`.
+  - Crear un endpoint para la lógica de negocio: `api/dashboard_handler.php`. Este archivo gestionará las peticiones de datos y las actualizaciones de estado.
+  - Implementar la lógica de sesión en `index.php` para verificar el rol del usuario ('DOCTOR' o 'ADMINISTRADOR') y redirigir si no está autenticado.
+  - En `dashboard_handler.php`, desarrollar la lógica para obtener las citas del día. La función debe ser flexible:
+    - Si el rol es 'DOCTOR', obtener solo sus citas.
+    - Si el rol es 'ADMINISTRADOR', obtener las citas de todos los doctores.
+  - Definir y servir una estructura de datos JSON clara para el frontend. Cada cita debe incluir: `id`, `hora`, `nombre_paciente`, `motivo_consulta`, `estado` (`pendiente`, `atendida`, `no-presentado`, `rechazada`), y `doctor_info` (para la vista de admin).
+  - Implementar la lógica en `dashboard_handler.php` para actualizar el estado de una cita (ej. de 'pendiente' a 'atendida').
+
+- **15.2 - Maquetación y Componentes (HTML/PHP):**
+  - Diseñar y maquetar la estructura principal del dashboard: un encabezado de bienvenida, un área para tarjetas de KPIs y el contenedor para la lista de citas.
+  - Crear el HTML para los componentes clave:
+    - **Tarjetas de KPI:** "Citas Atendidas Hoy", "Citas Pendientes", "No Presentados", "Rechazadas".
+    - **Tabla de Citas:** Usar una `<table>` semántica con `<thead>` y `<tbody>` para mostrar la hora, paciente, motivo, estado y acciones.
+    - **Controles de Filtro:** Un grupo de botones para filtrar la lista de citas por estado ("Todas", "Pendientes", "Atendidas", etc.).
+    - **Selector de Doctor (Solo Admin):** Un dropdown `<select>` para que el administrador pueda ver el dashboard de un doctor específico o de "Todos".
+  - Asegurar que todo el HTML sea semántico y accesible desde el inicio.
+
+- **15.3 - Diseño y Estilos (CSS):**
+  - Desarrollar los estilos en `dashboard.css`, reutilizando las variables y clases de utilidad del Design System "Aura Health" de `style.css`.
+  - Diseñar las tarjetas de KPI para que sean visualmente atractivas, con tipografía clara, un ícono representativo y microinteracciones al pasar el cursor.
+  - Estilizar la tabla de citas, usando `badges` de color para indicar claramente el estado de cada una (`.status-pending`, `.status-completed`, `.status-rejected`, `.status-no-show`).
+  - Implementar un layout 100% responsive que garantice una experiencia óptima en móviles (donde la tabla podría convertirse en tarjetas), tablets y escritorio. El diseño debe ser elegante y no genérico.
+  - Diseñar los estados `hover` y `focus` para todos los elementos interactivos (botones, filtros, filas de la tabla).
+
+- **15.4 - Interactividad y Lógica de Frontend (JS):**
+  - En `dashboard.js`, implementar la carga inicial de datos usando Fetch API para llamar a `api/dashboard_handler.php`.
+  - Implementar la lógica para manejar los clics en los botones de acción ("Marcar como Atendida", "Rechazar", "Marcar como No Presentado"), enviando la actualización al backend.
+  - Implementar la manipulación del DOM para actualizar la UI en tiempo real sin recargar la página (ej. mover una cita de la lista de pendientes a atendidas, cambiar su estilo y actualizar los contadores de los KPIs).
+  - Implementar la funcionalidad de los filtros del lado del cliente para la lista de citas, mostrando/ocultando elementos según la selección.
+  - Añadir la lógica para el selector de doctor del administrador, que volverá a solicitar los datos filtrados por el doctor seleccionado.
+
+- **15.5 - Refinamiento y Casos Borde:**
+  - Implementar estados de carga (skeletons o spinners) mientras se obtienen los datos iniciales o se actualiza una cita.
+  - Diseñar y mostrar mensajes para estados vacíos (ej. "No tiene citas programadas para hoy").
+  - Implementar modales de confirmación para acciones destructivas como "Rechazar Cita".
+  - Realizar una auditoría final de performance, accesibilidad (navegación por teclado, lectores de pantalla) y responsive design.
+
 ### Tareas para v4.3
 
 #### Tarea 12: Refinamiento del Formulario de Reservaciones
