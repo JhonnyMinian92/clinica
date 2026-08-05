@@ -4,7 +4,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../data.php';
 
-$user = $_SESSION['user'] ?? null;
+$user = clinica_current_user();
 
 if (!is_array($user) || !clinica_can_access_management((string) ($user['role'] ?? ''))) {
   clinica_json(['success' => false, 'error' => 'Acceso restringido a administracion.'], 403);
@@ -24,6 +24,10 @@ if ($method === 'GET') {
     'data' => $resource === 'clinic' ? clinica_get_clinic_settings() : clinica_get_database_resource($resource),
     'metadata' => clinica_gestion_metadata(),
   ]);
+}
+
+if ($method === 'POST' && strtolower(trim((string) ($_POST['action'] ?? ''))) === 'upload') {
+  clinica_gestion_upload_image($resource, $_POST, $_FILES);
 }
 
 $payload = clinica_request_json();
@@ -104,6 +108,92 @@ function clinica_gestion_metadata(): array
       'specialty_id' => (string) ($item['specialty_id'] ?? ''),
     ], clinica_get_doctors()),
   ];
+}
+
+function clinica_gestion_upload_image(string $resource, array $post, array $files): void
+{
+  $field = trim((string) ($post['field'] ?? ''));
+  $targets = [
+    'clinic' => [
+      'hero_image' => 'clinic',
+      'hero_mobile_image' => 'clinic',
+    ],
+    'doctors' => [
+      'photo' => 'doctors',
+    ],
+    'comments' => [
+      'avatar' => 'comments',
+    ],
+  ];
+
+  $directoryName = $targets[$resource][$field] ?? '';
+  if ($directoryName === '') {
+    clinica_json(['success' => false, 'error' => 'Campo de imagen no permitido para este recurso.'], 422);
+  }
+
+  $file = $files['image'] ?? null;
+  if (!is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+    clinica_json(['success' => false, 'error' => 'No se recibio una imagen valida.'], 422);
+  }
+
+  $size = (int) ($file['size'] ?? 0);
+  if ($size <= 0 || $size > 5 * 1024 * 1024) {
+    clinica_json(['success' => false, 'error' => 'La imagen debe pesar menos de 5 MB.'], 422);
+  }
+
+  $tmpName = (string) ($file['tmp_name'] ?? '');
+  if ($tmpName === '' || !is_uploaded_file($tmpName)) {
+    clinica_json(['success' => false, 'error' => 'No se pudo procesar el archivo subido.'], 422);
+  }
+
+  $finfo = new finfo(FILEINFO_MIME_TYPE);
+  $mime = (string) ($finfo->file($tmpName) ?: '');
+  $extensions = [
+    'image/jpeg' => 'jpg',
+    'image/png' => 'png',
+    'image/webp' => 'webp',
+    'image/gif' => 'gif',
+  ];
+
+  if (!array_key_exists($mime, $extensions) || getimagesize($tmpName) === false) {
+    clinica_json(['success' => false, 'error' => 'Formato no soportado. Use JPG, PNG, WEBP o GIF.'], 422);
+  }
+
+  $assetsRoot = realpath(__DIR__ . '/../../public/assets');
+  if ($assetsRoot === false) {
+    clinica_json(['success' => false, 'error' => 'No se encontro el directorio de assets.'], 500);
+  }
+
+  $targetDirectory = $assetsRoot . DIRECTORY_SEPARATOR . $directoryName;
+  if (!is_dir($targetDirectory) && !mkdir($targetDirectory, 0775, true)) {
+    clinica_json(['success' => false, 'error' => 'No se pudo crear el directorio de imagenes.'], 500);
+  }
+
+  $resolvedTargetDirectory = realpath($targetDirectory);
+  if ($resolvedTargetDirectory === false || !str_starts_with($resolvedTargetDirectory, $assetsRoot)) {
+    clinica_json(['success' => false, 'error' => 'Directorio de destino invalido.'], 500);
+  }
+
+  $originalName = pathinfo((string) ($file['name'] ?? 'imagen'), PATHINFO_FILENAME);
+  $slug = clinica_slugify($originalName);
+  $slug = $slug !== '' ? $slug : 'imagen';
+  $filename = $slug . '-' . date('YmdHis') . '-' . bin2hex(random_bytes(4)) . '.' . $extensions[$mime];
+  $targetPath = $resolvedTargetDirectory . DIRECTORY_SEPARATOR . $filename;
+
+  if (!move_uploaded_file($tmpName, $targetPath)) {
+    clinica_json(['success' => false, 'error' => 'No se pudo guardar la imagen.'], 500);
+  }
+
+  chmod($targetPath, 0664);
+  $url = '/clinica/public/assets/' . $directoryName . '/' . $filename;
+
+  clinica_json([
+    'success' => true,
+    'field' => $field,
+    'url' => $url,
+    'path' => $url,
+    'filename' => $filename,
+  ], 201);
 }
 
 function clinica_gestion_save(string $resource, array $record, array $user): void
@@ -321,7 +411,8 @@ function clinica_normalize_collection_record(string $resource, array $record, ar
     'schedules' => [
       'id' => clinica_record_id($record, $existing, 'doctor_id', 'sch'),
       'doctor_id' => clinica_required_relation($record, 'doctor_id', 'doctors', 'Doctor requerido.'),
-      'weekday' => max(1, min(7, (int) ($record['weekday'] ?? 1))),
+      'date' => clinica_optional_future_date($record, 'date'),
+      'weekday' => clinica_schedule_weekday_value($record),
       'start_time' => clinica_required_time($record, 'start_time', 'Hora de inicio requerida.'),
       'end_time' => clinica_required_time($record, 'end_time', 'Hora de fin requerida.'),
       'slot_minutes' => max(5, min(120, (int) ($record['slot_minutes'] ?? 15))),
@@ -436,6 +527,42 @@ function clinica_password_value(array $record, array $existing): string
   }
 
   clinica_json(['success' => false, 'error' => 'Contrasena requerida.'], 422);
+}
+
+function clinica_schedule_weekday_value(array $record): int
+{
+  $date = trim((string) ($record['date'] ?? ''));
+  if ($date !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+    $timestamp = strtotime($date . ' 00:00:00');
+    if ($timestamp !== false) {
+      return (int) date('N', $timestamp);
+    }
+  }
+
+  return max(1, min(7, (int) ($record['weekday'] ?? 1)));
+}
+
+function clinica_optional_future_date(array $record, string $key): string
+{
+  $value = trim((string) ($record[$key] ?? ''));
+  if ($value === '') {
+    return '';
+  }
+
+  if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+    clinica_json(['success' => false, 'error' => 'La fecha del horario no es valida.'], 422);
+  }
+
+  [$year, $month, $day] = array_map('intval', explode('-', $value));
+  if (!checkdate($month, $day, $year)) {
+    clinica_json(['success' => false, 'error' => 'La fecha del horario no es valida.'], 422);
+  }
+
+  if ($value < date('Y-m-d')) {
+    clinica_json(['success' => false, 'error' => 'La fecha del horario debe ser hoy o futura.'], 422);
+  }
+
+  return $value;
 }
 
 function clinica_required_time(array $record, string $key, string $message): string

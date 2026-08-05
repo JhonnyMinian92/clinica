@@ -517,6 +517,68 @@ body {
   resize: vertical;
 }
 
+.gestion-field.is-image,
+.gestion-form.is-singleton-form .gestion-field.is-image {
+  grid-column: 1 / -1;
+}
+
+.gestion-image-control {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.gestion-image-preview {
+  display: grid;
+  place-items: center;
+  min-height: 96px;
+  overflow: hidden;
+  border: 1px solid var(--gestion-border);
+  border-radius: 7px;
+  background: var(--gestion-surface-soft);
+  color: var(--gestion-faint);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.gestion-image-preview img {
+  width: 100%;
+  height: 100%;
+  min-height: 96px;
+  object-fit: cover;
+}
+
+.gestion-image-body {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.gestion-image-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gestion-upload-label {
+  cursor: pointer;
+}
+
+.gestion-upload-label.is-uploading {
+  pointer-events: none;
+  opacity: 0.68;
+}
+
+.gestion-upload-status {
+  min-height: 16px;
+  color: var(--gestion-success);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
 .gestion-search::placeholder,
 .gestion-input::placeholder,
 .gestion-textarea::placeholder {
@@ -915,6 +977,14 @@ body {
   .gestion-form-actions {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .gestion-image-control {
+    grid-template-columns: 1fr;
+  }
+
+  .gestion-image-preview {
+    max-height: 180px;
   }
 }
 

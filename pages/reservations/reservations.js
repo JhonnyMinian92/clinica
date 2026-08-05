@@ -449,10 +449,12 @@
         const isoWeekday = String(date.getDay() === 0 ? 7 : date.getDay());
 
         // Verificar si el doctor trabaja en este día de la semana
-        const worksOnThisDay = Object.prototype.hasOwnProperty.call(selection.doctorSchedule, isoWeekday);
+        const worksOnThisDay = doctorWorksOnDate(dateString, isoWeekday);
 
         let classes = 'calendar-day';
-        if (date < calendarState.today.setHours(0, 0, 0, 0) || !worksOnThisDay) {
+        const todayMidnight = new Date(calendarState.today);
+        todayMidnight.setHours(0, 0, 0, 0);
+        if (date < todayMidnight || !worksOnThisDay) {
           classes += ' is-disabled';
         }
         if (date.toDateString() === calendarState.today.toDateString()) {
@@ -502,7 +504,7 @@
         // 1. Determinar el turno del doctor para el día seleccionado
         const selectedDateObj = new Date(selection.date + 'T00:00:00');
         const isoWeekday = String(selectedDateObj.getDay() === 0 ? 7 : selectedDateObj.getDay());
-        const rules = selection.doctorScheduleRules[isoWeekday] || [];
+        const rules = getScheduleRulesForDate(selection.date, isoWeekday);
 
         const availableTimes = generateTimesFromRules(rules);
         let filteredTimes = availableTimes;
@@ -559,6 +561,20 @@
       });
 
       return Array.from(new Set(times)).sort();
+    }
+
+    function doctorWorksOnDate(dateString, isoWeekday) {
+      return (
+        Object.prototype.hasOwnProperty.call(selection.doctorSchedule, dateString) ||
+        Object.prototype.hasOwnProperty.call(selection.doctorSchedule, isoWeekday) ||
+        getScheduleRulesForDate(dateString, isoWeekday).length > 0
+      );
+    }
+
+    function getScheduleRulesForDate(dateString, isoWeekday) {
+      const weeklyRules = selection.doctorScheduleRules[isoWeekday] || [];
+      const datedRules = selection.doctorScheduleRules[dateString] || [];
+      return datedRules.concat(weeklyRules);
     }
 
     function timeToMinutes(value) {

@@ -5,7 +5,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 
 require_once __DIR__ . '/../../../api/data.php';
 
-$user = $_SESSION['user'] ?? null;
+$user = clinica_current_user();
 if (!is_array($user) || !in_array($user['role'] ?? '', clinica_dashboard_roles(), true)) {
   $redirect = urlencode($_SERVER['REQUEST_URI'] ?? '/clinica/pages/gestion/clinic/');
   header("Location: /clinica/pages/login/?redirect={$redirect}");

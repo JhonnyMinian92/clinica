@@ -3,6 +3,7 @@
 const CLINICA_APPOINTMENTS_SEED_VERSION = 2;
 const CLINICA_GESTION_DATA_VERSION = 1;
 const CLINICA_GESTION_STORAGE_FILE = __DIR__ . '/storage/gestion-data.json';
+const CLINICA_SESSION_TTL_SECONDS = 28800;
 
 function clinica_default_database(): array
 {
@@ -271,6 +272,8 @@ function clinica_get_schedules(bool $activeOnly = false): array
   usort($schedules, static function (array $a, array $b): int {
     $doctorCompare = strcmp($a['doctor_id'] ?? '', $b['doctor_id'] ?? '');
     if ($doctorCompare !== 0) return $doctorCompare;
+    $dateCompare = strcmp($a['date'] ?? '', $b['date'] ?? '');
+    if ($dateCompare !== 0) return $dateCompare;
     $weekdayCompare = ((int) ($a['weekday'] ?? 0)) <=> ((int) ($b['weekday'] ?? 0));
     return $weekdayCompare !== 0 ? $weekdayCompare : strcmp($a['start_time'] ?? '', $b['start_time'] ?? '');
   });
@@ -331,7 +334,15 @@ function clinica_schedule_map_for_doctor(string $doctorId): array
       continue;
     }
 
-    $map[$weekday] = clinica_schedule_shift_label((string) ($schedule['start_time'] ?? ''), (string) ($schedule['end_time'] ?? ''));
+    $label = clinica_schedule_shift_label((string) ($schedule['start_time'] ?? ''), (string) ($schedule['end_time'] ?? ''));
+    $date = (string) ($schedule['date'] ?? '');
+
+    if ($date !== '') {
+      $map[$date] = $label;
+      continue;
+    }
+
+    $map[$weekday] = $label;
   }
 
   return $map;
@@ -351,11 +362,20 @@ function clinica_schedule_rules_for_doctor(string $doctorId): array
       continue;
     }
 
-    $rules[$weekday][] = [
+    $rule = [
       'start_time' => (string) ($schedule['start_time'] ?? ''),
       'end_time' => (string) ($schedule['end_time'] ?? ''),
       'slot_minutes' => max(5, (int) ($schedule['slot_minutes'] ?? 15)),
     ];
+
+    $date = (string) ($schedule['date'] ?? '');
+    if ($date !== '') {
+      $rule['date'] = $date;
+      $rules[$date][] = $rule;
+      continue;
+    }
+
+    $rules[$weekday][] = $rule;
   }
 
   return $rules;
@@ -691,6 +711,88 @@ function clinica_public_user(array $user): array
     'label' => (string) ($user['label'] ?? $role),
     'permissions' => clinica_permissions_for_role($role),
   ];
+}
+
+function clinica_current_user(): ?array
+{
+  if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+  }
+
+  $user = $_SESSION['user'] ?? null;
+  if (!is_array($user)) {
+    return null;
+  }
+
+  $startedAt = (int) ($_SESSION['auth_started_at'] ?? 0);
+  if ($startedAt <= 0 || time() - $startedAt >= CLINICA_SESSION_TTL_SECONDS) {
+    clinica_destroy_session();
+    return null;
+  }
+
+  return $user;
+}
+
+function clinica_start_authenticated_session(array $user): void
+{
+  if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+  }
+
+  session_regenerate_id(true);
+  $_SESSION['user'] = $user;
+  $_SESSION['auth_started_at'] = time();
+  clinica_set_session_cookie_expiration($_SESSION['auth_started_at'] + CLINICA_SESSION_TTL_SECONDS);
+}
+
+function clinica_session_expires_at(): ?int
+{
+  if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+  }
+
+  $startedAt = (int) ($_SESSION['auth_started_at'] ?? 0);
+  return $startedAt > 0 ? $startedAt + CLINICA_SESSION_TTL_SECONDS : null;
+}
+
+function clinica_set_session_cookie_expiration(int $expiresAt): void
+{
+  if (session_status() !== PHP_SESSION_ACTIVE || headers_sent()) {
+    return;
+  }
+
+  $params = session_get_cookie_params();
+  setcookie(session_name(), session_id(), [
+    'expires' => $expiresAt,
+    'path' => $params['path'] ?: '/',
+    'domain' => $params['domain'] ?? '',
+    'secure' => (bool) ($params['secure'] ?? false),
+    'httponly' => true,
+    'samesite' => $params['samesite'] ?? 'Lax',
+  ]);
+}
+
+function clinica_destroy_session(): void
+{
+  if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+  }
+
+  $_SESSION = [];
+
+  if (ini_get('session.use_cookies') && !headers_sent()) {
+    $params = session_get_cookie_params();
+    setcookie(session_name(), '', [
+      'expires' => time() - 42000,
+      'path' => $params['path'] ?: '/',
+      'domain' => $params['domain'] ?? '',
+      'secure' => (bool) ($params['secure'] ?? false),
+      'httponly' => true,
+      'samesite' => $params['samesite'] ?? 'Lax',
+    ]);
+  }
+
+  session_destroy();
 }
 
 function clinica_json(array $payload, int $statusCode = 200): never

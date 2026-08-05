@@ -4,7 +4,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../data.php';
 
-$user = $_SESSION['user'] ?? null;
+$user = clinica_current_user();
 
 if (!is_array($user) || !in_array($user['role'] ?? '', clinica_dashboard_roles(), true)) {
   clinica_json(['success' => false, 'error' => 'Acceso no autorizado.'], 401);
@@ -59,6 +59,7 @@ if ($method === 'GET') {
   clinica_json([
     'success' => true,
     'user' => clinica_public_user($user),
+    'expires_at' => clinica_session_expires_at(),
     'appointments' => $appointments,
     'doctors' => $doctors,
     'filters' => [

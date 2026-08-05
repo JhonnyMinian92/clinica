@@ -1,6 +1,6 @@
 # Contexto del Proyecto - Clinica Estandar
 
-Actualizado: 2026-08-04
+Actualizado: 2026-08-05
 Ruta local: `C:\xampp\htdocs\clinica`
 Base URL esperada en XAMPP: `/clinica/`
 
@@ -84,10 +84,11 @@ clinica/
   - Soporta JSON con BOM UTF-8 para hacer el parser mas tolerante.
 
 - `api/general/index.php`
-  - `GET action=session`: devuelve si hay usuario autenticado.
-  - `POST action=login`: valida credenciales demo, crea `$_SESSION['user']` y prepara citas.
+  - `GET action=session`: devuelve si hay usuario autenticado y el `expires_at` de la sesion vigente.
+  - `POST action=login`: valida credenciales demo, crea `$_SESSION['user']`, registra `auth_started_at`, fija expiracion de cookie y prepara citas.
   - `POST action=logout`: destruye sesion y devuelve redirect al login.
   - `POST action=create_appointment`: crea una cita pendiente desde el formulario de reservas y la agrega a la sesion.
+  - La autenticacion demo dura 8 horas absolutas (`CLINICA_SESSION_TTL_SECONDS = 28800`); sesiones antiguas o vencidas se destruyen y vuelven a login.
 
 - `api/public/index.php`
   - Endpoint publico sin sesion para informacion visible en la web.
@@ -273,8 +274,9 @@ La capa compartida vive en `api/data.php`. Si el archivo JSON no existe o esta c
   - Alimenta la seccion de servicios del home.
 - `pages/gestion/calendar/`
   - CRUD de horarios por doctor.
-  - Campos: doctor, dia ISO de semana, hora inicio, hora fin, duracion de cupo y activo.
-  - Reservas usa estos horarios por numero de dia (`1` lunes a `7` domingo), evitando depender de nombres con acentos.
+  - Campos: doctor, fecha especifica opcional, dia ISO de semana, hora inicio, hora fin, duracion de cupo y activo.
+  - Si `date` esta vacio, el horario es semanal recurrente; si `date` tiene valor, aplica solo a esa fecha futura.
+  - Reservas usa estos horarios por numero de dia (`1` lunes a `7` domingo) y por fecha concreta cuando exista una regla puntual.
 
 ### API de Gestion
 
@@ -290,6 +292,10 @@ Contrato:
 - `POST { action: "save", record: {...} }`
   - Crea o actualiza registros.
   - En `clinic` actualiza el registro maestro.
+- `POST multipart/form-data action=upload`
+  - Sube imagenes desde Gestion y devuelve una ruta en `/clinica/public/assets/...`.
+  - Campos permitidos: `clinic.hero_image`, `clinic.hero_mobile_image`, `doctors.photo` y `comments.avatar`.
+  - Formatos permitidos: JPG, PNG, WEBP y GIF, hasta 5 MB.
 - `POST { action: "delete", id: "..." }`
   - Elimina registros de colecciones.
   - No permite eliminar el registro maestro de clinica.
@@ -305,6 +311,7 @@ Se agregaron:
   - Sistema visual responsive para modulos CRUD.
 - `pages/gestion/gestion.js`
   - Motor CRUD compartido: carga, filtros, stats, formulario dinamico, crear, editar, eliminar y toast.
+  - Renderiza campos `type: image` con preview, input de archivo y subida multipart a `api/gestion/`.
 - Cada componente mantiene su propio `index.php`, `.css` y `.js` con configuracion especifica.
 
 ### Paginas Publicas Conectadas
@@ -328,6 +335,7 @@ Se agregaron:
 - `pages/reservations/reservations.js`
   - La disponibilidad usa dia ISO numerico del calendario.
   - Los cupos se generan desde `horarios_detallados` (`start_time`, `end_time`, `slot_minutes`) publicados por `clinica_schedule_rules_for_doctor()`.
+  - Reconoce reglas semanales recurrentes y reglas puntuales por fecha (`YYYY-MM-DD`) para semanas futuras.
 
 ### Verificacion Gestion
 
@@ -427,9 +435,11 @@ Resultados de smoke por sesion:
   - El formulario de `clinic` usa grilla amplia para editar datos institucionales sin una lista innecesaria al lado.
 - `pages/gestion/calendar/`
   - `calendar.js` usa `view: schedule-board`.
-  - `gestion.js` renderiza una matriz semanal para horarios: doctores por filas, dias por columnas y bloques editables por celda.
+  - `gestion.js` renderiza una matriz multi-semana para horarios: doctores por filas, dias fechados por columnas y bloques editables por celda.
   - Incluye filtros especificos por especialidad y doctor, ademas de busqueda y estado.
-  - Cada celda permite agregar un horario prellenando doctor, dia, hora inicio, hora fin, duracion de cupo y estado.
+  - Incluye selector de semana inicial y cantidad de semanas futuras visibles (`1`, `2`, `4`, `8`, `12`).
+  - Cada celda futura permite agregar un horario prellenando doctor, fecha, dia, hora inicio, hora fin, duracion de cupo y estado.
+  - Las celdas de fechas anteriores a hoy mantienen lectura/edicion de bloques existentes, pero no permiten crear nuevos horarios puntuales.
   - `calendar.css` define responsive propio: tablero semanal en desktop y agenda apilada por doctor/dia en tablet y movil.
 - CSS internos de `clinic`, `comment`, `doctors`, `specialties`, `users`, `services` y `calendar`
   - Quedaron como import del sistema compartido, sin colores decorativos por modulo.
@@ -506,7 +516,7 @@ Paginas revisadas:
 - Todas las paginas de Gestion abren el formulario en un modal responsive al crear o editar registros.
 - El modal soporta cierre por boton, fondo oscuro, tecla Escape y boton `Cancelar`; al guardar o eliminar vuelve al listado/resumen.
 - `pages/gestion/clinic/` queda como vista resumen de la unica clinica, sin filtros, sin numeraciones y sin lista artificial.
-- `pages/gestion/calendar/` mantiene la agenda semanal a ancho completo; los bloques de horario y botones `Agregar` abren el editor modal.
+- `pages/gestion/calendar/` mantiene la agenda multi-semana a ancho completo; los bloques de horario y botones `Agregar` abren el editor modal.
 
 ### Auditoria Integral 2026-08-04
 
@@ -579,6 +589,54 @@ Validacion realizada:
   - Dashboard: acceso a Gestion visible para admin, paginacion 1/2, siguiente pagina y filtro pendientes sin errores de consola.
   - Reservas: `doc3` trae 5 dias con `horarios_detallados`; al seleccionar fecha se generaron 32 cupos desde reglas detalladas, sin errores de consola.
   - Chrome headless valido dashboard y reservas; las capturas temporales fueron eliminadas junto con `tmp-codex-shots/`.
+
+## Iteracion 2026-08-05
+
+Cambios aplicados:
+
+- Sesion:
+  - Se agrego expiracion absoluta de 8 horas mediante `CLINICA_SESSION_TTL_SECONDS = 28800`.
+  - `clinica_current_user()` centraliza la lectura de usuario autenticado y destruye sesiones sin `auth_started_at` o vencidas.
+  - `clinica_start_authenticated_session()` registra hora de inicio, regenera ID y fija expiracion de cookie.
+  - Login, dashboard, gestion y APIs protegidas usan el helper central en vez de leer `$_SESSION['user']` directamente.
+- Imagenes en Gestion:
+  - `api/gestion/index.php` acepta `multipart/form-data` con `action=upload`.
+  - `pages/gestion/gestion.js` renderiza campos `image` con preview, campo de ruta y selector de archivo.
+  - `pages/gestion/clinic/clinic.js`: `hero_image` y `hero_mobile_image` permiten subir imagenes.
+  - `pages/gestion/doctors/doctors.js`: `photo` permite subir imagen del doctor/doctora.
+  - `pages/gestion/comment/comment.js`: `avatar` permite subir avatar de resena.
+  - Las imagenes se guardan bajo `public/assets/clinic/`, `public/assets/doctors/` o `public/assets/comments/` segun recurso.
+- Horarios:
+  - `schedules` acepta `date` opcional para bloques puntuales en fechas futuras.
+  - Si `date` esta vacio, el bloque conserva comportamiento semanal recurrente.
+  - Gestion de Horarios renderiza varias semanas futuras con controles de semana inicial y cantidad de semanas.
+  - Las fechas pasadas del tablero no permiten crear nuevos bloques puntuales.
+  - Reservas combina reglas puntuales por fecha con reglas semanales recurrentes al generar cupos.
+
+Validacion realizada:
+
+- Servidor local usado: `http://127.0.0.1:8787/clinica/`.
+- `php -l` en todos los `.php`: OK.
+- `node --check` en todos los `.js`: OK.
+- `api/storage/gestion-data.json` parsea como JSON: OK.
+- Login admin por API: OK; `expires_at` queda a 28800 segundos.
+- Helper de expiracion con `auth_started_at` vencido: devuelve sesion expirada.
+- API Gestion:
+  - Crear horario temporal puntual para `doc1` en `2026-08-19`: OK.
+  - Reservas con `?doctor_id=doc1` contiene la regla futura puntual: OK.
+  - Eliminar horario temporal: OK.
+  - Subida multipart de imagen a `doctors.photo`: OK; el archivo temporal fue eliminado.
+- Smoke HTTP autenticado admin:
+  - `/`, `/pages/login/`, `/pages/dashboard/`, `/pages/gestion/calendar/`, `/pages/gestion/doctors/`, `/pages/gestion/clinic/`, `/pages/reservations/?doctor_id=doc3`: OK.
+- Chrome headless con Chrome del sistema:
+  - Gestion Horarios renderiza 4 semanas por defecto y el selector queda en `4`.
+  - Botones `Agregar` de dias pasados quedan deshabilitados.
+  - Primer `Agregar` futuro prellena fecha `2026-08-05` y weekday `3`.
+  - Modal doctores tiene 1 input de imagen (`photo`).
+  - Modal resenas tiene 1 input de imagen (`avatar`).
+  - Modal clinica tiene 2 inputs de imagen (`hero_image`, `hero_mobile_image`).
+  - Reservas renderiza calendario (`36` celdas en smoke).
+  - Sin errores de consola.
 
 ## Checklist Pendiente
 

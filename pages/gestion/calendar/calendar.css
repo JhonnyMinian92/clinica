@@ -9,7 +9,43 @@
 }
 
 .gestion-shell[data-resource='schedules'] .gestion-filters.is-schedule-filters {
-  grid-template-columns: minmax(180px, 1fr) 132px minmax(180px, 0.75fr) minmax(180px, 0.75fr);
+  grid-template-columns: minmax(180px, 1fr) 132px minmax(170px, 0.75fr) minmax(170px, 0.75fr) minmax(150px, 0.62fr) 120px;
+}
+
+.schedule-weeks {
+  display: grid;
+  gap: 16px;
+}
+
+.schedule-week-section {
+  display: grid;
+  gap: 8px;
+}
+
+.schedule-week-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--gestion-border);
+  border-radius: 7px;
+  background: var(--gestion-surface-soft);
+}
+
+.schedule-week-title span {
+  color: var(--gestion-faint);
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.schedule-week-title strong {
+  color: var(--gestion-text);
+  font-size: 0.82rem;
+  font-weight: 850;
 }
 
 .schedule-board {
@@ -51,7 +87,25 @@
 }
 
 .schedule-day-heading {
-  justify-content: center;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 1px;
+}
+
+.schedule-day-heading strong {
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 0.7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-day-heading small {
+  color: var(--gestion-faint);
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: none;
 }
 
 .schedule-doctor-cell,
@@ -92,6 +146,13 @@
 
 .schedule-day-mobile-label {
   display: none;
+}
+
+.schedule-day-mobile-label span {
+  color: var(--gestion-faint);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: none;
 }
 
 .schedule-slot-list {
@@ -213,9 +274,17 @@
   outline: none;
 }
 
+.schedule-add-btn:disabled {
+  border-color: var(--gestion-border);
+  background: var(--gestion-surface-soft);
+  color: var(--gestion-faint);
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
 @media (max-width: 1180px) {
   .gestion-shell[data-resource='schedules'] .gestion-filters.is-schedule-filters {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .schedule-board {
@@ -263,6 +332,13 @@
 @media (max-width: 620px) {
   .gestion-shell[data-resource='schedules'] .gestion-filters.is-schedule-filters {
     grid-template-columns: 1fr;
+  }
+
+  .schedule-week-title {
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+    padding: 8px 10px;
   }
 
   .schedule-doctor-row {

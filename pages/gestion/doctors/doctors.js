@@ -8,7 +8,7 @@ window.ClinicaGestion.boot({
   ],
   fields: [
     { name: 'name', label: 'Nombre', type: 'text', required: true },
-    { name: 'photo', label: 'Foto', type: 'text', help: 'Ej: /clinica/public/assets/doctor_avatar.jpg' },
+    { name: 'photo', label: 'Foto', type: 'image', help: 'Suba JPG, PNG, WEBP o GIF. Si no sube una foto, puede conservar el avatar placeholder.' },
     { name: 'specialty_id', label: 'Especialidad', type: 'select', optionSource: 'specialties', required: true },
     { name: 'sub_specialty', label: 'Subespecialidad', type: 'text' },
     { name: 'experience_years', label: 'Anos de experiencia', type: 'number', min: 0 },

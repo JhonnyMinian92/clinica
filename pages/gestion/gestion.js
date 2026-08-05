@@ -43,6 +43,8 @@
       metadata: {},
       editingId: null,
       loading: false,
+      scheduleWeekStart: getWeekStartIso(new Date()),
+      scheduleWeeks: Number(config.defaultWeeks || 4),
     };
 
     const shell = document.querySelector('.gestion-shell');
@@ -338,6 +340,44 @@
       dom.filters.appendChild(dom.scheduleDoctor);
     }
 
+    if (!dom.scheduleWeekStart) {
+      dom.scheduleWeekStart = document.createElement('input');
+      dom.scheduleWeekStart.id = 'gestion-schedule-week-start';
+      dom.scheduleWeekStart.className = 'gestion-input';
+      dom.scheduleWeekStart.type = 'date';
+      dom.scheduleWeekStart.min = getWeekStartIso(new Date());
+      dom.scheduleWeekStart.value = state.scheduleWeekStart;
+      dom.scheduleWeekStart.setAttribute('aria-label', 'Semana inicial de horarios');
+      const handleWeekStart = () => {
+        state.scheduleWeekStart = getWeekStartIso(parseIsoDate(dom.scheduleWeekStart.value) || new Date());
+        dom.scheduleWeekStart.value = state.scheduleWeekStart;
+        renderList(config, state, dom);
+      };
+      dom.scheduleWeekStart.addEventListener('input', handleWeekStart);
+      dom.scheduleWeekStart.addEventListener('change', handleWeekStart);
+      dom.filters.appendChild(dom.scheduleWeekStart);
+    }
+
+    if (!dom.scheduleWeeks) {
+      dom.scheduleWeeks = document.createElement('select');
+      dom.scheduleWeeks.id = 'gestion-schedule-weeks-filter';
+      dom.scheduleWeeks.className = 'gestion-select';
+      dom.scheduleWeeks.setAttribute('aria-label', 'Cantidad de semanas futuras');
+      const options = config.weekOptions || [1, 2, 4, 8, 12];
+      dom.scheduleWeeks.innerHTML = options
+        .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)} semana${Number(value) === 1 ? '' : 's'}</option>`)
+        .join('');
+      dom.scheduleWeeks.value = String(state.scheduleWeeks);
+      const handleWeeks = () => {
+        const nextValue = Number(dom.scheduleWeeks.value || state.scheduleWeeks || 4);
+        state.scheduleWeeks = Math.max(1, Math.min(12, nextValue));
+        renderList(config, state, dom);
+      };
+      dom.scheduleWeeks.addEventListener('input', handleWeeks);
+      dom.scheduleWeeks.addEventListener('change', handleWeeks);
+      dom.filters.appendChild(dom.scheduleWeeks);
+    }
+
     populateScheduleSpecialtyOptions(state, dom);
     populateScheduleDoctorOptions(state, dom);
   }
@@ -370,8 +410,9 @@
     const allRecords = Array.isArray(state.records) ? state.records : [];
     const weekdays = Array.isArray(state.metadata.weekdays) ? state.metadata.weekdays : [];
     const doctors = getVisibleScheduleDoctors(state, dom, records);
+    const weeks = getScheduleWeeks(state, dom);
 
-    dom.listSummary.textContent = `${records.length} de ${allRecords.length} bloques visibles. Seleccione un bloque para editar o agregue disponibilidad en una celda.`;
+    dom.listSummary.textContent = `${records.length} de ${allRecords.length} bloques filtrados. Mostrando ${weeks.length} semana${weeks.length === 1 ? '' : 's'} desde ${formatShortDate(weeks[0]?.start)}.`;
 
     if (doctors.length === 0) {
       dom.list.innerHTML = '<div class="gestion-empty">No hay doctores u horarios que coincidan con los filtros actuales.</div>';
@@ -381,12 +422,8 @@
     const grouped = groupScheduleRecords(records);
 
     dom.list.innerHTML = `
-      <div class="schedule-board" style="--schedule-days: ${weekdays.length};">
-        <div class="schedule-board-head">
-          <span class="schedule-doctor-heading">Doctor</span>
-          ${weekdays.map((day) => `<span class="schedule-day-heading">${escapeHtml(day.name)}</span>`).join('')}
-        </div>
-        ${doctors.map((doctor) => renderScheduleDoctorRow(doctor, weekdays, grouped, state.metadata)).join('')}
+      <div class="schedule-weeks">
+        ${weeks.map((week, index) => renderScheduleWeekSection(week, index, doctors, weekdays, grouped, state.metadata)).join('')}
       </div>
     `;
   }
@@ -411,16 +448,48 @@
   function groupScheduleRecords(records) {
     return records.reduce((grouped, record) => {
       const doctorId = record.doctor_id || '';
+      const date = String(record.date || '').trim();
       const weekday = String(record.weekday || '');
-      if (!grouped[doctorId]) grouped[doctorId] = {};
-      if (!grouped[doctorId][weekday]) grouped[doctorId][weekday] = [];
-      grouped[doctorId][weekday].push(record);
-      grouped[doctorId][weekday].sort((a, b) => String(a.start_time || '').localeCompare(String(b.start_time || '')));
+      const bucket = date ? 'dates' : 'weekdays';
+      const key = date || weekday;
+      if (!doctorId || !key) return grouped;
+      if (!grouped[bucket][doctorId]) grouped[bucket][doctorId] = {};
+      if (!grouped[bucket][doctorId][key]) grouped[bucket][doctorId][key] = [];
+      grouped[bucket][doctorId][key].push(record);
+      grouped[bucket][doctorId][key].sort((a, b) => String(a.start_time || '').localeCompare(String(b.start_time || '')));
       return grouped;
-    }, {});
+    }, { weekdays: {}, dates: {} });
   }
 
-  function renderScheduleDoctorRow(doctor, weekdays, grouped, metadata) {
+  function renderScheduleWeekSection(week, index, doctors, weekdays, grouped, metadata) {
+    const days = getWeekDays(week.start, weekdays);
+    return `
+      <section class="schedule-week-section">
+        <div class="schedule-week-title">
+          <span>Semana ${index + 1}</span>
+          <strong>${escapeHtml(formatWeekRange(week.start, week.end))}</strong>
+        </div>
+        <div class="schedule-board" style="--schedule-days: ${days.length};">
+          <div class="schedule-board-head">
+            <span class="schedule-doctor-heading">Doctor</span>
+            ${days.map((day) => renderScheduleDayHeading(day)).join('')}
+          </div>
+          ${doctors.map((doctor) => renderScheduleDoctorRow(doctor, days, grouped, metadata)).join('')}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderScheduleDayHeading(day) {
+    return `
+      <span class="schedule-day-heading">
+        <strong>${escapeHtml(day.name)}</strong>
+        <small>${escapeHtml(day.dateLabel)}</small>
+      </span>
+    `;
+  }
+
+  function renderScheduleDoctorRow(doctor, days, grouped, metadata) {
     const specialty = findMetadataItem(metadata.specialties, doctor.specialty_id);
     return `
       <div class="schedule-doctor-row">
@@ -428,19 +497,20 @@
           <strong>${escapeHtml(doctor.name || 'Doctor')}</strong>
           <span>${escapeHtml(specialty?.name || 'Sin especialidad')}</span>
         </div>
-        ${weekdays.map((day) => renderScheduleDayCell(doctor, day, grouped[doctor.id]?.[String(day.id)] || [])).join('')}
+        ${days.map((day) => renderScheduleDayCell(doctor, day, getScheduleRecordsForDay(grouped, doctor.id, day))).join('')}
       </div>
     `;
   }
 
   function renderScheduleDayCell(doctor, day, records) {
+    const isPastDate = day.date < todayIso();
     return `
       <div class="schedule-day-cell" data-label="${escapeHtml(day.name)}">
-        <div class="schedule-day-mobile-label">${escapeHtml(day.name)}</div>
+        <div class="schedule-day-mobile-label">${escapeHtml(day.name)} <span>${escapeHtml(day.dateLabel)}</span></div>
         <div class="schedule-slot-list">
           ${records.length > 0 ? records.map(renderScheduleSlot).join('') : '<span class="schedule-empty">Sin horario</span>'}
         </div>
-        <button type="button" class="schedule-add-btn" data-action="new-schedule" data-doctor-id="${escapeHtml(doctor.id)}" data-weekday="${escapeHtml(day.id)}">Agregar</button>
+        <button type="button" class="schedule-add-btn" data-action="new-schedule" data-doctor-id="${escapeHtml(doctor.id)}" data-weekday="${escapeHtml(day.id)}" data-date="${escapeHtml(day.date)}" ${isPastDate ? 'disabled title="Fecha anterior"' : ''}>Agregar</button>
       </div>
     `;
   }
@@ -448,26 +518,101 @@
   function renderScheduleSlot(record) {
     const active = record.active !== false;
     const time = `${record.start_time || '--:--'} - ${record.end_time || '--:--'}`;
+    const scope = record.date ? `Fecha ${record.date}` : 'Semanal';
     return `
       <div class="schedule-slot-wrap ${active ? '' : 'is-inactive'}" data-id="${escapeHtml(record.id || '')}">
         <button type="button" class="schedule-slot" data-action="edit" aria-label="Editar horario ${escapeHtml(time)}">
           <span>${escapeHtml(time)}</span>
-          <small>${escapeHtml(record.slot_minutes || 15)} min por cupo</small>
+          <small>${escapeHtml(record.slot_minutes || 15)} min - ${escapeHtml(scope)}</small>
         </button>
         <button type="button" class="schedule-slot-delete" data-action="delete" aria-label="Eliminar horario" title="Eliminar">${iconSvg('trash')}</button>
       </div>
     `;
   }
 
+  function getScheduleRecordsForDay(grouped, doctorId, day) {
+    const weekly = grouped.weekdays?.[doctorId]?.[String(day.id)] || [];
+    const dated = grouped.dates?.[doctorId]?.[String(day.date)] || [];
+    return weekly.concat(dated).sort((a, b) => String(a.start_time || '').localeCompare(String(b.start_time || '')));
+  }
+
   function scheduleSearchText(record, metadata) {
     const doctor = findMetadataItem(metadata.doctors, record.doctor_id);
     const specialty = findMetadataItem(metadata.specialties, doctor?.specialty_id);
     const weekday = findMetadataItem(metadata.weekdays, record.weekday);
-    return `${JSON.stringify(record)} ${doctor?.name || ''} ${specialty?.name || ''} ${weekday?.name || ''}`.toLowerCase();
+    return `${JSON.stringify(record)} ${record.date || ''} ${doctor?.name || ''} ${specialty?.name || ''} ${weekday?.name || ''}`.toLowerCase();
   }
 
   function findMetadataItem(items, id) {
     return (Array.isArray(items) ? items : []).find((item) => String(item.id) === String(id)) || null;
+  }
+
+  function getScheduleWeeks(state, dom) {
+    const fallback = parseIsoDate(state.scheduleWeekStart) || new Date();
+    const start = getWeekStart(parseIsoDate(dom.scheduleWeekStart?.value) || fallback);
+    const count = Math.max(1, Math.min(12, Number(dom.scheduleWeeks?.value || state.scheduleWeeks || 4)));
+
+    return Array.from({ length: count }, (_, index) => {
+      const weekStart = addDays(start, index * 7);
+      return {
+        start: weekStart,
+        end: addDays(weekStart, 6),
+      };
+    });
+  }
+
+  function getWeekDays(weekStart, weekdays) {
+    return weekdays.map((day) => {
+      const offset = Math.max(1, Math.min(7, Number(day.id || 1))) - 1;
+      const date = addDays(weekStart, offset);
+      return {
+        ...day,
+        date: formatDateIso(date),
+        dateLabel: formatShortDate(date),
+      };
+    });
+  }
+
+  function getWeekStartIso(date) {
+    return formatDateIso(getWeekStart(date));
+  }
+
+  function getWeekStart(date) {
+    const copy = new Date(date);
+    copy.setHours(0, 0, 0, 0);
+    const day = copy.getDay() === 0 ? 7 : copy.getDay();
+    copy.setDate(copy.getDate() - day + 1);
+    return copy;
+  }
+
+  function addDays(date, days) {
+    const copy = new Date(date);
+    copy.setDate(copy.getDate() + days);
+    copy.setHours(0, 0, 0, 0);
+    return copy;
+  }
+
+  function parseIsoDate(value) {
+    const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return null;
+    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  }
+
+  function formatDateIso(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
+  function todayIso() {
+    return formatDateIso(new Date());
+  }
+
+  function formatShortDate(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+  }
+
+  function formatWeekRange(start, end) {
+    return `${formatShortDate(start)} - ${formatShortDate(end)}`;
   }
 
   function getNewRecordSeed(config, dom) {
@@ -475,6 +620,7 @@
 
     return {
       doctor_id: dom.scheduleDoctor?.value || '',
+      date: '',
       weekday: '1',
       start_time: '08:00',
       end_time: '12:00',
@@ -501,6 +647,8 @@
     `;
 
     document.getElementById('gestion-cancel-btn')?.addEventListener('click', () => closeEditorModal(dom));
+    attachImageUploadHandlers(config, dom);
+    attachScheduleDateSync(config, dom);
   }
 
   function renderField(field, record, metadata) {
@@ -516,6 +664,10 @@
           <input id="field-${escapeHtml(field.name)}" name="${escapeHtml(field.name)}" type="checkbox" ${checkboxValue === true || checkboxValue === 'true' ? 'checked' : ''}>
         </div>
       `;
+    }
+
+    if (field.type === 'image') {
+      return renderImageField(field, value, help, fieldClass);
     }
 
     if (field.type === 'textarea') {
@@ -552,6 +704,106 @@
     `;
   }
 
+  function renderImageField(field, value, help, fieldClass) {
+    const inputValue = formatInputValue(value);
+    const previewUrl = normalizeAssetUrl(inputValue);
+    const accept = field.accept || 'image/jpeg,image/png,image/webp,image/gif';
+
+    return `
+      <div class="${fieldClass}" data-image-field="${escapeHtml(field.name)}">
+        <label for="field-${escapeHtml(field.name)}">${escapeHtml(field.label)}</label>
+        <div class="gestion-image-control">
+          <div class="gestion-image-preview" data-image-preview="${escapeHtml(field.name)}">
+            ${previewUrl ? `<img src="${escapeHtml(previewUrl)}" alt="">` : '<span>Sin imagen</span>'}
+          </div>
+          <div class="gestion-image-body">
+            <input id="field-${escapeHtml(field.name)}" class="gestion-input" name="${escapeHtml(field.name)}" type="text" value="${escapeHtml(inputValue)}" placeholder="/clinica/public/assets/...">
+            <div class="gestion-image-actions">
+              <label class="btn btn-tertiary btn-sm gestion-upload-label" for="field-${escapeHtml(field.name)}-file">Subir imagen</label>
+              <input id="field-${escapeHtml(field.name)}-file" class="sr-only" type="file" accept="${escapeHtml(accept)}" data-image-upload="${escapeHtml(field.name)}">
+            </div>
+            <span class="gestion-upload-status" data-image-status="${escapeHtml(field.name)}" aria-live="polite"></span>
+            ${help}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function attachImageUploadHandlers(config, dom) {
+    dom.form?.querySelectorAll('[data-image-upload]').forEach((input) => {
+      input.addEventListener('change', () => uploadImage(input, config, dom));
+    });
+
+    dom.form?.querySelectorAll('[data-image-field] .gestion-input').forEach((input) => {
+      input.addEventListener('input', () => updateImagePreview(input.name, input.value, dom));
+    });
+  }
+
+  async function uploadImage(input, config, dom) {
+    const fieldName = input.dataset.imageUpload || '';
+    const file = input.files?.[0];
+    if (!fieldName || !file) return;
+
+    const fieldElement = input.closest('[data-image-field]');
+    const status = fieldElement?.querySelector('[data-image-status]');
+    const label = fieldElement?.querySelector('.gestion-upload-label');
+    const textInput = dom.form?.elements[fieldName];
+    const uploadData = new FormData();
+    uploadData.append('action', 'upload');
+    uploadData.append('field', fieldName);
+    uploadData.append('image', file);
+
+    try {
+      if (status) status.textContent = 'Subiendo imagen...';
+      label?.classList.add('is-uploading');
+
+      const response = await fetch(`${API_URL}?resource=${encodeURIComponent(config.resource)}`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+        body: uploadData,
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success || !result.url) {
+        throw new Error(result.error || 'No se pudo subir la imagen.');
+      }
+
+      if (textInput) textInput.value = result.url;
+      updateImagePreview(fieldName, result.url, dom);
+      if (status) status.textContent = 'Imagen lista para guardar.';
+      showToast(dom, 'Imagen subida correctamente.');
+    } catch (error) {
+      if (status) status.textContent = '';
+      showToast(dom, error.message || 'No se pudo subir la imagen.', 'error');
+    } finally {
+      label?.classList.remove('is-uploading');
+      input.value = '';
+    }
+  }
+
+  function updateImagePreview(fieldName, value, dom) {
+    const preview = dom.form?.querySelector(`[data-image-preview="${fieldName}"]`);
+    if (!preview) return;
+
+    const url = normalizeAssetUrl(value);
+    preview.innerHTML = url ? `<img src="${escapeHtml(url)}" alt="">` : '<span>Sin imagen</span>';
+  }
+
+  function attachScheduleDateSync(config, dom) {
+    if (!isScheduleBoard(config)) return;
+
+    const dateInput = dom.form?.elements.date;
+    const weekdayInput = dom.form?.elements.weekday;
+    if (!dateInput || !weekdayInput) return;
+
+    dateInput.addEventListener('change', () => {
+      const date = parseIsoDate(dateInput.value);
+      if (!date) return;
+      weekdayInput.value = String(date.getDay() === 0 ? 7 : date.getDay());
+    });
+  }
+
   function getOptions(field, metadata) {
     if (Array.isArray(field.options)) return field.options;
     if (field.optionSource && Array.isArray(metadata[field.optionSource])) return metadata[field.optionSource];
@@ -572,6 +824,7 @@
       state.editingId = null;
       renderForm(config, state, dom, {
         doctor_id: button.dataset.doctorId || '',
+        date: button.dataset.date || '',
         weekday: button.dataset.weekday || '',
         start_time: '08:00',
         end_time: '12:00',

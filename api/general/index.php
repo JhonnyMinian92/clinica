@@ -9,11 +9,12 @@ $payload = clinica_request_json();
 $action = $payload['action'] ?? ($_GET['action'] ?? ($method === 'GET' ? 'session' : ''));
 
 if ($method === 'GET' && $action === 'session') {
-  $user = $_SESSION['user'] ?? null;
+  $user = clinica_current_user();
 
   clinica_json([
     'authenticated' => is_array($user),
     'user' => is_array($user) ? clinica_public_user($user) : null,
+    'expires_at' => is_array($user) ? clinica_session_expires_at() : null,
   ]);
 }
 
@@ -38,26 +39,19 @@ if ($action === 'login') {
   $redirect = clinica_resolve_login_redirect((string) ($payload['redirect'] ?? ''), $user);
 
   unset($user['password']);
-  session_regenerate_id(true);
-  $_SESSION['user'] = $user;
+  clinica_start_authenticated_session($user);
   clinica_ensure_appointments();
 
   clinica_json([
     'success' => true,
     'user' => clinica_public_user($user),
     'redirect' => $redirect,
+    'expires_at' => clinica_session_expires_at(),
   ]);
 }
 
 if ($action === 'logout') {
-  $_SESSION = [];
-
-  if (ini_get('session.use_cookies')) {
-    $params = session_get_cookie_params();
-    setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'], $params['secure'], $params['httponly']);
-  }
-
-  session_destroy();
+  clinica_destroy_session();
   clinica_json(['success' => true, 'redirect' => '/clinica/pages/login/']);
 }
 
