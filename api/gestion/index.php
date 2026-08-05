@@ -213,6 +213,11 @@ function clinica_gestion_save(string $resource, array $record, array $user): voi
   }
 
   $normalized = clinica_normalize_collection_record($resource, $record, is_array($existingRecord) ? $existingRecord : []);
+
+  if (($resource === 'specialties' || $resource === 'services') && array_key_exists('icon', $record) && trim((string) $record['icon']) === '') {
+    $normalized['icon'] = clinica_get_default_icon($resource, (string) ($normalized['id'] ?? ''));
+  }
+
   $id = (string) ($normalized['id'] ?? '');
 
   if ($id === '') {
@@ -467,6 +472,21 @@ function clinica_required_string(array $record, string $key, string $message): s
   }
 
   return $value;
+}
+
+function clinica_get_default_icon(string $resource, string $id): string
+{
+  if ($id === '') {
+    return '';
+  }
+  $default_db = clinica_default_database();
+  $collection = $default_db[$resource] ?? [];
+  foreach ($collection as $item) {
+    if (($item['id'] ?? '') === $id) {
+      return (string) ($item['icon'] ?? '');
+    }
+  }
+  return '';
 }
 
 function clinica_string(array $record, string $key, string $default = ''): string

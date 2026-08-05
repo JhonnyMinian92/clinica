@@ -381,6 +381,22 @@ function clinica_schedule_rules_for_doctor(string $doctorId): array
   return $rules;
 }
 
+function clinica_get_doctor_photo_url(array $doctor): string
+{
+  $photo = trim((string) ($doctor['photo'] ?? ''));
+  // Un campo de foto vacío, nulo o con el avatar genérico se considera "sin foto personalizada".
+  if ($photo !== '' && $photo !== '/clinica/public/assets/avatar.png') {
+    return $photo;
+  }
+
+  $name = trim((string) ($doctor['name'] ?? ''));
+  if (str_starts_with($name, 'Dra.')) {
+    return '/clinica/public/assets/doctora_avatar.png';
+  }
+
+  return '/clinica/public/assets/doctor_avatar.jpg';
+}
+
 function clinica_public_doctor(array $doctor): array
 {
   $specialtyId = (string) ($doctor['specialty_id'] ?? '');
@@ -388,7 +404,7 @@ function clinica_public_doctor(array $doctor): array
   return [
     'id' => (string) ($doctor['id'] ?? ''),
     'nombre' => (string) ($doctor['name'] ?? ''),
-    'foto' => (string) ($doctor['photo'] ?? '/clinica/public/assets/avatar.png'),
+    'foto' => clinica_get_doctor_photo_url($doctor),
     'especialidad' => clinica_specialty_name_by_id($specialtyId),
     'especialidad_id' => $specialtyId,
     'subespecialidad' => (string) ($doctor['sub_specialty'] ?? ''),

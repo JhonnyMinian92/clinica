@@ -25,6 +25,7 @@
       overview: document.getElementById('gestion-overview'),
       search: document.getElementById('gestion-search'),
       status: document.getElementById('gestion-status-filter'),
+      subToolbar: document.querySelector('.gestion-sub-toolbar'),
       filters: document.querySelector('.gestion-filters'),
       newBtn: document.getElementById('gestion-new-btn'),
       singletonEditBtn: document.getElementById('gestion-singleton-edit-btn'),
@@ -44,7 +45,7 @@
       editingId: null,
       loading: false,
       scheduleWeekStart: getWeekStartIso(new Date()),
-      scheduleWeeks: Number(config.defaultWeeks || 4),
+      scheduleWeeks: Number(config.weeksToShow || config.defaultWeeks || 4),
     };
 
     const shell = document.querySelector('.gestion-shell');
@@ -204,26 +205,9 @@
 
     const record = state.records || {};
     const fieldByName = new Map((config.fields || []).map((field) => [field.name, field]));
-    const preferredFields = [
-      'name',
-      'legal_name',
-      'tagline',
-      'hero_title',
-      'reservation_title',
-      'address',
-      'email',
-      'phone_display',
-      'emergency_phone',
-      'whatsapp_url',
-      'facebook_url',
-      'instagram_url',
-    ];
-    const selected = preferredFields
-      .map((name) => fieldByName.get(name))
-      .filter(Boolean);
-    const extra = (config.fields || [])
-      .filter((field) => !preferredFields.includes(field.name))
-      .slice(0, Math.max(0, 10 - selected.length));
+    const preferredFields = ['name', 'legal_name', 'tagline', 'hero_title', 'reservation_title', 'address', 'email', 'phone_display', 'emergency_phone', 'whatsapp_url', 'facebook_url', 'instagram_url'];
+    const selected = preferredFields.map((name) => fieldByName.get(name)).filter(Boolean);
+    const extra = (config.fields || []).filter((field) => !preferredFields.includes(field.name)).slice(0, Math.max(0, 10 - selected.length));
     const fields = selected.concat(extra).slice(0, 12);
     const name = getValue(record, 'name') || 'Clinica';
     const tagline = getValue(record, 'tagline') || getValue(record, 'description') || 'Sin descripcion publica.';
@@ -265,10 +249,7 @@
     const selectedSpecialty = isScheduleBoard(config) ? dom.scheduleSpecialty?.value || '' : '';
 
     return records.filter((record) => {
-      const matchesStatus =
-        status === 'all' ||
-        (status === 'active' && record.active !== false) ||
-        (status === 'inactive' && record.active === false);
+      const matchesStatus = status === 'all' || (status === 'active' && record.active !== false) || (status === 'inactive' && record.active === false);
       const doctor = isScheduleBoard(config) ? findMetadataItem(state.metadata.doctors, record.doctor_id) : null;
       const matchesDoctor = !selectedDoctor || record.doctor_id === selectedDoctor;
       const matchesSpecialty = !selectedSpecialty || doctor?.specialty_id === selectedSpecialty;
@@ -313,6 +294,13 @@
   function setupScheduleControls(config, state, dom) {
     if (!isScheduleBoard(config) || !dom.filters) return;
 
+    // Ensure the sub-toolbar exists before trying to use it.
+    if (!dom.subToolbar) {
+      dom.subToolbar = document.createElement('div');
+      dom.subToolbar.className = 'gestion-sub-toolbar';
+      dom.filters.after(dom.subToolbar);
+    }
+
     dom.filters.classList.add('is-schedule-filters');
 
     if (!dom.scheduleSpecialty) {
@@ -340,42 +328,73 @@
       dom.filters.appendChild(dom.scheduleDoctor);
     }
 
-    if (!dom.scheduleWeekStart) {
-      dom.scheduleWeekStart = document.createElement('input');
-      dom.scheduleWeekStart.id = 'gestion-schedule-week-start';
-      dom.scheduleWeekStart.className = 'gestion-input';
-      dom.scheduleWeekStart.type = 'date';
-      dom.scheduleWeekStart.min = getWeekStartIso(new Date());
-      dom.scheduleWeekStart.value = state.scheduleWeekStart;
-      dom.scheduleWeekStart.setAttribute('aria-label', 'Semana inicial de horarios');
-      const handleWeekStart = () => {
-        state.scheduleWeekStart = getWeekStartIso(parseIsoDate(dom.scheduleWeekStart.value) || new Date());
-        dom.scheduleWeekStart.value = state.scheduleWeekStart;
+    if (!dom.scheduleWeekNav) {
+      dom.scheduleWeekNav = document.createElement('div');
+      dom.scheduleWeekNav.className = 'gestion-schedule-week-nav';
+
+      dom.schedulePrevWeekBtn = document.createElement('button');
+      dom.schedulePrevWeekBtn.type = 'button';
+      dom.schedulePrevWeekBtn.className = 'gestion-icon-btn';
+      dom.schedulePrevWeekBtn.innerHTML = iconSvg('chevron-left');
+      dom.schedulePrevWeekBtn.setAttribute('aria-label', 'Semana anterior');
+
+      dom.scheduleTodayBtn = document.createElement('button');
+      dom.scheduleTodayBtn.type = 'button';
+      dom.scheduleTodayBtn.className = 'gestion-icon-btn';
+      dom.scheduleTodayBtn.innerHTML = iconSvg('calendar');
+      dom.scheduleTodayBtn.setAttribute('aria-label', 'Semana actual');
+
+      dom.scheduleWeekDisplay = document.createElement('span');
+      dom.scheduleWeekDisplay.className = 'gestion-schedule-week-display';
+
+      dom.scheduleNextWeekBtn = document.createElement('button');
+      dom.scheduleNextWeekBtn.type = 'button';
+      dom.scheduleNextWeekBtn.className = 'gestion-icon-btn';
+      dom.scheduleNextWeekBtn.innerHTML = iconSvg('chevron-right');
+      dom.scheduleNextWeekBtn.setAttribute('aria-label', 'Semana siguiente');
+
+      const navigateWeek = (days) => {
+        const current = parseIsoDate(state.scheduleWeekStart) || new Date();
+        const nextDate = addDays(current, days);
+        state.scheduleWeekStart = formatDateIso(nextDate);
         renderList(config, state, dom);
       };
-      dom.scheduleWeekStart.addEventListener('input', handleWeekStart);
-      dom.scheduleWeekStart.addEventListener('change', handleWeekStart);
-      dom.filters.appendChild(dom.scheduleWeekStart);
+
+      dom.schedulePrevWeekBtn.addEventListener('click', () => navigateWeek(-7));
+      dom.scheduleNextWeekBtn.addEventListener('click', () => navigateWeek(7));
+      dom.scheduleTodayBtn.addEventListener('click', () => {
+        state.scheduleWeekStart = getWeekStartIso(new Date());
+        renderList(config, state, dom);
+      });
+
+      dom.scheduleWeekNav.appendChild(dom.schedulePrevWeekBtn);
+      dom.scheduleWeekNav.appendChild(dom.scheduleTodayBtn);
+      dom.scheduleWeekNav.appendChild(dom.scheduleWeekDisplay);
+      dom.scheduleWeekNav.appendChild(dom.scheduleNextWeekBtn);
+      dom.subToolbar.appendChild(dom.scheduleWeekNav);
     }
 
     if (!dom.scheduleWeeks) {
-      dom.scheduleWeeks = document.createElement('select');
-      dom.scheduleWeeks.id = 'gestion-schedule-weeks-filter';
-      dom.scheduleWeeks.className = 'gestion-select';
-      dom.scheduleWeeks.setAttribute('aria-label', 'Cantidad de semanas futuras');
-      const options = config.weekOptions || [1, 2, 4, 8, 12];
-      dom.scheduleWeeks.innerHTML = options
-        .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)} semana${Number(value) === 1 ? '' : 's'}</option>`)
-        .join('');
-      dom.scheduleWeeks.value = String(state.scheduleWeeks);
-      const handleWeeks = () => {
-        const nextValue = Number(dom.scheduleWeeks.value || state.scheduleWeeks || 4);
-        state.scheduleWeeks = Math.max(1, Math.min(12, nextValue));
-        renderList(config, state, dom);
-      };
-      dom.scheduleWeeks.addEventListener('input', handleWeeks);
-      dom.scheduleWeeks.addEventListener('change', handleWeeks);
-      dom.filters.appendChild(dom.scheduleWeeks);
+      // If a fixed number of weeks is provided as a number, don't create the selector.
+      if (typeof config.weeksToShow === 'number' && !isNaN(config.weeksToShow)) {
+        state.scheduleWeeks = config.weeksToShow;
+      } else {
+        dom.scheduleWeeks = document.createElement('select');
+        dom.scheduleWeeks.id = 'gestion-schedule-weeks-filter';
+        dom.scheduleWeeks.className = 'gestion-select';
+        dom.scheduleWeeks.setAttribute('aria-label', 'Cantidad de semanas futuras');
+        const options = config.weekOptions || [1, 2, 4, 8, 12];
+        dom.scheduleWeeks.innerHTML = options.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)} semana${Number(value) === 1 ? '' : 's'}</option>`).join('');
+        dom.scheduleWeeks.value = String(state.scheduleWeeks);
+        const handleWeeks = () => {
+          const nextValue = Number(dom.scheduleWeeks.value || state.scheduleWeeks || 4);
+          state.scheduleWeeks = Math.max(1, Math.min(12, nextValue));
+          renderList(config, state, dom);
+        };
+        dom.scheduleWeeks.addEventListener('input', handleWeeks);
+        dom.scheduleWeeks.addEventListener('change', handleWeeks);
+        dom.subToolbar.appendChild(dom.scheduleWeeks);
+      }
     }
 
     populateScheduleSpecialtyOptions(state, dom);
@@ -412,6 +431,10 @@
     const doctors = getVisibleScheduleDoctors(state, dom, records);
     const weeks = getScheduleWeeks(state, dom);
 
+    if (dom.scheduleWeekDisplay) {
+      dom.scheduleWeekDisplay.textContent = formatWeekRange(weeks[0].start, weeks[0].end);
+    }
+
     dom.listSummary.textContent = `${records.length} de ${allRecords.length} bloques filtrados. Mostrando ${weeks.length} semana${weeks.length === 1 ? '' : 's'} desde ${formatShortDate(weeks[0]?.start)}.`;
 
     if (doctors.length === 0) {
@@ -446,19 +469,22 @@
   }
 
   function groupScheduleRecords(records) {
-    return records.reduce((grouped, record) => {
-      const doctorId = record.doctor_id || '';
-      const date = String(record.date || '').trim();
-      const weekday = String(record.weekday || '');
-      const bucket = date ? 'dates' : 'weekdays';
-      const key = date || weekday;
-      if (!doctorId || !key) return grouped;
-      if (!grouped[bucket][doctorId]) grouped[bucket][doctorId] = {};
-      if (!grouped[bucket][doctorId][key]) grouped[bucket][doctorId][key] = [];
-      grouped[bucket][doctorId][key].push(record);
-      grouped[bucket][doctorId][key].sort((a, b) => String(a.start_time || '').localeCompare(String(b.start_time || '')));
-      return grouped;
-    }, { weekdays: {}, dates: {} });
+    return records.reduce(
+      (grouped, record) => {
+        const doctorId = record.doctor_id || '';
+        const date = String(record.date || '').trim();
+        const weekday = String(record.weekday || '');
+        const bucket = date ? 'dates' : 'weekdays';
+        const key = date || weekday;
+        if (!doctorId || !key) return grouped;
+        if (!grouped[bucket][doctorId]) grouped[bucket][doctorId] = {};
+        if (!grouped[bucket][doctorId][key]) grouped[bucket][doctorId][key] = [];
+        grouped[bucket][doctorId][key].push(record);
+        grouped[bucket][doctorId][key].sort((a, b) => String(a.start_time || '').localeCompare(String(b.start_time || '')));
+        return grouped;
+      },
+      { weekdays: {}, dates: {} },
+    );
   }
 
   function renderScheduleWeekSection(week, index, doctors, weekdays, grouped, metadata) {
@@ -466,7 +492,7 @@
     return `
       <section class="schedule-week-section">
         <div class="schedule-week-title">
-          <span>Semana ${index + 1}</span>
+          <span>Semana</span>
           <strong>${escapeHtml(formatWeekRange(week.start, week.end))}</strong>
         </div>
         <div class="schedule-board" style="--schedule-days: ${days.length};">
@@ -548,8 +574,7 @@
   }
 
   function getScheduleWeeks(state, dom) {
-    const fallback = parseIsoDate(state.scheduleWeekStart) || new Date();
-    const start = getWeekStart(parseIsoDate(dom.scheduleWeekStart?.value) || fallback);
+    const start = getWeekStart(parseIsoDate(state.scheduleWeekStart) || new Date());
     const count = Math.max(1, Math.min(12, Number(dom.scheduleWeeks?.value || state.scheduleWeeks || 4)));
 
     return Array.from({ length: count }, (_, index) => {
@@ -686,7 +711,9 @@
           <label for="field-${escapeHtml(field.name)}">${escapeHtml(field.label)}</label>
           <select id="field-${escapeHtml(field.name)}" class="gestion-select" name="${escapeHtml(field.name)}" ${field.required ? 'required' : ''}>
             <option value="">Seleccione...</option>
-            ${getOptions(field, metadata).map((option) => `<option value="${escapeHtml(option.id)}" ${String(option.id) === String(value) ? 'selected' : ''}>${escapeHtml(option.name)}</option>`).join('')}
+            ${getOptions(field, metadata)
+              .map((option) => `<option value="${escapeHtml(option.id)}" ${String(option.id) === String(value) ? 'selected' : ''}>${escapeHtml(option.name)}</option>`)
+              .join('')}
           </select>
           ${help}
         </div>
@@ -995,6 +1022,9 @@
     const icons = {
       edit: '<path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path>',
       trash: '<path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5"></path><path d="M14 11v5"></path>',
+      calendar: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>',
+      'chevron-left': '<polyline points="15 18 9 12 15 6"></polyline>',
+      'chevron-right': '<polyline points="9 18 15 12 9 6"></polyline>',
     };
 
     return `

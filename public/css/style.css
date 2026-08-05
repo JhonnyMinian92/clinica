@@ -1010,3 +1010,34 @@ body.mobile-nav-open .nav-link {
   opacity: 1;
   transform: translateY(0);
 }
+
+/* ---------------------------------- */
+/* #GESTION - CALENDARIO              */
+/* ---------------------------------- */
+
+/* Estilos para la navegación de semanas en el panel de gestión */
+.gestion-schedule-week-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-unit); /* Espaciado entre elementos */
+  padding: var(--spacing-unit); /* Pequeño padding interno */
+  border: 1px solid var(--color-border); /* Borde sutil */
+  border-radius: var(--border-radius-soft); /* Bordes redondeados */
+  background-color: var(--color-background-white); /* Fondo blanco */
+  box-shadow: var(--shadow-soft); /* Sombra suave */
+}
+
+.gestion-schedule-week-nav .gestion-icon-btn {
+  flex-shrink: 0; /* Evita que los botones se encojan */
+  padding: calc(var(--spacing-unit) * 0.5); /* Padding más pequeño para botones de icono */
+  width: 36px; /* Ancho fijo para consistencia */
+  height: 36px; /* Alto fijo para consistencia */
+}
+
+.gestion-schedule-week-nav .gestion-schedule-week-display {
+  flex-grow: 1; /* Permite que el texto ocupe el espacio disponible */
+  text-align: center; /* Centra el texto del rango de fechas */
+  font-weight: 600; /* Hace el texto más prominente */
+  color: var(--color-text-primary); /* Asegura buen contraste */
+  white-space: nowrap; /* Evita que el rango de fechas se divida en varias líneas */
+}

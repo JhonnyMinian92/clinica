@@ -1,6 +1,7 @@
 window.ClinicaGestion.boot({
   resource: 'schedules',
   view: 'schedule-board',
+  weeksToShow: 1,
   titleField: 'doctor_id',
   columns: [
     { name: 'doctor_id', label: 'Doctor', type: 'select', optionSource: 'doctors' },
