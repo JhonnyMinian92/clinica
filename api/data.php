@@ -13,7 +13,7 @@ function clinica_default_database(): array
       'name' => 'Clinica Estandar',
       'legal_name' => 'Clinica Estandar',
       'logo_label' => 'Clinica Estandar',
-      'logo_image' => '',
+      'logo_image' => '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-svg" aria-hidden="true"><path d="M12 5C12 5 9 2 6 2C3 2 2 4 2 6C2 9 5 12 12 19C19 12 22 9 22 6C22 4 21 2 18 2C15 2 12 5 12 5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4" /><path d="M8 12H16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>',
       'tagline' => 'Medicina de vanguardia con un enfoque humano y personalizado.',
       'description' => 'Centro medico privado con especialistas, tecnologia avanzada y atencion cercana.',
       'meta_title' => 'Clinica Estandar | Medicina de Vanguardia y Cuidado Humano',

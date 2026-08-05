@@ -1041,3 +1041,20 @@ body.mobile-nav-open .nav-link {
   color: var(--color-text-primary); /* Asegura buen contraste */
   white-space: nowrap; /* Evita que el rango de fechas se divida en varias líneas */
 }
+
+/* ---------------------------------- */
+/* #HEADER - LOGO DINAMICO            */
+/* ---------------------------------- */
+
+/* Asegura que tanto el SVG como la imagen del logo tengan un tamaño consistente */
+.logo .logo-img,
+.logo svg {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0; /* Evita que el logo se encoja si el espacio es limitado */
+}
+
+.logo .logo-img {
+  object-fit: contain; /* Previene la distorsión de logos no cuadrados */
+  border-radius: var(--border-radius-soft); /* Un toque sutil para imágenes */
+}

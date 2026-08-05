@@ -6,6 +6,7 @@ $page_title = $page_title ?? ($clinic_header['meta_title'] ?? 'Clinica Estandar'
 $page_description = $page_description ?? ($clinic_header['meta_description'] ?? '');
 $page_canonical = $page_canonical ?? ($clinic_header['canonical_url'] ?? '');
 $clinic_name = $clinic_header['logo_label'] ?? $clinic_header['name'] ?? 'Clinica Estandar';
+$logo_image = $clinic_header['logo_image'] ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -40,13 +41,14 @@ $clinic_name = $clinic_header['logo_label'] ?? $clinic_header['name'] ?? 'Clinic
 <body>
   <header class="main-header" id="main-header">
     <div class="container header-container">
-      <a href="/clinica/" class="logo" aria-label="Pagina de inicio de <?php echo htmlspecialchars($clinic_name); ?>">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-svg" aria-hidden="true">
-          <path d="M12 5C12 5 9 2 6 2C3 2 2 4 2 6C2 9 5 12 12 19C19 12 22 9 22 6C22 4 21 2 18 2C15 2 12 5 12 5Z"
-            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4" />
-          <path d="M12 8V16M8 12H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" />
-        </svg>
+      <a href="/clinica/" class="logo" aria-label="Página de inicio de <?php echo htmlspecialchars($clinic_name); ?>">
+        <?php if (trim($logo_image) !== ''): ?>
+          <?php if (str_starts_with(trim($logo_image), '<svg')): ?>
+            <?php echo $logo_image; /* Es código SVG, se renderiza directamente */ ?>
+          <?php else: ?>
+            <img src="<?php echo htmlspecialchars($logo_image); ?>" alt="<?php echo htmlspecialchars($clinic_name); ?> logo" class="logo-img">
+          <?php endif; ?>
+        <?php endif; ?>
         <span class="clinic-name-header"><?php echo htmlspecialchars($clinic_name); ?></span>
       </a>
       <nav class="main-nav" id="main-nav" aria-label="Navegacion principal">
