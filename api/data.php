@@ -13,6 +13,7 @@ function clinica_default_database(): array
       'name' => 'Clinica Estandar',
       'legal_name' => 'Clinica Estandar',
       'logo_label' => 'Clinica Estandar',
+      'logo_image' => '',
       'tagline' => 'Medicina de vanguardia con un enfoque humano y personalizado.',
       'description' => 'Centro medico privado con especialistas, tecnologia avanzada y atencion cercana.',
       'meta_title' => 'Clinica Estandar | Medicina de Vanguardia y Cuidado Humano',

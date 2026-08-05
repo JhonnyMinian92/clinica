@@ -6,6 +6,7 @@ window.ClinicaGestion.boot({
     { name: 'name', label: 'Nombre comercial', type: 'text', required: true },
     { name: 'legal_name', label: 'Nombre legal', type: 'text' },
     { name: 'logo_label', label: 'Texto del logo', type: 'text' },
+    { name: 'logo_image', label: 'Logotipo', type: 'image', help: 'Suba un SVG, PNG o JPG. Si se deja vacio, se usara el texto del logo como fallback.' },
     { name: 'tagline', label: 'Frase corta', type: 'textarea' },
     { name: 'description', label: 'Descripcion institucional', type: 'textarea' },
     { name: 'meta_title', label: 'Titulo SEO', type: 'text' },

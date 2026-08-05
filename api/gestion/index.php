@@ -117,12 +117,19 @@ function clinica_gestion_upload_image(string $resource, array $post, array $file
     'clinic' => [
       'hero_image' => 'clinic',
       'hero_mobile_image' => 'clinic',
+      'logo_image' => 'clinic',
     ],
     'doctors' => [
       'photo' => 'doctors',
     ],
     'comments' => [
       'avatar' => 'comments',
+    ],
+    'specialties' => [
+      'icon' => 'icons',
+    ],
+    'services' => [
+      'icon' => 'icons',
     ],
   ];
 
@@ -153,10 +160,11 @@ function clinica_gestion_upload_image(string $resource, array $post, array $file
     'image/png' => 'png',
     'image/webp' => 'webp',
     'image/gif' => 'gif',
+    'image/svg+xml' => 'svg',
   ];
 
-  if (!array_key_exists($mime, $extensions) || getimagesize($tmpName) === false) {
-    clinica_json(['success' => false, 'error' => 'Formato no soportado. Use JPG, PNG, WEBP o GIF.'], 422);
+  if (!array_key_exists($mime, $extensions) || ($mime !== 'image/svg+xml' && getimagesize($tmpName) === false)) {
+    clinica_json(['success' => false, 'error' => 'Formato no soportado. Use JPG, PNG, WEBP, GIF o SVG.'], 422);
   }
 
   $assetsRoot = realpath(__DIR__ . '/../../public/assets');
@@ -320,6 +328,7 @@ function clinica_normalize_clinic_record(array $record): array
     'hero_subtitle',
     'hero_image',
     'hero_mobile_image',
+    'logo_image',
     'about_title',
     'about_subtitle',
     'services_title',
