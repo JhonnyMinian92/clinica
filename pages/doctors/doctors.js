@@ -29,21 +29,6 @@
 
     const allCards = Array.from(doctorsGrid.children);
 
-    /**
-     * Retrasa la ejecución de una función. Esencial para no sobrecargar
-     * el navegador en eventos que se disparan rápidamente, como 'input'.
-     * @param {Function} func - La función a ejecutar.
-     * @param {number} delay - El tiempo de espera en milisegundos.
-     * @returns {Function}
-     */
-    function debounce(func, delay = 300) {
-      let timeoutId;
-      return function (...args) {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => func.apply(this, args), delay);
-      };
-    }
-
     function applyFilters() {
       const nameTerm = filters.name.value.toLowerCase().trim();
       const specialtyTerm = filters.specialty.value.toLowerCase();
@@ -79,7 +64,7 @@
     }
 
     // Aplicar debounce solo al campo de texto libre
-    filters.name.addEventListener('input', debounce(applyFilters));
+    filters.name.addEventListener('input', window.ClinicaUtils.debounce(applyFilters));
 
     // Los selects usan 'input' para una respuesta inmediata.
     [filters.specialty, filters.language].forEach((filter) => {

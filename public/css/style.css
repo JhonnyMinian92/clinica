@@ -1058,3 +1058,20 @@ body.mobile-nav-open .nav-link {
   object-fit: contain; /* Previene la distorsión de logos no cuadrados */
   border-radius: var(--border-radius-soft); /* Un toque sutil para imágenes */
 }
+
+/* ---------------------------------- */
+/* #RESERVATIONS - ERROR MESSAGE      */
+/* ---------------------------------- */
+
+.form-error-message {
+  padding: var(--spacing-unit) calc(var(--spacing-unit) * 2);
+  margin-bottom: calc(var(--spacing-unit) * 2);
+  border: 1px solid #b42318; /* Corresponds to --gestion-danger */
+  border-radius: var(--border-radius-soft);
+  background-color: #fff1f0; /* Corresponds to --gestion-danger-soft */
+  color: #b42318;
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  text-align: center;
+  animation: menuFadeIn 0.3s ease; /* Reusing existing animation */
+}

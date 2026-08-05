@@ -311,11 +311,7 @@ function clinica_schedule_shift_label(string $startTime, string $endTime): strin
   }
 
   if ($endTime <= '13:00') {
-    return 'Manana';
-  }
-
-  if ($endTime <= '13:00') {
-    return 'MaÃ±ana';
+    return 'Mañana';
   }
 
   return 'Tarde';
@@ -396,6 +392,23 @@ function clinica_get_doctor_photo_url(array $doctor): string
   }
 
   return '/clinica/public/assets/doctor_avatar.jpg';
+}
+
+function clinica_render_logo_element(array $clinic_settings): void
+{
+  $clinic_name = $clinic_settings['logo_label'] ?? $clinic_settings['name'] ?? 'Clinica Estandar';
+  $logo_image = $clinic_settings['logo_image'] ?? '';
+
+  if (trim($logo_image) !== '') {
+    if (str_starts_with(trim($logo_image), '<svg')) {
+      echo $logo_image; // It's SVG code, render directly
+    } else {
+      echo '<img src="' . htmlspecialchars($logo_image) . '" alt="' . htmlspecialchars($clinic_name) . ' logo" class="logo-img">';
+    }
+  } else {
+    // Fallback to text if no image is provided
+    echo '<span class="clinic-name-header">' . htmlspecialchars($clinic_name) . '</span>';
+  }
 }
 
 function clinica_public_doctor(array $doctor): array

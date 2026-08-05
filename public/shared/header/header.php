@@ -42,14 +42,7 @@ $logo_image = $clinic_header['logo_image'] ?? '';
   <header class="main-header" id="main-header">
     <div class="container header-container">
       <a href="/clinica/" class="logo" aria-label="Página de inicio de <?php echo htmlspecialchars($clinic_name); ?>">
-        <?php if (trim($logo_image) !== ''): ?>
-          <?php if (str_starts_with(trim($logo_image), '<svg')): ?>
-            <?php echo $logo_image; /* Es código SVG, se renderiza directamente */ ?>
-          <?php else: ?>
-            <img src="<?php echo htmlspecialchars($logo_image); ?>" alt="<?php echo htmlspecialchars($clinic_name); ?> logo" class="logo-img">
-          <?php endif; ?>
-        <?php endif; ?>
-        <span class="clinic-name-header"><?php echo htmlspecialchars($clinic_name); ?></span>
+        <?php clinica_render_logo_element($clinic_header); ?>
       </a>
       <nav class="main-nav" id="main-nav" aria-label="Navegacion principal">
         <ul class="nav-list">

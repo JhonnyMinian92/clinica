@@ -20,15 +20,7 @@ $logo_image_footer = $clinic_footer['logo_image'] ?? '';
       <div class="footer-col">
         <a href="/clinica/" class="logo footer-logo"
           aria-label="Pagina de inicio de <?php echo htmlspecialchars($footer_name); ?>">
-          <?php if (trim($logo_image_footer) !== ''): ?>
-            <?php if (str_starts_with(trim($logo_image_footer), '<svg')): ?>
-              <?php echo $logo_image_footer; /* Es código SVG, se renderiza directamente */ ?>
-            <?php else: ?>
-              <img src="<?php echo htmlspecialchars($logo_image_footer); ?>"
-                alt="<?php echo htmlspecialchars($footer_name); ?> logo" class="logo-img">
-            <?php endif; ?>
-          <?php endif; ?>
-          <span class="clinic-name-header"><?php echo htmlspecialchars($footer_name); ?></span>
+          <?php clinica_render_logo_element($clinic_footer); ?>
         </a>
         <p><?php echo htmlspecialchars($footer_tagline); ?></p>
       </div>
@@ -120,6 +112,7 @@ $logo_image_footer = $clinic_footer['logo_image'] ?? '';
   </div>
 </footer>
 
+<script src="/clinica/public/js/utils.js" defer></script>
 <script src="/clinica/public/js/app.js" defer></script>
 <script src="/clinica/public/shared/header/header.js" defer></script>
 <script src="/clinica/public/shared/footer/footer.js" defer></script>

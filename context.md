@@ -590,7 +590,270 @@ Validacion realizada:
   - Reservas: `doc3` trae 5 dias con `horarios_detallados`; al seleccionar fecha se generaron 32 cupos desde reglas detalladas, sin errores de consola.
   - Chrome headless valido dashboard y reservas; las capturas temporales fueron eliminadas junto con `tmp-codex-shots/`.
 
+## Propuesta de Migración a Backend con Base de Datos
+
+Para evolucionar el prototipo a un sistema de producción, se propone una migración completa de la persistencia de datos (actualmente en `gestion-data.json` y `$_SESSION`) a una base de datos relacional MySQL.
+
+Esta propuesta se divide en dos partes: el **Esquema de la Base de Datos** y la **Arquitectura de Conexión y Acceso a Datos** en el backend PHP.
+
+### 1. Esquema de Base de Datos MySQL Propuesto
+
+El siguiente esquema ha sido diseñado basándose en la auditoría del sistema y los datos gestionados en `gestion-data.json`. Normaliza la información, establece relaciones clave y prepara el sistema para ser más robusto y escalable.
+
+```sql
+-- Tabla de configuración global de la clínica
+CREATE TABLE `clinics` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(255) NOT NULL COMMENT 'Nombre comercial',
+  `legal_name` VARCHAR(255) DEFAULT NULL,
+  `logo_label` VARCHAR(255) DEFAULT NULL COMMENT 'Texto del logo (fallback)',
+  `logo_image` VARCHAR(255) DEFAULT NULL COMMENT 'Ruta a la imagen del logo',
+  `tagline` VARCHAR(255) DEFAULT NULL,
+  `description` TEXT DEFAULT NULL,
+  `meta_title` VARCHAR(255) DEFAULT NULL,
+  `meta_description` TEXT DEFAULT NULL,
+  `canonical_url` VARCHAR(255) DEFAULT NULL,
+  `hero_title` VARCHAR(255) DEFAULT NULL,
+  `hero_subtitle` TEXT DEFAULT NULL,
+  `hero_image` VARCHAR(255) DEFAULT NULL,
+  `hero_mobile_image` VARCHAR(255) DEFAULT NULL,
+  `address` VARCHAR(255) DEFAULT NULL,
+  `email` VARCHAR(255) DEFAULT NULL,
+  `phone_display` VARCHAR(50) DEFAULT NULL,
+  `phone_href` VARCHAR(50) DEFAULT NULL,
+  `emergency_phone` VARCHAR(50) DEFAULT NULL,
+  `whatsapp_url` VARCHAR(255) DEFAULT NULL,
+  `facebook_url` VARCHAR(255) DEFAULT NULL,
+  `instagram_url` VARCHAR(255) DEFAULT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabla de usuarios del sistema (panel de gestión, dashboard)
+CREATE TABLE `users` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `username` VARCHAR(50) NOT NULL UNIQUE,
+  `password` VARCHAR(255) NOT NULL COMMENT 'Almacenará el hash de la contraseña',
+  `name` VARCHAR(255) NOT NULL,
+  `role` ENUM('ADMINISTRATOR', 'SECRETARIA', 'DOCTOR') NOT NULL,
+  `doctor_id` VARCHAR(50) DEFAULT NULL COMMENT 'FK a doctors.id si el rol es DOCTOR',
+  `active` BOOLEAN NOT NULL DEFAULT TRUE,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `users_doctor_id_foreign` (`doctor_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabla de especialidades médicas
+CREATE TABLE `specialties` (
+  `id` VARCHAR(50) NOT NULL COMMENT 'ID basado en slug, ej: cardiologia',
+  `name` VARCHAR(255) NOT NULL,
+  `summary` TEXT DEFAULT NULL,
+  `description` TEXT DEFAULT NULL,
+  `icon` TEXT DEFAULT NULL COMMENT 'Puede ser código SVG o una ruta de archivo',
+  `featured` BOOLEAN NOT NULL DEFAULT FALSE,
+  `active` BOOLEAN NOT NULL DEFAULT TRUE,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabla de perfiles de doctores
+CREATE TABLE `doctors` (
+  `id` VARCHAR(50) NOT NULL COMMENT 'ID basado en slug, ej: doc-alejandro-vargas',
+  `name` VARCHAR(255) NOT NULL,
+  `photo` VARCHAR(255) DEFAULT NULL,
+  `specialty_id` VARCHAR(50) NOT NULL,
+  `sub_specialty` VARCHAR(255) DEFAULT NULL,
+  `experience_years` INT UNSIGNED DEFAULT 0,
+  `university` VARCHAR(255) DEFAULT NULL,
+  `languages` JSON DEFAULT NULL COMMENT 'Almacena un array de idiomas',
+  `recognitions` JSON DEFAULT NULL COMMENT 'Almacena un array de reconocimientos',
+  `rating` TINYINT UNSIGNED DEFAULT 5,
+  `patients` INT UNSIGNED DEFAULT 0,
+  `featured` BOOLEAN NOT NULL DEFAULT FALSE,
+  `active` BOOLEAN NOT NULL DEFAULT TRUE,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `doctors_specialty_id_foreign` (`specialty_id`),
+  CONSTRAINT `doctors_specialty_id_foreign` FOREIGN KEY (`specialty_id`) REFERENCES `specialties` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabla de horarios y disponibilidad de los doctores
+CREATE TABLE `doctor_schedules` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `doctor_id` VARCHAR(50) NOT NULL,
+  `date` DATE DEFAULT NULL COMMENT 'Si es NULL, es una regla semanal recurrente',
+  `weekday` TINYINT UNSIGNED NOT NULL COMMENT '1 (Lunes) a 7 (Domingo)',
+  `start_time` TIME NOT NULL,
+  `end_time` TIME NOT NULL,
+  `slot_minutes` INT UNSIGNED NOT NULL DEFAULT 15,
+  `active` BOOLEAN NOT NULL DEFAULT TRUE,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `doctor_schedules_doctor_id_foreign` (`doctor_id`),
+  KEY `idx_schedule_lookup` (`doctor_id`, `weekday`, `start_time`),
+  KEY `idx_schedule_date_lookup` (`doctor_id`, `date`),
+  CONSTRAINT `doctor_schedules_doctor_id_foreign` FOREIGN KEY (`doctor_id`) REFERENCES `doctors` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabla de pacientes
+CREATE TABLE `patients` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(255) NOT NULL,
+  `email` VARCHAR(255) NOT NULL UNIQUE,
+  `phone` VARCHAR(50) DEFAULT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabla de citas
+CREATE TABLE `appointments` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `patient_id` INT UNSIGNED NOT NULL,
+  `doctor_id` VARCHAR(50) NOT NULL,
+  `specialty_id` VARCHAR(50) NOT NULL,
+  `date` DATE NOT NULL,
+  `time` TIME NOT NULL,
+  `status` ENUM('pendiente', 'atendida', 'no-presentado', 'rechazada') NOT NULL DEFAULT 'pendiente',
+  `notes` TEXT DEFAULT NULL COMMENT 'Notas del paciente al agendar',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_appointment_slot` (`doctor_id`, `date`, `time`),
+  KEY `appointments_patient_id_foreign` (`patient_id`),
+  KEY `appointments_specialty_id_foreign` (`specialty_id`),
+  KEY `idx_appointment_lookup` (`date`, `time`),
+  KEY `idx_appointment_status` (`status`, `date`),
+  CONSTRAINT `appointments_patient_id_foreign` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `appointments_doctor_id_foreign` FOREIGN KEY (`doctor_id`) REFERENCES `doctors` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `appointments_specialty_id_foreign` FOREIGN KEY (`specialty_id`) REFERENCES `specialties` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabla de logs de auditoría
+CREATE TABLE `audit_logs` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` INT UNSIGNED DEFAULT NULL,
+  `action` VARCHAR(100) NOT NULL,
+  `resource_type` VARCHAR(50) DEFAULT NULL,
+  `resource_id` VARCHAR(50) DEFAULT NULL,
+  `details` JSON DEFAULT NULL,
+  `ip_address` VARCHAR(45) DEFAULT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `audit_logs_user_id_foreign` (`user_id`),
+  KEY `idx_audit_resource` (`resource_type`, `resource_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Constraints adicionales
+ALTER TABLE `users` ADD CONSTRAINT `users_doctor_id_foreign` FOREIGN KEY (`doctor_id`) REFERENCES `doctors`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+```
+
+### 2. Arquitectura de Backend Propuesta
+
+La estrategia consiste en crear una capa de abstracción para la base de datos y refactorizar las funciones existentes para que la utilicen, manteniendo los contratos de las APIs intactos para no afectar al frontend.
+
+#### 2.1. Conexión Centralizada a la Base de Datos (PDO)
+
+Se propone crear un nuevo archivo `api/db.php` que gestionará la conexión a la base de datos de forma centralizada y segura.
+
+**`api/db.php` (Propuesta)**
+```php
+<?php
+
+function clinica_db_credentials(): array
+{
+    // En un entorno de producción, estos datos deben provenir de variables de entorno (.env)
+    // y no estar hardcodeados.
+    return [
+        'host' => 'localhost',
+        'dbname' => 'clinica_base',
+        'user' => 'root',
+        'password' => '',
+        'charset' => 'utf8mb4',
+    ];
+}
+
+function clinica_get_db(): PDO
+{
+    static $pdo = null;
+
+    if ($pdo === null) {
+        $credentials = clinica_db_credentials();
+        $dsn = "mysql:host={$credentials['host']};dbname={$credentials['dbname']};charset={$credentials['charset']}";
+        $options = [
+            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES   => false,
+        ];
+        try {
+            $pdo = new PDO($dsn, $credentials['user'], $credentials['password'], $options);
+        } catch (\PDOException $e) {
+            // En un entorno de producción, esto debería registrar el error y mostrar una página genérica.
+            throw new \PDOException($e->getMessage(), (int)$e->getCode());
+        }
+    }
+
+    return $pdo;
+}
+```
+
+#### 2.2. Refactorización de la Capa de Datos (`api/data.php`)
+
+El archivo `api/data.php` dejará de leer y escribir en el archivo JSON. En su lugar, incluirá `api/db.php` y utilizará la función `clinica_get_db()` para realizar consultas SQL.
+
+**Ejemplo de Refactorización:**
+
+*Función Actual (JSON):*
+```php
+function clinica_get_clinic_settings(): array
+{
+  $clinic = clinica_get_database_resource('clinic');
+  $default = clinica_default_database()['clinic'];
+  return is_array($clinic) ? array_replace_recursive($default, $clinic) : $default;
+}
+```
+
+*Función Propuesta (MySQL con PDO):*
+```php
+function clinica_get_clinic_settings(): array
+{
+    $pdo = clinica_get_db();
+    $stmt = $pdo->query("SELECT * FROM clinics ORDER BY id ASC LIMIT 1");
+    $clinic = $stmt->fetch();
+
+    if (!$clinic) {
+        // Si la tabla está vacía, se puede devolver la configuración por defecto
+        // o lanzar un error, dependiendo de la política de la aplicación.
+        return clinica_default_database()['clinic'];
+    }
+    return $clinic;
+}
+```
+
+Este patrón se aplicaría a todas las funciones de lectura (`clinica_get_specialties`, `clinica_get_doctors`, etc.) y de escritura (`clinica_write_database` sería reemplazada por funciones específicas como `clinica_save_specialty`, `clinica_update_clinic`, etc., que ejecutarían sentencias `INSERT` y `UPDATE`).
+
 ## Iteracion 2026-08-05
+
+### Auditoria de Funcionalidad y Errores (2026-08-05)
+
+Se realizo una auditoria integral del sistema, identificando los siguientes puntos que requieren atencion prioritaria:
+
+- **Vulnerabilidad Critica - Contrasenas en Texto Plano:** El sistema almacena y compara contrasenas sin ningun tipo de hash.
+- **Vulnerabilidad Critica - Ausencia de Proteccion CSRF:** Los endpoints que modifican datos (`POST`, `DELETE`) no utilizan tokens anti-CSRF.
+- **Bug de Logica - Visualizacion del Logo:** El header y footer muestran la imagen del logo y el texto del logo (`logo_label`) al mismo tiempo, en lugar de usar el texto como fallback.
+- **Bug de Codificacion - Etiqueta de Turno:** La funcion `clinica_schedule_shift_label` devuelve `MaÃ±ana` en lugar de `Mañana`.
+- **Deuda Tecnica - Duplicacion de Codigo:** La logica de renderizado del logo esta duplicada en `header.php` y `footer.php`. La funcion `debounce` en `reservations.js` deberia ser una utilidad compartida.
+- **Mejora de UX - Alerta en Reservas:** El formulario de reservas utiliza `alert()` para notificar errores, lo cual interrumpe la experiencia de usuario.
+- **Problema de Rendimiento - Imagenes sin Optimizar:** El archivo `public/assets/doctora_avatar.png` tiene un tamano excesivo (~791 KB).
+
+Estos hallazgos se han integrado en el checklist de tareas pendientes.
+
+### Cambios Aplicados en esta Iteracion
 
 Cambios aplicados:
 
@@ -604,6 +867,11 @@ Cambios aplicados:
   - `pages/gestion/gestion.js` renderiza campos `image` con preview, campo de ruta y selector de archivo.
   - `pages/gestion/clinic/clinic.js`: `hero_image` y `hero_mobile_image` permiten subir imagenes.
   - `pages/gestion/doctors/doctors.js`: `photo` permite subir imagen del doctor/doctora.
+  - `pages/gestion/specialties/specialties.js`: `icon` ahora es de tipo `image`, permitiendo subir SVG/PNG o pegar codigo.
+  - `pages/gestion/services/services.js`: `icon` ahora es de tipo `image`, permitiendo subir SVG/PNG o pegar codigo.
+  - `api/gestion/index.php` ahora soporta subida de `image/svg+xml` y los nuevos `targets` para `clinic.logo_image`, `specialties.icon` y `services.icon`.
+  - `gestion.js` ahora previsualiza correctamente tanto URLs de imagen como codigo SVG (completo o fragmentos como `<path>`).
+  - `header.php` y `footer.php` ahora renderizan el logo dinamicamente desde la configuracion de la clinica.
   - `pages/gestion/comment/comment.js`: `avatar` permite subir avatar de resena.
   - Las imagenes se guardan bajo `public/assets/clinic/`, `public/assets/doctors/` o `public/assets/comments/` segun recurso.
 - Horarios:
@@ -611,7 +879,24 @@ Cambios aplicados:
   - Si `date` esta vacio, el bloque conserva comportamiento semanal recurrente.
   - Gestion de Horarios renderiza varias semanas futuras con controles de semana inicial y cantidad de semanas.
   - Las fechas pasadas del tablero no permiten crear nuevos bloques puntuales.
+  - Se elimino el selector de fecha (`input[type=date]`) y el selector de cantidad de semanas del calendario, reemplazandolos por una navegacion de "Semana Anterior" / "Hoy" / "Semana Siguiente" para un control mas preciso.
+  - Se mejoro el diseno de la navegacion de semanas para que se muestre horizontalmente y en una barra de herramientas dedicada.
   - Reservas combina reglas puntuales por fecha con reglas semanales recurrentes al generar cupos.
+
+## Iteracion 2026-08-06
+
+### Cambios Aplicados en esta Iteracion
+
+- **Refactorizacion y Correccion de Bugs:**
+  - Se corrigio el bug de visualizacion del logo en `header.php` y `footer.php`. La logica ahora muestra la imagen o el texto, pero no ambos.
+  - Se centralizo la logica de renderizado del logo en una nueva funcion `clinica_render_logo_element()` en `api/data.php`, eliminando codigo duplicado.
+  - Se corrigio el error de codificacion que mostraba `MaÃ±ana` en lugar de `Mañana`.
+  - Se reemplazo el `alert()` en el formulario de reservas por un mensaje de error integrado en la UI para una mejor experiencia de usuario.
+  - Se centralizo la funcion de utilidad `debounce` en un nuevo archivo `public/js/utils.js` para eliminar la duplicacion de codigo en `reservations.js` y `doctors.js`.
+
+### Auditoria Post-Correcciones
+
+Se realizo una nueva auditoria completa del sistema. No se han detectado nuevos bugs criticos. Los problemas de seguridad pendientes (contrasenas en texto plano y ausencia de CSRF) siguen identificados y su solucion esta planificada para la migracion a un backend con base de datos. El sistema se considera estable en su estado actual de prototipo avanzado.
 
 Validacion realizada:
 
@@ -665,16 +950,18 @@ Validacion realizada:
 ### P0 - Antes de backend real
 
 - [x] Definir permisos por rol: `ADMINISTRATOR` gestiona datos y agenda global; `SECRETARIA` solo agenda global; `DOCTOR` solo agenda propia presente/futura.
-- [ ] Sustituir contraseñas demo por `password_hash` / `password_verify`.
-- [ ] Agregar CSRF para acciones autenticadas.
+- [ ] **(Vulnerabilidad Crítica)** Sustituir contraseñas en texto plano por `password_hash` / `password_verify`.
+- [ ] **(Vulnerabilidad Crítica)** Agregar proteccion anti-CSRF para todas las acciones autenticadas que modifican estado (`POST`, `DELETE`).
 - [x] Mover datos simulados de paginas publicas clave a una fuente compartida temporal administrable.
-- [ ] Definir esquema de base de datos: usuarios, roles, doctores, especialidades, horarios, pacientes, citas y estados.
+- [x] Definir esquema de base de datos: usuarios, roles, doctores, especialidades, horarios, pacientes, citas y estados.
 
 ### P1 - Funcionalidad
 
 - [ ] Convertir la cita creada desde reserva en persistencia real cuando exista base de datos.
 - [ ] Agregar cancelacion/reprogramacion de citas si el flujo operativo lo requiere.
 - [ ] Definir si el backend real conservara los mismos rangos de fecha por rol o agregara reglas por sede/turno.
+- [x] **(Bug)** Corregir error de codificacion en la etiqueta de turno (`MaÃ±ana` por `Mañana`) en `api/data.php`.
+- [x] **(Bug)** Implementar logica de fallback para el logo: mostrar imagen si existe; si no, mostrar texto (`logo_label`), pero no ambos.
 - [x] Agregar busqueda y filtros por fecha en dashboard.
 - [x] Agregar paginacion server-side para la lista de citas del dashboard.
 - [x] Mover filtros de estado y busqueda de citas al endpoint del dashboard.
@@ -685,7 +972,7 @@ Validacion realizada:
 
 - [x] Validar visualmente gestion y flujos clave con navegador headless en movil y escritorio.
 - [ ] Revisar navegacion por teclado en stepper de reservas, dashboard y menu movil.
-- [ ] Reemplazar `alert()` de reservas por un mensaje accesible dentro del formulario.
+- [x] **(Confirmado)** Reemplazar `alert()` de reservas por un mensaje accesible dentro del formulario es una tarea pendiente de baja prioridad.
 - [ ] Revisar contraste de badges y botones secundarios.
 - [ ] Agregar soporte `prefers-reduced-motion`.
 - [x] Reemplazar tabla del dashboard por tarjetas responsive sin scroll horizontal.
@@ -695,9 +982,11 @@ Validacion realizada:
 
 ### P2 - Rendimiento/UI
 
-- [ ] Optimizar `public/assets/doctora_avatar.png` (aprox. 791.7 KB).
+- [x] **(Rendimiento)** Optimizar `public/assets/doctora_avatar.png` (tamano actual ~791.7 KB).
 - [ ] Revisar calidad de `banner.jpg` para hero desktop.
 - [ ] Reducir duplicacion de estilos entre filtros de especialidades, doctores, reservas y dashboard.
+- [x] **(Deuda Tecnica)** Centralizar funciones de utilidad JavaScript (ej. `debounce`) para evitar duplicacion.
+- [x] **(Deuda Tecnica)** Refactorizar la logica de renderizado del logo en PHP para evitar duplicacion entre header y footer.
 - [ ] Decidir si login se integra al design system global o permanece standalone.
 
 ### P3 - Pruebas

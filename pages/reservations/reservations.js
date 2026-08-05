@@ -73,20 +73,6 @@
 
     // --- Functions ---
 
-    /**
-     * Retrasa la ejecución de una función para optimizar el rendimiento en eventos frecuentes.
-     * @param {Function} func La función a ejecutar.
-     * @param {number} delay El tiempo de espera en milisegundos.
-     * @returns {Function}
-     */
-    function debounce(func, delay = 300) {
-      let timeoutId;
-      return function (...args) {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => func.apply(this, args), delay);
-      };
-    }
-
     function findCardByValue(container, value) {
       return Array.from(container.querySelectorAll('.selectable-card')).find((card) => card.dataset.value === value) || null;
     }
@@ -694,6 +680,11 @@
      * Simulates the form submission and displays the success message.
      */
     async function submitForm() {
+      const existingError = form.querySelector('.form-error-message');
+      if (existingError) {
+        existingError.remove();
+      }
+
       nextBtn.disabled = true;
       prevBtn.style.visibility = 'hidden';
       nextBtn.innerHTML = '<span class="btn-loader"></span>'; // Add a loader
@@ -733,7 +724,15 @@
         prevBtn.style.visibility = 'visible';
         nextBtn.textContent = getConfigText('confirmLabel', 'Confirmar Cita');
         nextBtn.classList.remove('is-loading');
-        alert(error.message || 'No se pudo crear la cita. Intente nuevamente.');
+
+        const errorContainer = document.createElement('div');
+        errorContainer.className = 'form-error-message';
+        errorContainer.textContent = error.message || 'No se pudo crear la cita. Intente nuevamente.';
+        errorContainer.setAttribute('role', 'alert');
+
+        const navigation = form.querySelector('.form-navigation');
+        navigation.insertAdjacentElement('beforebegin', errorContainer);
+        adjustFormHeight();
       }
     }
 
@@ -785,9 +784,9 @@
     // --- Event Listeners ---
     nextBtn.addEventListener('click', goToNextStep);
     prevBtn.addEventListener('click', goToPrevStep);
-    specialtyFilterInput.addEventListener('input', debounce(filterSpecialties, 300));
+    specialtyFilterInput.addEventListener('input', window.ClinicaUtils.debounce(filterSpecialties, 300));
     specialtyGrid.addEventListener('click', handleSpecialtySelection);
-    doctorFilterInput.addEventListener('input', debounce(filterDoctors, 300));
+    doctorFilterInput.addEventListener('input', window.ClinicaUtils.debounce(filterDoctors, 300));
     doctorSelectionGrid.addEventListener('click', handleDoctorSelection);
     calendarGrid.addEventListener('click', handleDateSelection);
     prevMonthBtn.addEventListener('click', () => navigateMonth(-1));
