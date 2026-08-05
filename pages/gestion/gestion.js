@@ -654,6 +654,27 @@
     };
   }
 
+  function getSvgPreview(value) {
+    const trimmedValue = String(value || '').trim();
+    if (!trimmedValue) return null;
+
+    // Case 1: It's already a full SVG element
+    if (trimmedValue.startsWith('<svg') && trimmedValue.endsWith('</svg>')) {
+      return trimmedValue;
+    }
+
+    // Case 2: It's SVG content (like <path...>) that needs to be wrapped
+    if (trimmedValue.startsWith('<') && trimmedValue.endsWith('>')) {
+      const isLikelySvgContent = ['<path', '<circle', '<rect', '<polygon', '<polyline', '<line', '<ellipse', '<g'].some((tag) => trimmedValue.startsWith(tag));
+      if (isLikelySvgContent) {
+        // This wrapper is a generic one for icons.
+        return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${trimmedValue}</svg>`;
+      }
+    }
+
+    return null;
+  }
+
   function renderForm(config, state, dom, record) {
     const isEditing = Boolean(record && record.id);
     state.editingId = isEditing ? record.id : null;
@@ -732,22 +753,33 @@
   }
 
   function renderImageField(field, value, help, fieldClass) {
-    const inputValue = formatInputValue(value);
-    const previewUrl = normalizeAssetUrl(inputValue);
-    const accept = field.accept || 'image/jpeg,image/png,image/webp,image/gif';
+    const inputValue = formatInputValue(value); // Puede ser URL o codigo SVG
+    const accept = field.accept || 'image/jpeg,image/png,image/webp,image/gif,image/svg+xml'; // Añadir SVG a los formatos aceptados
+    let previewContent = '<span>Sin imagen</span>';
+
+    const svgPreview = getSvgPreview(inputValue);
+    if (svgPreview) {
+      previewContent = svgPreview;
+    } else {
+      const previewUrl = normalizeAssetUrl(inputValue);
+      if (previewUrl) {
+        previewContent = `<img src="${escapeHtml(previewUrl)}" alt="">`;
+      }
+    }
 
     return `
       <div class="${fieldClass}" data-image-field="${escapeHtml(field.name)}">
         <label for="field-${escapeHtml(field.name)}">${escapeHtml(field.label)}</label>
         <div class="gestion-image-control">
           <div class="gestion-image-preview" data-image-preview="${escapeHtml(field.name)}">
-            ${previewUrl ? `<img src="${escapeHtml(previewUrl)}" alt="">` : '<span>Sin imagen</span>'}
+            ${previewContent}
           </div>
           <div class="gestion-image-body">
-            <input id="field-${escapeHtml(field.name)}" class="gestion-input" name="${escapeHtml(field.name)}" type="text" value="${escapeHtml(inputValue)}" placeholder="/clinica/public/assets/...">
+            <input id="field-${escapeHtml(field.name)}" class="gestion-input" name="${escapeHtml(field.name)}" type="text" value="${escapeHtml(inputValue)}" placeholder="URL o codigo SVG...">
             <div class="gestion-image-actions">
               <label class="btn btn-tertiary btn-sm gestion-upload-label" for="field-${escapeHtml(field.name)}-file">Subir imagen</label>
               <input id="field-${escapeHtml(field.name)}-file" class="sr-only" type="file" accept="${escapeHtml(accept)}" data-image-upload="${escapeHtml(field.name)}">
+              <button type="button" class="btn btn-tertiary btn-sm" data-action="clear-image" data-image-field-name="${escapeHtml(field.name)}">Limpiar</button>
             </div>
             <span class="gestion-upload-status" data-image-status="${escapeHtml(field.name)}" aria-live="polite"></span>
             ${help}
@@ -760,6 +792,14 @@
   function attachImageUploadHandlers(config, dom) {
     dom.form?.querySelectorAll('[data-image-upload]').forEach((input) => {
       input.addEventListener('change', () => uploadImage(input, config, dom));
+    });
+
+    dom.form?.querySelectorAll('[data-action="clear-image"]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const fieldName = button.dataset.imageFieldName;
+        dom.form.elements[fieldName].value = '';
+        updateImagePreview(fieldName, '', dom);
+      });
     });
 
     dom.form?.querySelectorAll('[data-image-field] .gestion-input').forEach((input) => {
@@ -813,10 +853,14 @@
     const preview = dom.form?.querySelector(`[data-image-preview="${fieldName}"]`);
     if (!preview) return;
 
-    const url = normalizeAssetUrl(value);
-    preview.innerHTML = url ? `<img src="${escapeHtml(url)}" alt="">` : '<span>Sin imagen</span>';
+    const svgPreview = getSvgPreview(value);
+    if (svgPreview) {
+      preview.innerHTML = svgPreview;
+    } else {
+      const url = normalizeAssetUrl(value);
+      preview.innerHTML = url ? `<img src="${escapeHtml(url)}" alt="">` : '<span>Sin imagen</span>';
+    }
   }
-
   function attachScheduleDateSync(config, dom) {
     if (!isScheduleBoard(config)) return;
 

@@ -8,7 +8,7 @@ window.ClinicaGestion.boot({
   fields: [
     { name: 'title', label: 'Servicio', type: 'text', required: true },
     { name: 'description', label: 'Descripcion', type: 'textarea' },
-    { name: 'icon', label: 'Icono SVG', type: 'textarea', help: 'Pegue paths SVG internos, sin etiqueta svg.' },
+    { name: 'icon', label: 'Icono', type: 'image', help: 'Suba JPG, PNG, WEBP, GIF o SVG, o pegue el codigo SVG. Se guarda en public/assets/icons/.' },
     { name: 'featured', label: 'Destacado', type: 'checkbox' },
     { name: 'active', label: 'Activo', type: 'checkbox' },
   ],
