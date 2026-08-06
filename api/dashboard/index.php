@@ -10,8 +10,6 @@ if (!is_array($user) || !in_array($user['role'] ?? '', clinica_dashboard_roles()
   clinica_json(['success' => false, 'error' => 'Acceso no autorizado.'], 401);
 }
 
-clinica_ensure_appointments();
-
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $canSeeAllAppointments = clinica_can_see_all_appointments((string) ($user['role'] ?? ''));
 
@@ -27,34 +25,98 @@ if ($method === 'GET') {
   $search = trim((string) ($_GET['search'] ?? ''));
   $page = max(1, (int) ($_GET['page'] ?? 1));
   $perPage = max(6, min(48, (int) ($_GET['per_page'] ?? 6)));
+  $offset = ($page - 1) * $perPage;
 
-  $dateRecords = clinica_filter_dashboard_appointment_records($_SESSION['appointments'], $user, $doctorId, $dateScope, $exactDate);
-  $searchRecords = array_values(array_filter(
-    $dateRecords,
-    static fn(array $appointment): bool => clinica_matches_dashboard_search($appointment, $search),
-  ));
-  $statusCounts = clinica_dashboard_status_counts($searchRecords);
-  $statusRecords = array_values(array_filter(
-    $searchRecords,
-    static fn(array $appointment): bool => clinica_matches_dashboard_status($appointment, $statusFilter),
-  ));
-  $totalRecords = count($statusRecords);
+  $pdo = clinica_get_db();
+  $params = [];
+
+  // Base query
+  $countSql = "SELECT COUNT(a.id) FROM appointments a JOIN patients p ON a.patient_id = p.id JOIN doctors d ON a.doctor_id = d.id";
+  $dataSql = "SELECT a.id, a.date AS fecha, a.time AS hora, p.name AS nombre_paciente, p.email AS email_paciente, p.phone AS telefono_paciente, a.notes AS motivo_consulta, a.status AS estado, a.doctor_id, d.name AS doctor_nombre FROM appointments a JOIN patients p ON a.patient_id = p.id JOIN doctors d ON a.doctor_id = d.id";
+
+  // WHERE clauses
+  $where = [];
+
+  if (!$canSeeAllAppointments) {
+    $where[] = "a.doctor_id = :user_id";
+    $params[':user_id'] = $user['id'];
+  } elseif ($doctorId) {
+    $where[] = "a.doctor_id = :doctor_id";
+    $params[':doctor_id'] = $doctorId;
+  }
+
+  if ($exactDate) {
+    $where[] = "a.date = :exact_date";
+    $params[':exact_date'] = $exactDate;
+    if (!$canSeeAllAppointments && $exactDate < date('Y-m-d')) {
+      $where[] = "1=0"; // Force no results for doctors on past dates
+    }
+  } else {
+    $today = date('Y-m-d');
+    switch ($dateScope) {
+      case 'tomorrow':
+        $where[] = "a.date = DATE_ADD(:today, INTERVAL 1 DAY)";
+        $params[':today'] = $today;
+        break;
+      case 'future':
+        $where[] = "a.date >= :today";
+        $params[':today'] = $today;
+        break;
+      case 'past':
+        $where[] = "a.date < :today";
+        $params[':today'] = $today;
+        break;
+      case 'today':
+        $where[] = "a.date = :today";
+        $params[':today'] = $today;
+        break;
+    }
+  }
+
+  if ($search !== '') {
+    $where[] = "(p.name LIKE :search OR p.email LIKE :search OR a.notes LIKE :search OR a.id LIKE :search)";
+    $params[':search'] = '%' . $search . '%';
+  }
+
+  // Build summary query before status filter
+  $summarySql = $dataSql . (empty($where) ? '' : ' WHERE ' . implode(' AND ', $where));
+  $summaryStmt = $pdo->prepare($summarySql);
+  $summaryStmt->execute($params);
+  $summaryRecords = $summaryStmt->fetchAll();
+  $statusCounts = clinica_dashboard_status_counts($summaryRecords);
+
+  if ($statusFilter !== 'all') {
+    $where[] = "a.status = :status";
+    $params[':status'] = $statusFilter;
+  }
+
+  $whereClause = empty($where) ? '' : ' WHERE ' . implode(' AND ', $where);
+
+  // Get total count
+  $totalStmt = $pdo->prepare($countSql . $whereClause);
+  $totalStmt->execute($params);
+  $totalRecords = (int) $totalStmt->fetchColumn();
+
+  // Get paginated data
   $totalPages = max(1, (int) ceil($totalRecords / $perPage));
   $page = min($page, $totalPages);
-  $offset = ($page - 1) * $perPage;
-  $pageRecords = array_slice($statusRecords, $offset, $perPage);
+  $dataSql .= $whereClause . " ORDER BY a.date, a.time LIMIT :limit OFFSET :offset";
+  $dataStmt = $pdo->prepare($dataSql);
+  $dataStmt->execute(array_merge($params, [':limit' => $perPage, ':offset' => $offset]));
+  $pageRecords = $dataStmt->fetchAll();
+
   $appointments = array_map(
     static fn(array $appointment): array => clinica_transform_appointment($appointment, $user),
     $pageRecords,
   );
   $nextPending = null;
-  foreach ($searchRecords as $appointment) {
+  foreach ($summaryRecords as $appointment) {
     if (($appointment['estado'] ?? '') === 'pendiente') {
       $nextPending = clinica_transform_appointment($appointment, $user);
       break;
     }
   }
-  $doctors = $canSeeAllAppointments ? clinica_doctors_from_appointments($_SESSION['appointments']) : [];
+  $doctors = $canSeeAllAppointments ? clinica_doctors_from_appointments($pdo) : [];
 
   clinica_json([
     'success' => true,
@@ -93,30 +155,27 @@ if ($method === 'POST') {
     clinica_json(['success' => false, 'error' => 'Datos de actualizacion invalidos.'], 422);
   }
 
-  foreach ($_SESSION['appointments'] as $index => $appointment) {
-    if ($appointment['id'] !== $appointmentId) {
-      continue;
-    }
+  $pdo = clinica_get_db();
+  $stmt = $pdo->prepare("SELECT * FROM appointments WHERE id = ?");
+  $stmt->execute([$appointmentId]);
+  $appointment = $stmt->fetch();
 
-    if (!$canSeeAllAppointments && $appointment['doctor_id'] !== $user['id']) {
-      clinica_json(['success' => false, 'error' => 'No puede actualizar esta cita.'], 403);
-    }
-
-    if (!$canSeeAllAppointments && ($appointment['fecha'] ?? '') < date('Y-m-d')) {
-      clinica_json(['success' => false, 'error' => 'No puede actualizar citas anteriores.'], 403);
-    }
-
-    $_SESSION['appointments'][$index]['estado'] = $newStatus;
-    $updatedAppointment = clinica_transform_appointment($_SESSION['appointments'][$index], $user);
-
-    clinica_json([
-      'success' => true,
-      'appointment' => $updatedAppointment,
-      'appointments' => clinica_filter_dashboard_appointments($_SESSION['appointments'], $user),
-    ]);
+  if (!$appointment) {
+    clinica_json(['success' => false, 'error' => 'Cita no encontrada.'], 404);
   }
 
-  clinica_json(['success' => false, 'error' => 'Cita no encontrada.'], 404);
+  if (!$canSeeAllAppointments && $appointment['doctor_id'] !== $user['id']) {
+    clinica_json(['success' => false, 'error' => 'No puede actualizar esta cita.'], 403);
+  }
+
+  if (!$canSeeAllAppointments && ($appointment['date'] ?? '') < date('Y-m-d')) {
+    clinica_json(['success' => false, 'error' => 'No puede actualizar citas anteriores.'], 403);
+  }
+
+  $updateStmt = $pdo->prepare("UPDATE appointments SET status = ? WHERE id = ?");
+  $updateStmt->execute([$newStatus, $appointmentId]);
+
+  clinica_json(['success' => true, 'message' => 'Estado de la cita actualizado.']);
 }
 
 clinica_json(['success' => false, 'error' => 'Metodo no permitido.'], 405);

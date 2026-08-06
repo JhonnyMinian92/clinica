@@ -1,11 +1,14 @@
 <?php
 
-const CLINICA_APPOINTMENTS_SEED_VERSION = 2;
-const CLINICA_GESTION_DATA_VERSION = 1;
-const CLINICA_GESTION_STORAGE_FILE = __DIR__ . '/storage/gestion-data.json';
+require_once __DIR__ . '/db.php';
+
 const CLINICA_SESSION_TTL_SECONDS = 28800;
 
-function clinica_default_database(): array
+const CLINICA_GESTION_DATA_VERSION = 1;
+const CLINICA_APPOINTMENTS_SEED_VERSION = 1;
+
+// This function is now only used by the seeder script as a fallback.
+function clinica_get_seed_data(): array
 {
   return [
     'version' => CLINICA_GESTION_DATA_VERSION,
@@ -141,64 +144,6 @@ function clinica_default_database(): array
   ];
 }
 
-function clinica_read_database(): array
-{
-  $default = clinica_default_database();
-  $path = CLINICA_GESTION_STORAGE_FILE;
-  $directory = dirname($path);
-
-  if (!is_dir($directory)) {
-    mkdir($directory, 0775, true);
-  }
-
-  if (!is_file($path)) {
-    clinica_write_database($default);
-    return $default;
-  }
-
-  $raw = file_get_contents($path);
-  $decoded = $raw !== false ? json_decode($raw, true) : null;
-  if (!is_array($decoded)) {
-    clinica_write_database($default);
-    return $default;
-  }
-
-  foreach ($default as $key => $value) {
-    if (!array_key_exists($key, $decoded)) {
-      $decoded[$key] = $value;
-    }
-  }
-
-  return $decoded;
-}
-
-function clinica_write_database(array $database): bool
-{
-  $database['version'] = CLINICA_GESTION_DATA_VERSION;
-  $path = CLINICA_GESTION_STORAGE_FILE;
-  $directory = dirname($path);
-
-  if (!is_dir($directory)) {
-    mkdir($directory, 0775, true);
-  }
-
-  $json = json_encode($database, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-  return $json !== false && file_put_contents($path, $json, LOCK_EX) !== false;
-}
-
-function clinica_get_database_resource(string $resource): mixed
-{
-  $database = clinica_read_database();
-  return $database[$resource] ?? null;
-}
-
-function clinica_save_database_resource(string $resource, mixed $value): bool
-{
-  $database = clinica_read_database();
-  $database[$resource] = $value;
-  return clinica_write_database($database);
-}
-
 function clinica_is_active_record(array $record): bool
 {
   return (bool) ($record['active'] ?? true);
@@ -206,102 +151,106 @@ function clinica_is_active_record(array $record): bool
 
 function clinica_get_clinic_settings(): array
 {
-  $clinic = clinica_get_database_resource('clinic');
-  $default = clinica_default_database()['clinic'];
-  return is_array($clinic) ? array_replace_recursive($default, $clinic) : $default;
+  $pdo = clinica_get_db();
+  $stmt = $pdo->query("SELECT * FROM clinics ORDER BY id ASC LIMIT 1");
+  $clinic = $stmt->fetch();
+
+  if (!$clinic) {
+    return []; // Or throw an exception
+  }
+
+  // Decode JSON fields
+  $clinic['stats'] = json_decode($clinic['stats'] ?? '[]', true);
+  $clinic['about_cards'] = json_decode($clinic['about_cards'] ?? '[]', true);
+
+  return $clinic;
 }
 
 function clinica_get_specialties(bool $activeOnly = false): array
 {
-  $specialties = clinica_get_database_resource('specialties');
-  $specialties = is_array($specialties) ? $specialties : [];
-
+  $pdo = clinica_get_db();
+  $sql = "SELECT * FROM specialties";
   if ($activeOnly) {
-    $specialties = array_values(array_filter($specialties, 'clinica_is_active_record'));
+    $sql .= " WHERE active = 1";
   }
-
-  usort($specialties, static fn(array $a, array $b): int => strcmp($a['name'] ?? '', $b['name'] ?? ''));
-  return $specialties;
+  $sql .= " ORDER BY name ASC";
+  $stmt = $pdo->query($sql);
+  return $stmt->fetchAll();
 }
 
 function clinica_get_services(bool $activeOnly = false): array
 {
-  $services = clinica_get_database_resource('services');
-  $services = is_array($services) ? $services : [];
-
+  $pdo = clinica_get_db();
+  $sql = "SELECT * FROM services";
   if ($activeOnly) {
-    $services = array_values(array_filter($services, 'clinica_is_active_record'));
+    $sql .= " WHERE active = 1";
   }
-
-  return $services;
+  $stmt = $pdo->query($sql);
+  return $stmt->fetchAll();
 }
 
 function clinica_get_comments(bool $activeOnly = false): array
 {
-  $comments = clinica_get_database_resource('comments');
-  $comments = is_array($comments) ? $comments : [];
-
+  $pdo = clinica_get_db();
+  $sql = "SELECT * FROM testimonials"; // Assuming 'comments' are stored in 'testimonials' table
   if ($activeOnly) {
-    $comments = array_values(array_filter($comments, 'clinica_is_active_record'));
+    $sql .= " WHERE active = 1";
   }
-
-  return $comments;
+  $stmt = $pdo->query($sql);
+  return $stmt->fetchAll();
 }
 
 function clinica_get_doctors(bool $activeOnly = false): array
 {
-  $doctors = clinica_get_database_resource('doctors');
-  $doctors = is_array($doctors) ? $doctors : [];
-
+  $pdo = clinica_get_db();
+  $sql = "SELECT * FROM doctors";
   if ($activeOnly) {
-    $doctors = array_values(array_filter($doctors, 'clinica_is_active_record'));
+    $sql .= " WHERE active = 1";
   }
+  $sql .= " ORDER BY name ASC";
+  $stmt = $pdo->query($sql);
+  $doctors = $stmt->fetchAll();
 
-  usort($doctors, static fn(array $a, array $b): int => strcmp($a['name'] ?? '', $b['name'] ?? ''));
-  return $doctors;
+  // Decode JSON fields
+  return array_map(function ($doctor) {
+    $doctor['languages'] = json_decode($doctor['languages'] ?? '[]', true);
+    $doctor['recognitions'] = json_decode($doctor['recognitions'] ?? '[]', true);
+    return $doctor;
+  }, $doctors);
 }
 
 function clinica_get_schedules(bool $activeOnly = false): array
 {
-  $schedules = clinica_get_database_resource('schedules');
-  $schedules = is_array($schedules) ? $schedules : [];
-
+  $pdo = clinica_get_db();
+  $sql = "SELECT * FROM doctor_schedules";
   if ($activeOnly) {
-    $schedules = array_values(array_filter($schedules, 'clinica_is_active_record'));
+    $sql .= " WHERE active = 1";
   }
-
-  usort($schedules, static function (array $a, array $b): int {
-    $doctorCompare = strcmp($a['doctor_id'] ?? '', $b['doctor_id'] ?? '');
-    if ($doctorCompare !== 0) return $doctorCompare;
-    $dateCompare = strcmp($a['date'] ?? '', $b['date'] ?? '');
-    if ($dateCompare !== 0) return $dateCompare;
-    $weekdayCompare = ((int) ($a['weekday'] ?? 0)) <=> ((int) ($b['weekday'] ?? 0));
-    return $weekdayCompare !== 0 ? $weekdayCompare : strcmp($a['start_time'] ?? '', $b['start_time'] ?? '');
-  });
-
-  return $schedules;
+  $sql .= " ORDER BY doctor_id, date, weekday, start_time";
+  $stmt = $pdo->query($sql);
+  return $stmt->fetchAll();
 }
 
 function clinica_specialty_name_by_id(string $specialtyId): string
 {
-  foreach (clinica_get_specialties() as $specialty) {
-    if (($specialty['id'] ?? '') === $specialtyId) {
-      return (string) ($specialty['name'] ?? $specialtyId);
-    }
-  }
-
-  return $specialtyId;
+  $pdo = clinica_get_db();
+  $stmt = $pdo->prepare("SELECT name FROM specialties WHERE id = ?");
+  $stmt->execute([$specialtyId]);
+  $result = $stmt->fetchColumn();
+  return $result ?: $specialtyId;
 }
 
 function clinica_find_doctor(string $doctorId): ?array
 {
-  foreach (clinica_get_doctors() as $doctor) {
-    if (($doctor['id'] ?? '') === $doctorId) {
-      return $doctor;
-    }
+  $pdo = clinica_get_db();
+  $stmt = $pdo->prepare("SELECT * FROM doctors WHERE id = ?");
+  $stmt->execute([$doctorId]);
+  $doctor = $stmt->fetch();
+  if ($doctor) {
+    $doctor['languages'] = json_decode($doctor['languages'] ?? '[]', true);
+    $doctor['recognitions'] = json_decode($doctor['recognitions'] ?? '[]', true);
   }
-
-  return null;
+  return $doctor ?: null;
 }
 
 function clinica_schedule_shift_label(string $startTime, string $endTime): string
@@ -519,49 +468,46 @@ function clinica_public_doctors_for_home(): array
 
 function clinica_public_booked_slots(): array
 {
-  if (session_status() !== PHP_SESSION_ACTIVE) {
-    session_start();
-  }
+  $pdo = clinica_get_db();
+  $stmt = $pdo->query("SELECT doctor_id, date, time FROM appointments WHERE status != 'rechazada'");
+  $results = $stmt->fetchAll();
 
-  clinica_ensure_appointments();
   $booked = [];
-
-  foreach ($_SESSION['appointments'] ?? [] as $appointment) {
-    $doctorId = (string) ($appointment['doctor_id'] ?? '');
-    $date = (string) ($appointment['fecha'] ?? '');
-    $time = (string) ($appointment['hora'] ?? '');
-
-    if ($doctorId === '' || $date === '' || $time === '') {
-      continue;
+  foreach ($results as $row) {
+    if (!isset($booked[$row['doctor_id']])) {
+      $booked[$row['doctor_id']] = [];
     }
-
-    $booked[$doctorId][$date][] = $time;
+    $booked[$row['doctor_id']][$row['date']][] = substr($row['time'], 0, 5);
   }
-
   return $booked;
 }
 
 function clinica_demo_users(): array
 {
-  $users = clinica_get_database_resource('users');
+  $pdo = clinica_get_db();
+  $stmt = $pdo->query("SELECT id, username, password, name, role, doctor_id FROM users WHERE active = 1");
+  $users = $stmt->fetchAll();
+
   $mapped = [];
 
-  foreach (is_array($users) ? $users : [] as $user) {
-    if (!($user['active'] ?? true)) {
-      continue;
-    }
-
+  foreach ($users as $user) {
     $username = strtolower(trim((string) ($user['username'] ?? '')));
     if ($username === '') {
       continue;
     }
 
+    // If the user is a doctor, their session ID should be their doctor_id.
+    // This is crucial for the dashboard logic to find their appointments.
+    $sessionUserId = ($user['role'] === 'DOCTOR' && !empty($user['doctor_id']))
+      ? (string) $user['doctor_id']
+      : (string) $user['id'];
+
     $mapped[$username] = [
-      'id' => (string) (($user['role'] ?? '') === 'DOCTOR' && ($user['doctor_id'] ?? '') !== '' ? $user['doctor_id'] : ($user['id'] ?? $username)),
+      'id' => $sessionUserId,
       'username' => $username,
       'name' => (string) ($user['name'] ?? $username),
       'role' => (string) ($user['role'] ?? ''),
-      'label' => (string) ($user['label'] ?? $user['role'] ?? ''),
+      'label' => (string) ($user['role'] ?? ''), // 'label' is not in the DB, using 'role' as fallback.
       'password' => (string) ($user['password'] ?? ''),
     ];
   }
@@ -761,6 +707,26 @@ function clinica_current_user(): ?array
   }
 
   return $user;
+}
+
+/**
+ * Legacy function to read from JSON, only used by the seeder.
+ */
+function clinica_read_database(): array
+{
+  $path = __DIR__ . '/storage/gestion-data.json';
+  if (!is_file($path)) {
+    throw new Exception("gestion-data.json not found for seeding.");
+  }
+
+  $raw = file_get_contents($path);
+  $decoded = $raw !== false ? json_decode($raw, true) : null;
+
+  if (!is_array($decoded)) {
+    throw new Exception("Could not decode gestion-data.json for seeding.");
+  }
+
+  return $decoded;
 }
 
 function clinica_start_authenticated_session(array $user): void

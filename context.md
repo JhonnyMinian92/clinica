@@ -617,6 +617,25 @@ CREATE TABLE `clinics` (
   `hero_subtitle` TEXT DEFAULT NULL,
   `hero_image` VARCHAR(255) DEFAULT NULL,
   `hero_mobile_image` VARCHAR(255) DEFAULT NULL,
+  `about_title` VARCHAR(255) DEFAULT NULL,
+  `about_subtitle` TEXT DEFAULT NULL,
+  `services_title` VARCHAR(255) DEFAULT NULL,
+  `services_subtitle` TEXT DEFAULT NULL,
+  `specialties_title` VARCHAR(255) DEFAULT NULL,
+  `specialties_subtitle` TEXT DEFAULT NULL,
+  `doctors_title` VARCHAR(255) DEFAULT NULL,
+  `doctors_subtitle` TEXT DEFAULT NULL,
+  `comments_title` VARCHAR(255) DEFAULT NULL,
+  `comments_subtitle` TEXT DEFAULT NULL,
+  `reservation_title` VARCHAR(255) DEFAULT NULL,
+  `reservation_subtitle` TEXT DEFAULT NULL,
+  `reservation_summary_note` TEXT DEFAULT NULL,
+  `reservation_success_title` VARCHAR(255) DEFAULT NULL,
+  `reservation_success_text` TEXT DEFAULT NULL,
+  `reservation_back_home_label` VARCHAR(100) DEFAULT NULL,
+  `reservation_next_label` VARCHAR(100) DEFAULT NULL,
+  `reservation_confirm_label` VARCHAR(100) DEFAULT NULL,
+  `reservation_previous_label` VARCHAR(100) DEFAULT NULL,
   `address` VARCHAR(255) DEFAULT NULL,
   `email` VARCHAR(255) DEFAULT NULL,
   `phone_display` VARCHAR(50) DEFAULT NULL,
@@ -625,6 +644,8 @@ CREATE TABLE `clinics` (
   `whatsapp_url` VARCHAR(255) DEFAULT NULL,
   `facebook_url` VARCHAR(255) DEFAULT NULL,
   `instagram_url` VARCHAR(255) DEFAULT NULL,
+  `stats` JSON DEFAULT NULL,
+  `about_cards` JSON DEFAULT NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
@@ -679,6 +700,34 @@ CREATE TABLE `doctors` (
   PRIMARY KEY (`id`),
   KEY `doctors_specialty_id_foreign` (`specialty_id`),
   CONSTRAINT `doctors_specialty_id_foreign` FOREIGN KEY (`specialty_id`) REFERENCES `specialties` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabla de servicios de la clínica
+CREATE TABLE `services` (
+  `id` VARCHAR(50) NOT NULL,
+  `title` VARCHAR(255) NOT NULL,
+  `description` TEXT DEFAULT NULL,
+  `icon` TEXT DEFAULT NULL,
+  `featured` BOOLEAN NOT NULL DEFAULT FALSE,
+  `active` BOOLEAN NOT NULL DEFAULT TRUE,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabla de testimonios (comentarios) de pacientes
+CREATE TABLE `testimonials` (
+  `id` VARCHAR(50) NOT NULL,
+  `author` VARCHAR(255) NOT NULL,
+  `detail` VARCHAR(255) DEFAULT NULL,
+  `text` TEXT NOT NULL,
+  `rating` TINYINT UNSIGNED NOT NULL,
+  `avatar` VARCHAR(255) DEFAULT NULL,
+  `featured` BOOLEAN NOT NULL DEFAULT FALSE,
+  `active` BOOLEAN NOT NULL DEFAULT TRUE,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla de horarios y disponibilidad de los doctores
@@ -988,6 +1037,21 @@ Validacion realizada:
 - [x] **(Deuda Tecnica)** Centralizar funciones de utilidad JavaScript (ej. `debounce`) para evitar duplicacion.
 - [x] **(Deuda Tecnica)** Refactorizar la logica de renderizado del logo en PHP para evitar duplicacion entre header y footer.
 - [ ] Decidir si login se integra al design system global o permanece standalone.
+
+## Iteracion 2026-08-07: Migracion a Base de Datos MySQL
+
+Se ha completado la migracion del backend desde un sistema basado en archivos JSON y sesiones a una arquitectura robusta con base de datos MySQL, siguiendo la propuesta documentada.
+
+### Cambios Implementados
+
+- **Capa de Base de Datos:**
+  - Se creo `api/db.php` para gestionar una conexion PDO singleton a la base de datos MySQL.
+  - Se creo un script `api/seed.php` para crear el esquema de tablas y poblarlo con los datos existentes de `gestion-data.json`.
+- **Refactorizacion del Backend:**
+  - Se refactorizo `api/data.php` para que todas las funciones de lectura (`clinica_get_doctors`, `clinica_get_specialties`, etc.) ahora consulten la base de datos en lugar de archivos JSON.
+  - Se refactorizo `api/gestion/index.php` para que las operaciones de guardado y eliminacion (CRUD) se realicen mediante sentencias `INSERT`, `UPDATE` y `DELETE` en la base de datos.
+  - Se refactorizo `api/dashboard/index.php` para que la obtencion y filtrado de citas se realice con consultas SQL, eliminando la dependencia de `$_SESSION`.
+  - Se refactorizo `api/general/index.php` para que el login verifique las credenciales contra la tabla `users` usando `password_verify()` y la creacion de citas inserte registros en las tablas `patients` y `appointments`.
 
 ### P3 - Pruebas
 
