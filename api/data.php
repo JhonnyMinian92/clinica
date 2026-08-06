@@ -508,7 +508,7 @@ function clinica_demo_users(): array
       'name' => (string) ($user['name'] ?? $username),
       'role' => (string) ($user['role'] ?? ''),
       'label' => (string) ($user['role'] ?? ''), // 'label' is not in the DB, using 'role' as fallback.
-      'password' => (string) ($user['password'] ?? ''),
+      // Intentionally do NOT expose password or password hash to the public mapping.
     ];
   }
 
@@ -715,18 +715,20 @@ function clinica_current_user(): ?array
 function clinica_read_database(): array
 {
   $path = __DIR__ . '/storage/gestion-data.json';
-  if (!is_file($path)) {
-    throw new Exception("gestion-data.json not found for seeding.");
+
+  // Prefer filesystem JSON if available (legacy), but fall back to in-code seed data.
+  if (is_file($path)) {
+    $raw = @file_get_contents($path);
+    $decoded = $raw !== false ? json_decode($raw, true) : null;
+
+    if (is_array($decoded)) {
+      return $decoded;
+    }
+    // If file exists but can't be decoded, fall through to seed fallback.
   }
 
-  $raw = file_get_contents($path);
-  $decoded = $raw !== false ? json_decode($raw, true) : null;
-
-  if (!is_array($decoded)) {
-    throw new Exception("Could not decode gestion-data.json for seeding.");
-  }
-
-  return $decoded;
+  // Fallback: return built-in seed data so seeding can run without external files.
+  return clinica_get_seed_data();
 }
 
 function clinica_start_authenticated_session(array $user): void
@@ -982,4 +984,11 @@ function clinica_doctors_from_appointments(array $appointments): array
 
   usort($doctors, static fn(array $a, array $b): int => strcmp($a['nombre'], $b['nombre']));
   return array_values($doctors);
+}
+
+function clinica_get_all_doctors_for_select(): array
+{
+  $pdo = clinica_get_db();
+  $stmt = $pdo->query("SELECT id, name AS nombre FROM doctors WHERE active = 1 ORDER BY name ASC");
+  return $stmt->fetchAll();
 }

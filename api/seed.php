@@ -29,7 +29,18 @@ try {
     echo "Tabla `$table` eliminada (si existía).\n";
   }
 
-  $pdo->exec($sqlSchema);
+  // Separar y ejecutar cada sentencia SQL del esquema para mayor fiabilidad.
+  // Se eliminan comentarios y se divide por ';'.
+  $sqlSchema = preg_replace('/--.*$/m', '', $sqlSchema);
+  $statements = explode(';', $sqlSchema);
+
+  foreach ($statements as $statement) {
+    $statement = trim($statement);
+    if (!empty($statement)) {
+      $pdo->exec($statement);
+    }
+  }
+
   $pdo->exec("SET FOREIGN_KEY_CHECKS=1;");
   echo "\nEsquema de base de datos creado exitosamente.\n\n";
 
@@ -150,7 +161,7 @@ try {
   // Seed initial appointments
   $appointments = clinica_seed_appointments();
   $patientStmt = $pdo->prepare("INSERT INTO patients (name, email, phone) VALUES (:name, :email, :phone) ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id), name=VALUES(name), phone=VALUES(phone)");
-  $appointmentStmt = $pdo->prepare("INSERT INTO appointments (patient_id, doctor_id, specialty_id, date, time, status, notes) VALUES (:patient_id, :doctor_id, :specialty_id, :date, :time, :status, :notes)");
+  $appointmentStmt = $pdo->prepare("INSERT IGNORE INTO appointments (patient_id, doctor_id, specialty_id, date, time, status, notes) VALUES (:patient_id, :doctor_id, :specialty_id, :date, :time, :status, :notes)");
 
   foreach ($appointments as $app) {
     // 1. Find or create patient

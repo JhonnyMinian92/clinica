@@ -18,21 +18,6 @@
 
     const cards = Array.from(specialtiesGrid.children);
 
-    /**
-     * Retrasa la ejecución de una función. Esencial para no sobrecargar
-     * el navegador en eventos que se disparan rápidamente, como 'input' o 'resize'.
-     * @param {Function} func - La función a ejecutar.
-     * @param {number} delay - El tiempo de espera en milisegundos.
-     * @returns {Function}
-     */
-    function debounce(func, delay = 250) {
-      let timeoutId;
-      return function (...args) {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => func.apply(this, args), delay);
-      };
-    }
-
     function filterSpecialties() {
       const searchTerm = searchInput.value.toLowerCase().trim();
       let visibleCount = 0;
@@ -52,6 +37,6 @@
     }
 
     // Usamos debounce para optimizar el rendimiento del filtro
-    searchInput.addEventListener('input', debounce(filterSpecialties, 300));
+    searchInput.addEventListener('input', window.ClinicaUtils.debounce(filterSpecialties, 300));
   });
 })();

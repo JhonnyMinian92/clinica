@@ -651,21 +651,6 @@ CREATE TABLE `clinics` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Tabla de usuarios del sistema (panel de gestión, dashboard)
-CREATE TABLE `users` (
-  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `username` VARCHAR(50) NOT NULL UNIQUE,
-  `password` VARCHAR(255) NOT NULL COMMENT 'Almacenará el hash de la contraseña',
-  `name` VARCHAR(255) NOT NULL,
-  `role` ENUM('ADMINISTRATOR', 'SECRETARIA', 'DOCTOR') NOT NULL,
-  `doctor_id` VARCHAR(50) DEFAULT NULL COMMENT 'FK a doctors.id si el rol es DOCTOR',
-  `active` BOOLEAN NOT NULL DEFAULT TRUE,
-  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `users_doctor_id_foreign` (`doctor_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 -- Tabla de especialidades médicas
 CREATE TABLE `specialties` (
   `id` VARCHAR(50) NOT NULL COMMENT 'ID basado en slug, ej: cardiologia',
@@ -702,6 +687,21 @@ CREATE TABLE `doctors` (
   CONSTRAINT `doctors_specialty_id_foreign` FOREIGN KEY (`specialty_id`) REFERENCES `specialties` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Tabla de usuarios del sistema (panel de gestión, dashboard)
+CREATE TABLE `users` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `username` VARCHAR(50) NOT NULL UNIQUE,
+  `password` VARCHAR(255) NOT NULL COMMENT 'Almacenará el hash de la contraseña',
+  `name` VARCHAR(255) NOT NULL,
+  `role` ENUM('ADMINISTRATOR', 'SECRETARIA', 'DOCTOR') NOT NULL,
+  `doctor_id` VARCHAR(50) DEFAULT NULL COMMENT 'FK a doctors.id si el rol es DOCTOR',
+  `active` BOOLEAN NOT NULL DEFAULT TRUE,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `users_doctor_id_foreign` (`doctor_id`),
+  CONSTRAINT `users_doctor_id_foreign` FOREIGN KEY (`doctor_id`) REFERENCES `doctors`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 -- Tabla de servicios de la clínica
 CREATE TABLE `services` (
   `id` VARCHAR(50) NOT NULL,
@@ -798,8 +798,6 @@ CREATE TABLE `audit_logs` (
   KEY `idx_audit_resource` (`resource_type`, `resource_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Constraints adicionales
-ALTER TABLE `users` ADD CONSTRAINT `users_doctor_id_foreign` FOREIGN KEY (`doctor_id`) REFERENCES `doctors`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 ```
 
 ### 2. Arquitectura de Backend Propuesta

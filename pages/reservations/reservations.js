@@ -56,7 +56,6 @@
       specialtyName: null,
       doctorId: null,
       doctorName: null,
-      doctorSchedule: {},
       doctorScheduleRules: {},
       date: null,
       time: null,
@@ -226,12 +225,6 @@
         else if (currentStep === 3) {
           // Preservar los datos del paciente al retroceder
         }
-        // Dejando el Paso 5 (Confirmación) para ir al Paso 4 (Datos)
-        else if (currentStep === 4) {
-          selection.patientName = patientNameInput.value;
-          selection.patientEmail = patientEmailInput.value;
-          selection.patientPhone = patientPhoneInput.value;
-        }
 
         currentStep--;
         updateFormUI();
@@ -249,7 +242,7 @@
       cards.forEach((card) => {
         const name = card.dataset.name.toLowerCase();
         const isVisible = name.includes(searchTerm);
-        card.style.display = isVisible ? 'flex' : 'none';
+        card.style.display = isVisible ? '' : 'none';
         if (isVisible) {
           visibleCount++;
         }
@@ -304,7 +297,6 @@
       if (selection.specialtyId && selection.specialtyId !== specialtyId) {
         selection.doctorId = null;
         selection.doctorName = null;
-        selection.doctorSchedule = {};
         selection.date = null;
         selection.time = null;
       }
@@ -379,13 +371,11 @@
       if (selectedDoctor) {
         selection.doctorId = selectedDoctor.id;
         selection.doctorName = selectedDoctor.nombre;
-        selection.doctorSchedule = selectedDoctor.horario_semanal || {};
         selection.doctorScheduleRules = selectedDoctor.horarios_detallados || {};
       } else {
         // Fallback si el doctor no se encuentra (no debería ocurrir)
         selection.doctorId = doctorId;
         selection.doctorName = selectedCard.dataset.name;
-        selection.doctorSchedule = {};
         selection.doctorScheduleRules = {};
       }
 
@@ -550,11 +540,7 @@
     }
 
     function doctorWorksOnDate(dateString, isoWeekday) {
-      return (
-        Object.prototype.hasOwnProperty.call(selection.doctorSchedule, dateString) ||
-        Object.prototype.hasOwnProperty.call(selection.doctorSchedule, isoWeekday) ||
-        getScheduleRulesForDate(dateString, isoWeekday).length > 0
-      );
+      return getScheduleRulesForDate(dateString, isoWeekday).length > 0;
     }
 
     function getScheduleRulesForDate(dateString, isoWeekday) {
@@ -564,7 +550,7 @@
     }
 
     function timeToMinutes(value) {
-      const match = String(value || '').match(/^(\d{2}):(\d{2})$/);
+      const match = String(value || '').match(/^(\d{2}):(\d{2})(?::\d{2})?$/);
       if (!match) return null;
 
       return Number(match[1]) * 60 + Number(match[2]);
@@ -743,10 +729,7 @@
       const formWrapper = document.querySelector('.reservation-form-wrapper');
       const clinicName = getConfigText('clinicName', 'la clinica');
       const successTitle = getConfigText('successTitle', 'Cita Agendada');
-      const successText = getConfigText(
-        'successText',
-        'Su cita ha sido confirmada exitosamente. Recibira un correo electronico con todos los detalles. Gracias por confiar en {clinic}.',
-      ).replaceAll('{clinic}', clinicName);
+      const successText = getConfigText('successText', 'Su cita ha sido confirmada exitosamente. Recibira un correo electronico con todos los detalles. Gracias por confiar en {clinic}.').replaceAll('{clinic}', clinicName);
       const backHomeLabel = getConfigText('backHomeLabel', 'Volver al Inicio');
       const successHTML = `
         <div class="success-message-container">

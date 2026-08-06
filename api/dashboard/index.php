@@ -116,7 +116,7 @@ if ($method === 'GET') {
       break;
     }
   }
-  $doctors = $canSeeAllAppointments ? clinica_doctors_from_appointments($pdo) : [];
+  $doctors = $canSeeAllAppointments ? clinica_get_all_doctors_for_select() : [];
 
   clinica_json([
     'success' => true,
