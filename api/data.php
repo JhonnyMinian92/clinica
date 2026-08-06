@@ -7,6 +7,101 @@ const CLINICA_SESSION_TTL_SECONDS = 28800;
 const CLINICA_GESTION_DATA_VERSION = 1;
 const CLINICA_APPOINTMENTS_SEED_VERSION = 1;
 
+/**
+ * Session & CSRF helpers
+ */
+function clinica_is_https(): bool
+{
+  if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') return true;
+  if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') return true;
+  if (!empty($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443) return true;
+  return false;
+}
+
+function clinica_ensure_session_started(): void
+{
+  if (session_status() === PHP_SESSION_ACTIVE) {
+    // Refresh CSRF cookie if token exists
+    if (!empty($_SESSION['csrf_token'])) {
+      clinica_set_csrf_cookie($_SESSION['csrf_token']);
+    }
+    return;
+  }
+
+  $secure = clinica_is_https();
+  $params = [
+    'lifetime' => 0,
+    'path' => '/',
+    'domain' => '',
+    'secure' => $secure,
+    'httponly' => true,
+    'samesite' => 'Lax',
+  ];
+
+  // Apply session cookie params before starting session
+  session_set_cookie_params($params);
+  session_start();
+
+  // Ensure a CSRF token exists and provide it to JS via cookie (not HttpOnly)
+  if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+  }
+  clinica_set_csrf_cookie($_SESSION['csrf_token']);
+}
+
+function clinica_get_csrf_token(): string
+{
+  clinica_ensure_session_started();
+  if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+  }
+  return (string) $_SESSION['csrf_token'];
+}
+
+function clinica_set_csrf_cookie(string $token): void
+{
+  if (headers_sent()) return;
+  $secure = clinica_is_https();
+  setcookie('XSRF-TOKEN', $token, [
+    'expires' => time() + 60 * 60 * 24, // 1 day
+    'path' => '/',
+    'domain' => '',
+    'secure' => $secure,
+    'httponly' => false, // Must be readable by JS for single-page apps
+    'samesite' => 'Lax',
+  ]);
+}
+
+function clinica_validate_csrf_from_request(): bool
+{
+  clinica_ensure_session_started();
+
+  $token = '';
+  // Check header first
+  if (!empty($_SERVER['HTTP_X_CSRF_TOKEN'])) {
+    $token = $_SERVER['HTTP_X_CSRF_TOKEN'];
+  } else {
+    // Try common header name
+    $headers = function_exists('getallheaders') ? getallheaders() : [];
+    if (!empty($headers['X-CSRF-Token'])) {
+      $token = $headers['X-CSRF-Token'];
+    } elseif (!empty($headers['x-csrf-token'])) {
+      $token = $headers['x-csrf-token'];
+    }
+  }
+
+  // Fallback: look for _csrf in JSON body or POST
+  if ($token === '') {
+    $payload = clinica_request_json();
+    if (!empty($payload['_csrf'])) $token = $payload['_csrf'];
+    if ($token === '' && !empty($_POST['_csrf'])) $token = $_POST['_csrf'];
+  }
+
+  if ($token === '' || empty($_SESSION['csrf_token'])) return false;
+
+  return hash_equals((string) $_SESSION['csrf_token'], (string) $token);
+}
+
 // This function is now only used by the seeder script as a fallback.
 function clinica_get_seed_data(): array
 {
@@ -112,9 +207,8 @@ function clinica_get_seed_data(): array
       ['id' => 'comment4', 'author' => 'Lucia Fernandez', 'detail' => 'Paciente de Diagnostico por Imagen', 'text' => 'La tecnologia para diagnosticos por imagen es de otro nivel. Obtuve resultados rapidos y con una claridad impresionante.', 'rating' => 5, 'avatar' => 'public/assets/avatar.png', 'featured' => true, 'active' => true],
     ],
     'users' => [
-      ['id' => 'admin1', 'username' => 'admin', 'name' => 'Valeria Andrade', 'role' => 'ADMINISTRATOR', 'label' => 'Administracion', 'password' => 'password123', 'doctor_id' => '', 'active' => true],
-      ['id' => 'sec1', 'username' => 'secretaria', 'name' => 'Mariana Rios', 'role' => 'SECRETARIA', 'label' => 'Secretaria', 'password' => 'secretaria123', 'doctor_id' => '', 'active' => true],
-      ['id' => 'doc3', 'username' => 'dr.herrera', 'name' => 'Dr. Mateo Herrera', 'role' => 'DOCTOR', 'label' => 'Doctor', 'password' => 'doctor123', 'doctor_id' => 'doc3', 'active' => true],
+      // Fallback seed does not include plaintext passwords. Use api/seed.php to create
+      // database users with password_hash() in a controlled environment (staging/dev).
     ],
     'schedules' => [
       ['id' => 'sch1', 'doctor_id' => 'doc1', 'weekday' => 1, 'start_time' => '07:00', 'end_time' => '13:00', 'slot_minutes' => 15, 'active' => true],
@@ -733,13 +827,14 @@ function clinica_read_database(): array
 
 function clinica_start_authenticated_session(array $user): void
 {
-  if (session_status() !== PHP_SESSION_ACTIVE) {
-    session_start();
-  }
+  // Ensure session cookie params are set correctly and session started
+  clinica_ensure_session_started();
 
   session_regenerate_id(true);
   $_SESSION['user'] = $user;
   $_SESSION['auth_started_at'] = time();
+  // Refresh CSRF cookie when a new authenticated session starts
+  clinica_set_csrf_cookie(clinica_get_csrf_token());
   clinica_set_session_cookie_expiration($_SESSION['auth_started_at'] + CLINICA_SESSION_TTL_SECONDS);
 }
 
@@ -760,11 +855,17 @@ function clinica_set_session_cookie_expiration(int $expiresAt): void
   }
 
   $params = session_get_cookie_params();
+  // Ensure secure flag reflects environment
+  $secure = $params['secure'] ?? false;
+  if (!$secure) {
+    $secure = clinica_is_https();
+  }
+
   setcookie(session_name(), session_id(), [
     'expires' => $expiresAt,
     'path' => $params['path'] ?: '/',
     'domain' => $params['domain'] ?? '',
-    'secure' => (bool) ($params['secure'] ?? false),
+    'secure' => (bool) $secure,
     'httponly' => true,
     'samesite' => $params['samesite'] ?? 'Lax',
   ]);
@@ -772,9 +873,8 @@ function clinica_set_session_cookie_expiration(int $expiresAt): void
 
 function clinica_destroy_session(): void
 {
-  if (session_status() !== PHP_SESSION_ACTIVE) {
-    session_start();
-  }
+  // Ensure session started so it can be destroyed
+  clinica_ensure_session_started();
 
   $_SESSION = [];
 
@@ -784,9 +884,19 @@ function clinica_destroy_session(): void
       'expires' => time() - 42000,
       'path' => $params['path'] ?: '/',
       'domain' => $params['domain'] ?? '',
-      'secure' => (bool) ($params['secure'] ?? false),
+      'secure' => $params['secure'] ?? clinica_is_https(),
       'httponly' => true,
       'samesite' => $params['samesite'] ?? 'Lax',
+    ]);
+
+    // Remove CSRF token cookie as well
+    setcookie('XSRF-TOKEN', '', [
+      'expires' => time() - 42000,
+      'path' => '/',
+      'domain' => '',
+      'secure' => clinica_is_https(),
+      'httponly' => false,
+      'samesite' => 'Lax',
     ]);
   }
 

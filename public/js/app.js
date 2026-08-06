@@ -168,7 +168,7 @@
 
     target.innerHTML = doctors
       .map((doctor, index) => `
-        <div class="doctor-card animate-on-scroll fade-in-up" style="--animation-delay: ${index * 100 + 200}ms;">
+        <div class="doctor-card animate-on-scroll fade-in-up" style="--animation-delay: ${index * 100 + 200}ms;" data-id="${escapeAttribute(doctor.id || '')}">
           <div class="doctor-photo skeleton">
             <img data-src="${escapeAttribute(doctor.foto || 'public/assets/avatar.png')}"
               alt="Fotografia de ${escapeAttribute(doctor.nombre || 'Doctor')}" loading="lazy" class="lazy-img">
@@ -179,7 +179,7 @@
               <p class="doctor-specialty">${escapeHtml(doctor.especialidad || '')}</p>
               <div class="doctor-card-details">
                 <p class="doctor-exp">${escapeHtml(doctor.experiencia || '')}</p>
-                <a href="pages/doctors/" class="btn btn-primary btn-sm">Ver Perfil</a>
+            <a href="pages/doctors/?doctor=${encodeURIComponent(doctor.id || '')}" class="btn btn-primary btn-sm">Ver Perfil</a>
               </div>
             </div>
           </div>

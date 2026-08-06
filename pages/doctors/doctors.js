@@ -29,6 +29,28 @@
 
     const allCards = Array.from(doctorsGrid.children);
 
+    // If a doctor id is provided in the URL (e.g. ?doctor=doc1), pre-filter to show only that doctor.
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const doctorParam = (urlParams.get('doctor') || '').trim();
+      if (doctorParam !== '') {
+        let found = false;
+        allCards.forEach((card) => {
+          const id = card.dataset.id || '';
+          const shouldShow = id === doctorParam;
+          if (shouldShow) found = true;
+          card.style.display = shouldShow ? '' : 'none';
+        });
+        const noResultsMessage = document.getElementById('no-results-message');
+        if (noResultsMessage) noResultsMessage.classList.toggle('is-visible', !found);
+        // Skip initializing filters when prefiltered to a single doctor
+        return;
+      }
+    } catch (e) {
+      // ignore URL parsing errors and continue with normal filtering
+      console.error('Error parsing URL params for doctor filtering', e);
+    }
+
     function applyFilters() {
       const nameTerm = filters.name.value.toLowerCase().trim();
       const specialtyTerm = filters.specialty.value.toLowerCase();

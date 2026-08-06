@@ -104,6 +104,7 @@ include __DIR__ . '/../../public/shared/header/header.php';
           $rating = max(0, min(5, (int) ($doctor['valoracion'] ?? 0)));
           ?>
           <div class="doctor-profile-card animate-on-scroll fade-in-up"
+            data-id="<?php echo htmlspecialchars($doctor['id']); ?>"
             data-name="<?php echo htmlspecialchars(strtolower($doctor['nombre'])); ?>"
             data-specialty="<?php echo htmlspecialchars(strtolower($doctor['especialidad'])); ?>"
             data-languages="|<?php echo htmlspecialchars(implode('|', array_map('strtolower', $doctor['idiomas']))); ?>|"

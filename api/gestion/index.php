@@ -1,8 +1,17 @@
 <?php
-session_start();
+require_once __DIR__ . '/../data.php';
+
+// Ensure session and CSRF cookie are available
+clinica_ensure_session_started();
 header('Content-Type: application/json; charset=utf-8');
 
-require_once __DIR__ . '/../data.php';
+// Protect mutating endpoints with CSRF validation
+$httpMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+if (in_array($httpMethod, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
+  if (!clinica_validate_csrf_from_request()) {
+    clinica_json(['success' => false, 'error' => 'CSRF token invalido.'], 403);
+  }
+}
 
 $user = clinica_current_user();
 
@@ -160,11 +169,12 @@ function clinica_gestion_upload_image(string $resource, array $post, array $file
     'image/png' => 'png',
     'image/webp' => 'webp',
     'image/gif' => 'gif',
-    'image/svg+xml' => 'svg',
+    // SVGs pose XSS risks if inlined; disallow SVG uploads by default. If SVGs are required,
+    // implement server-side sanitization or convert to raster formats on upload.
   ];
 
-  if (!array_key_exists($mime, $extensions) || ($mime !== 'image/svg+xml' && getimagesize($tmpName) === false)) {
-    clinica_json(['success' => false, 'error' => 'Formato no soportado. Use JPG, PNG, WEBP, GIF o SVG.'], 422);
+  if (!array_key_exists($mime, $extensions) || getimagesize($tmpName) === false) {
+    clinica_json(['success' => false, 'error' => 'Formato no soportado. Use JPG, PNG, WEBP o GIF.'], 422);
   }
 
   $assetsRoot = realpath(__DIR__ . '/../../public/assets');

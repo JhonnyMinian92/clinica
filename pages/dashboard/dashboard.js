@@ -487,6 +487,7 @@
           headers: {
             'Content-Type': 'application/json',
             Accept: 'application/json',
+            'X-CSRF-Token': (function(){ const match = document.cookie.match(new RegExp('(^|;)\\s*' + 'XSRF-TOKEN' + '\\s*=\\s*([^;]+)')); return match ? decodeURIComponent(match.pop()) : ''; })(),
           },
           body: JSON.stringify({ appointmentId, newStatus }),
         });
@@ -578,6 +579,7 @@
           headers: {
             'Content-Type': 'application/json',
             Accept: 'application/json',
+            'X-CSRF-Token': (function(){ const match = document.cookie.match(new RegExp('(^|;)\\s*' + 'XSRF-TOKEN' + '\\s*=\\s*([^;]+)')); return match ? decodeURIComponent(match.pop()) : ''; })(),
           },
           body: JSON.stringify({ action: 'logout' }),
         });

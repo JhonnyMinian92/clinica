@@ -97,7 +97,13 @@
           headers: {
             'Content-Type': 'application/json',
             Accept: 'application/json',
+            'X-CSRF-Token': (function(){
+              // Read XSRF-TOKEN cookie inserted by server
+              const match = document.cookie.match(new RegExp('(^|;)\\s*' + 'XSRF-TOKEN' + '\\s*=\\s*([^;]+)'));
+              return match ? decodeURIComponent(match.pop()) : '';
+            })(),
           },
+
           body: JSON.stringify({
             action: 'login',
             username: dom.usernameInput.value.trim(),

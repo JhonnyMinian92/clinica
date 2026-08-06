@@ -565,7 +565,268 @@ Validaciones ejecutadas:
 Validacion realizada:
 
 - API publica home:
-  - `/api/public/?resource=home`: `success=true`, 6 servicios, 4 especialidades, 4 doctores y 4 comentarios.
+  - `/api/public/?resource=home`: `success=true`. Ejemplo de respuesta completa (contrato que consume `public/js/app.js` y las paginas publicas):
+
+```json
+{
+  "success": true,
+  "resource": "home",
+  "data": {
+      "clinic": {
+          "id": 1,
+          "name": "Clinica Estandar",
+          "legal_name": "Clinica Estandar",
+          "logo_label": "Clinica Estandar",
+          "logo_image": "<svg width=\"40\" height=\"40\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" class=\"logo-svg\" aria-hidden=\"true\"><path d=\"M12 5C12 5 9 2 6 2C3 2 2 4 2 6C2 9 5 12 12 19C19 12 22 9 22 6C22 4 21 2 18 2C15 2 12 5 12 5Z\" stroke=\"currentColor\"",
+          "tagline": "Medicina de vanguardia con un enfoque humano y personalizado.",
+          "description": "Centro medico privado con especialistas, tecnologia avanzada y atencion cercana.",
+          "meta_title": "Clinica Estandar | Medicina de Vanguardia y Cuidado Humano",
+          "meta_description": "Clinica Estandar: atencion medica especializada, tecnologia de punta y profesionales comprometidos con su bienestar.",
+          "canonical_url": "https://www.clinicaestandar.com",
+          "hero_title": "Medicina de Vanguardia, Cuidado Humano",
+          "hero_subtitle": "Combinamos alta tecnologia con especialistas comprometidos con su salud y bienestar.",
+          "hero_image": "public/assets/banner.jpg",
+          "hero_mobile_image": "public/assets/banner_mobil.jpg",
+          "about_title": "Su Salud, Nuestra Prioridad",
+          "about_subtitle": "Descubra por que somos la eleccion de confianza para miles de pacientes.",
+          "services_title": "Nuestros Servicios",
+          "services_subtitle": "Ofrecemos una gama completa de servicios medicos para cuidar de usted en cada etapa.",
+          "specialties_title": "Nuestras Especialidades",
+          "specialties_subtitle": "Cobertura medica integral para todas sus necesidades de salud.",
+          "doctors_title": "Conozca a Nuestro Equipo",
+          "doctors_subtitle": "Profesionales que combinan conocimiento, experiencia y vocacion.",
+          "comments_title": "La Voz de Nuestros Pacientes",
+          "comments_subtitle": "Historias reales de quienes han confiado su salud en nuestras manos.",
+          "reservation_title": "Agendar una Cita",
+          "reservation_subtitle": "Siga los pasos para encontrar un horario conveniente para usted.",
+          "reservation_summary_note": "Recibira una confirmacion por correo electronico. Por favor, llegue 15 minutos antes de su cita.",
+          "reservation_success_title": "Cita Agendada",
+          "reservation_success_text": "Su cita ha sido confirmada exitosamente. Recibira un correo electronico con todos los detalles. Gracias por confiar en {clinic}.",
+          "reservation_back_home_label": "Volver al Inicio",
+          "reservation_next_label": "Siguiente",
+          "reservation_confirm_label": "Confirmar Cita",
+          "reservation_previous_label": "Anterior",
+          "address": "Buenavista y Tarqui, Machala, Ecuador",
+          "email": "info@clinicaestandar.com",
+          "phone_display": "(07) 293-3888",
+          "phone_href": "+59372933888",
+          "emergency_phone": "911",
+          "whatsapp_url": "https://wa.me/593999999999",
+          "facebook_url": "https://facebook.com/clinicaestandar",
+          "instagram_url": "https://instagram.com/clinicaestandar",
+          "stats": [
+              {
+                  "label": "Pacientes Atendidos",
+                  "value": 50000,
+                  "suffix": "+"
+              },
+              {
+                  "label": "Anos de Experiencia",
+                  "value": 25,
+                  "suffix": "+"
+              },
+              {
+                  "label": "Especialistas Certificados",
+                  "value": 100,
+                  "suffix": "+"
+              },
+              {
+                  "label": "Tasa de Satisfaccion",
+                  "value": 98,
+                  "suffix": "%"
+              }
+          ],
+          "about_cards": [
+              {
+                  "title": "Tecnologia de Punta",
+                  "text": "Equipos de ultima generacion para diagnosticos precisos y tratamientos efectivos.",
+                  "icon": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\" ry=\"2\"></rect><line x1=\"8\" y1=\"21\" x2=\"16\" y2=\"21\"></line><line x1=\"12\" y1=\"17\" x2=\"12\" y2=\"21\"></line>"
+              },
+              {
+                  "title": "Especialistas de Elite",
+                  "text": "Un equipo medico de renombre, con amplia experiencia y reconocimiento internacional.",
+                  "icon": "<path d=\"M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2\"></path><circle cx=\"9\" cy=\"7\" r=\"4\"></circle><path d=\"M23 21v-2a4 4 0 0 0-3-3.87\"></path><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"></path>"
+              },
+              {
+                  "title": "Atencion Humana",
+                  "text": "Cuidado calido y personalizado, porque detras de cada paciente hay una historia.",
+                  "icon": "<path d=\"M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z\"></path>"
+              }
+          ],
+          "created_at": "2026-08-05 20:02:23",
+          "updated_at": "2026-08-05 20:02:23"
+      },
+      "about_cards": [
+          {
+              "title": "Tecnologia de Punta",
+              "text": "Equipos de ultima generacion para diagnosticos precisos y tratamientos efectivos.",
+              "icon": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\" ry=\"2\"></rect><line x1=\"8\" y1=\"21\" x2=\"16\" y2=\"21\"></line><line x1=\"12\" y1=\"17\" x2=\"12\" y2=\"21\"></line>"
+          },
+          {
+              "title": "Especialistas de Elite",
+              "text": "Un equipo medico de renombre, con amplia experiencia y reconocimiento internacional.",
+              "icon": "<path d=\"M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2\"></path><circle cx=\"9\" cy=\"7\" r=\"4\"></circle><path d=\"M23 21v-2a4 4 0 0 0-3-3.87\"></path><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"></path>"
+          },
+          {
+              "title": "Atencion Humana",
+              "text": "Cuidado calido y personalizado, porque detras de cada paciente hay una historia.",
+              "icon": "<path d=\"M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z\"></path>"
+          }
+      ],
+      "stats": [
+          {
+              "label": "Pacientes Atendidos",
+              "value": 50000,
+              "suffix": "+"
+          },
+          {
+              "label": "Anos de Experiencia",
+              "value": 25,
+              "suffix": "+"
+          },
+          {
+              "label": "Especialistas Certificados",
+              "value": 100,
+              "suffix": "+"
+          },
+          {
+              "label": "Tasa de Satisfaccion",
+              "value": 98,
+              "suffix": "%"
+          }
+      ],
+      "services": [
+          {
+              "id": "centro-quirurgico",
+              "titulo": "Centro Quirurgico",
+              "descripcion": "Quirofanos inteligentes equipados para procedimientos de alta complejidad.",
+              "icono": "<path d=\"M14.5 2.5a2.5 2.5 0 0 0-5 0V6H8a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-1.5V2.5z\"></path><path d=\"M9 14h6\"></path><path d=\"M12 11v6\"></path>"
+          },
+          {
+              "id": "consulta-externa",
+              "titulo": "Consulta Externa",
+              "descripcion": "Acceso a especialistas de todas las areas para diagnostico y seguimiento.",
+              "icono": "<path d=\"M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2\"></path><circle cx=\"9\" cy=\"7\" r=\"4\"></circle><path d=\"M23 21v-2a4 4 0 0 0-3-3.87\"></path><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"></path>"
+          },
+          {
+              "id": "emergencias-24-7",
+              "titulo": "Emergencias 24/7",
+              "descripcion": "Atencion inmediata y especializada para urgencias medicas a cualquier hora.",
+              "icono": "<polygon points=\"13 2 3 14 12 14 11 22 21 10 12 10 13 2\"></polygon>"
+          },
+          {
+              "id": "hospitalizacion",
+              "titulo": "Hospitalizacion",
+              "descripcion": "Habitaciones comodas y monitoreo constante para una recuperacion segura.",
+              "icono": "<path d=\"M2 22h20\"></path><path d=\"M4 14v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2\"></path><path d=\"M4 14h16\"></path><path d=\"M12 4v6\"></path><path d=\"M10 6h4\"></path>"
+          },
+          {
+              "id": "imagen",
+              "titulo": "Diagnostico por Imagen",
+              "descripcion": "Resonancia, tomografia y radiologia digital de ultima generacion.",
+              "icono": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\" ry=\"2\"></rect><line x1=\"8\" y1=\"21\" x2=\"16\" y2=\"21\"></line><line x1=\"12\" y1=\"17\" x2=\"12\" y2=\"21\"></line>"
+          },
+          {
+              "id": "laboratorio",
+              "titulo": "Laboratorio Clinico",
+              "descripcion": "Analisis precisos y resultados rapidos para un diagnostico confiable.",
+              "icono": "<path d=\"M10 2v6l-5 9a3 3 0 0 0 2.6 4.5h8.8A3 3 0 0 0 19 17l-5-9V2\"></path><path d=\"M8 2h8\"></path><path d=\"M7 14h10\"></path>"
+          }
+      ],
+      "specialties": [
+          {
+              "id": "cardiologia",
+              "titulo": "Cardiologia",
+              "descripcion": "Cuidado integral de su corazon con tecnologia avanzada para diagnostico y tratamiento.",
+              "resumen": "Cuidado integral de su corazon con tecnologia avanzada.",
+              "icono": "<path d=\"M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z\"></path>"
+          },
+          {
+              "id": "neurologia",
+              "titulo": "Neurologia",
+              "descripcion": "Diagnostico y tratamiento de enfermedades del sistema nervioso central y periferico.",
+              "resumen": "Diagnostico y tratamiento de enfermedades del sistema nervioso.",
+              "icono": "<polyline points=\"22 12 18 12 15 21 9 3 6 12 2 12\"></polyline>"
+          },
+          {
+              "id": "oncologia",
+              "titulo": "Oncologia",
+              "descripcion": "Tratamientos de vanguardia y apoyo continuo en la lucha integral contra el cancer.",
+              "resumen": "Tratamientos de vanguardia y apoyo continuo contra el cancer.",
+              "icono": "<path d=\"M12 2a2 2 0 0 0-2 2v2H8a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2h2a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2V4a2 2 0 0 0-2-2h-2z\"></path>"
+          },
+          {
+              "id": "pediatria",
+              "titulo": "Pediatria",
+              "descripcion": "Cuidamos la salud de los mas pequenos con dedicacion, carino y un enfoque preventivo.",
+              "resumen": "Cuidado infantil con dedicacion, prevencion y carino.",
+              "icono": "<path d=\"M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2\"></path><circle cx=\"9\" cy=\"7\" r=\"4\"></circle><path d=\"M23 21v-2a4 4 0 0 0-3-3.87\"></path><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"></path>"
+          }
+      ],
+      "doctors": [
+          {
+              "id": "doc1",
+              "nombre": "Dr. Alejandro Vargas",
+              "especialidad": "Cardiologia Cardiologia Intervencionista",
+              "experiencia": "15+ anos de experiencia",
+              "foto": "public/assets/doctor_avatar.jpg"
+          },
+          {
+              "id": "doc3",
+              "nombre": "Dr. Mateo Herrera",
+              "especialidad": "Neurologia Neurofisiologia Clinica",
+              "experiencia": "18+ anos de experiencia",
+              "foto": "public/assets/doctor_avatar.jpg"
+          },
+          {
+              "id": "doc2",
+              "nombre": "Dra. Sofia Castillo",
+              "especialidad": "Pediatria Neonatologia",
+              "experiencia": "12+ anos de experiencia",
+              "foto": "public/assets/doctora_avatar.png"
+          },
+          {
+              "id": "doc4",
+              "nombre": "Dra. Valentina Morales",
+              "especialidad": "Dermatologia Dermatologia Cosmetica",
+              "experiencia": "10+ anos de experiencia",
+              "foto": "public/assets/doctora_avatar.png"
+          }
+      ],
+      "comments": [
+          {
+              "texto": "El nivel de profesionalismo y la calidad humana del equipo son excepcionales. Me senti seguro y bien atendido durante todo mi procedimiento.",
+              "autor": "Carlos Rodriguez",
+              "detalle": "Paciente de Cardiologia",
+              "valoracion": 5,
+              "avatar": "public/assets/avatar.png"
+          },
+          {
+              "texto": "Llevar a mi hijo recien nacido fue la mejor decision. La paciencia y el conocimiento nos dieron mucha tranquilidad.",
+              "autor": "Ana Sofia Paredes",
+              "detalle": "Madre de paciente de Pediatria",
+              "valoracion": 5,
+              "avatar": "public/assets/avatar.png"
+          },
+          {
+              "texto": "Despues de anos buscando una solucion para mi problema de piel, recibi un diagnostico preciso y un tratamiento efectivo.",
+              "autor": "Javier Mendoza",
+              "detalle": "Paciente de Dermatologia",
+              "valoracion": 5,
+              "avatar": "public/assets/avatar.png"
+          },
+          {
+              "texto": "La tecnologia para diagnosticos por imagen es de otro nivel. Obtuve resultados rapidos y con una claridad impresionante.",
+              "autor": "Lucia Fernandez",
+              "detalle": "Paciente de Diagnostico por Imagen",
+              "valoracion": 5,
+              "avatar": "public/assets/avatar.png"
+          }
+      ]
+  }
+}
+```
+
   - `/clinica/`: 200, contiene `data-home-api` y no imprime tarjetas `.service-card` estaticas en el HTML inicial.
   - Chrome headless valido el hero hidratado desde la API; las capturas temporales fueron eliminadas junto con `tmp-codex-shots/`.
 - API paginada admin:

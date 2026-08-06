@@ -1,8 +1,17 @@
 <?php
-session_start();
+require_once __DIR__ . '/../data.php';
+
+// Ensure session started and CSRF cookie available
+clinica_ensure_session_started();
 header('Content-Type: application/json; charset=utf-8');
 
-require_once __DIR__ . '/../data.php';
+// Protect mutating requests with CSRF validation
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
+  if (!clinica_validate_csrf_from_request()) {
+    clinica_json(['success' => false, 'error' => 'CSRF token invalido.'], 403);
+  }
+}
 
 $user = clinica_current_user();
 

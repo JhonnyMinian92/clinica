@@ -1,6 +1,7 @@
 <?php
-session_start();
 require_once __DIR__ . '/../../api/data.php';
+// Ensure session cookie params and CSRF cookie are initialized consistently
+clinica_ensure_session_started();
 
 $user = clinica_current_user();
 if (is_array($user) && in_array($user['role'] ?? '', clinica_dashboard_roles(), true)) {
