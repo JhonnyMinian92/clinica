@@ -277,7 +277,7 @@
         ${columns.map((column) => `<span class="gestion-cell is-muted" data-label="${escapeHtml(column.label)}">${escapeHtml(formatDisplayValue(column, getValue(record, column.name), { metadata }))}</span>`).join('')}
         <span class="gestion-row-actions" data-label="Acciones">
           <button type="button" class="gestion-icon-btn" data-action="edit" aria-label="Editar" title="Editar">${iconSvg('edit')}<span class="sr-only">Editar</span></button>
-          <button type="button" class="gestion-icon-btn is-danger" data-action="delete" aria-label="Eliminar" title="Eliminar">${iconSvg('trash')}<span class="sr-only">Eliminar</span></button>
+          <button type="button" class="gestion-icon-btn is-danger" data-action="delete" aria-label="Desactivar" title="Desactivar">${iconSvg('trash')}<span class="sr-only">Desactivar</span></button>
         </span>
       </div>
     `;
@@ -663,14 +663,17 @@
     const trimmedValue = String(value || '').trim();
     if (!trimmedValue) return null;
 
+    if (!isSafeSvgMarkup(trimmedValue)) return null;
+    const lowerValue = trimmedValue.toLowerCase();
+
     // Case 1: It's already a full SVG element
-    if (trimmedValue.startsWith('<svg') && trimmedValue.endsWith('</svg>')) {
+    if (lowerValue.startsWith('<svg') && lowerValue.endsWith('</svg>')) {
       return trimmedValue;
     }
 
     // Case 2: It's SVG content (like <path...>) that needs to be wrapped
     if (trimmedValue.startsWith('<') && trimmedValue.endsWith('>')) {
-      const isLikelySvgContent = ['<path', '<circle', '<rect', '<polygon', '<polyline', '<line', '<ellipse', '<g'].some((tag) => trimmedValue.startsWith(tag));
+      const isLikelySvgContent = ['<path', '<circle', '<rect', '<polygon', '<polyline', '<line', '<ellipse', '<g'].some((tag) => lowerValue.startsWith(tag));
       if (isLikelySvgContent) {
         // This wrapper is a generic one for icons.
         return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${trimmedValue}</svg>`;
@@ -678,6 +681,13 @@
     }
 
     return null;
+  }
+
+  function isSafeSvgMarkup(value) {
+    const markup = String(value || '').trim();
+    if (!markup.startsWith('<')) return true;
+
+    return !/(<\s*script|<\s*foreignobject|<\s*iframe|<\s*object|<\s*embed|on[a-z]+\s*=|javascript:|data:text\/html)/i.test(markup);
   }
 
   function renderForm(config, state, dom, record) {
@@ -688,60 +698,71 @@
     if (dom.editorTitle) dom.editorTitle.textContent = title;
     dom.editorSummary.textContent = config.singleton ? 'Actualice los datos que se publican en el sitio.' : isEditing ? `Editando ${record.id}` : 'Complete los campos requeridos.';
 
+    clearValidationErrors(dom);
     const fieldsHtml = config.fields.map((field) => renderField(field, record || {}, state.metadata)).join('');
+    const submitLabel = config.singleton ? 'Guardar cambios' : isEditing ? 'Actualizar' : 'Crear';
     dom.form.innerHTML = `
       ${fieldsHtml}
       <div class="gestion-form-actions">
-        <button type="submit" class="btn btn-primary">${config.singleton ? 'Guardar cambios' : isEditing ? 'Actualizar' : 'Crear'}</button>
+        <button type="submit" class="btn btn-primary" data-submit-btn data-default-label="${escapeHtml(submitLabel)}">${escapeHtml(submitLabel)}</button>
         <button type="button" class="btn btn-tertiary" id="gestion-cancel-btn">Cancelar</button>
       </div>
     `;
 
     document.getElementById('gestion-cancel-btn')?.addEventListener('click', () => closeEditorModal(dom));
     attachImageUploadHandlers(config, dom);
+    attachValidationCleanup(dom);
+    attachUserRoleHandlers(config, dom);
     attachScheduleDateSync(config, dom);
   }
 
   function renderField(field, record, metadata) {
     const value = getValue(record, field.name);
-    const help = field.help ? `<small>${escapeHtml(field.help)}</small>` : '';
+    const id = fieldDomId(field.name);
+    const helpId = `${id}-help`;
+    const errorId = `${id}-error`;
+    const help = field.help ? `<small id="${escapeHtml(helpId)}">${escapeHtml(field.help)}</small>` : '';
+    const error = `<span class="gestion-field-error" id="${escapeHtml(errorId)}" aria-live="polite"></span>`;
+    const describedBy = `${field.help ? `${helpId} ` : ''}${errorId}`.trim();
     const fieldClass = `gestion-field is-${escapeHtml(field.type || 'text')}`;
 
     if (field.type === 'checkbox') {
       const checkboxValue = value === '' && field.name === 'active' ? true : value;
       return `
-        <div class="gestion-check-field">
-          <label for="field-${escapeHtml(field.name)}">${escapeHtml(field.label)}</label>
-          <input id="field-${escapeHtml(field.name)}" name="${escapeHtml(field.name)}" type="checkbox" ${checkboxValue === true || checkboxValue === 'true' ? 'checked' : ''}>
+        <div class="gestion-check-field" data-field="${escapeHtml(field.name)}">
+          <label for="${escapeHtml(id)}">${escapeHtml(field.label)}</label>
+          <input id="${escapeHtml(id)}" name="${escapeHtml(field.name)}" type="checkbox" ${checkboxValue === true || checkboxValue === 'true' ? 'checked' : ''}>
         </div>
       `;
     }
 
     if (field.type === 'image') {
-      return renderImageField(field, value, help, fieldClass);
+      return renderImageField(field, value, help, error, describedBy, fieldClass);
     }
 
     if (field.type === 'textarea') {
       return `
-        <div class="${fieldClass}">
-          <label for="field-${escapeHtml(field.name)}">${escapeHtml(field.label)}</label>
-          <textarea id="field-${escapeHtml(field.name)}" class="gestion-textarea" name="${escapeHtml(field.name)}" ${field.required ? 'required' : ''}>${escapeHtml(formatInputValue(value))}</textarea>
+        <div class="${fieldClass}" data-field="${escapeHtml(field.name)}">
+          <label for="${escapeHtml(id)}">${escapeHtml(field.label)}</label>
+          <textarea id="${escapeHtml(id)}" class="gestion-textarea" name="${escapeHtml(field.name)}" ${renderFieldAttributes(field, 'textarea', describedBy)}>${escapeHtml(formatInputValue(value))}</textarea>
           ${help}
+          ${error}
         </div>
       `;
     }
 
     if (field.type === 'select') {
       return `
-        <div class="${fieldClass}">
-          <label for="field-${escapeHtml(field.name)}">${escapeHtml(field.label)}</label>
-          <select id="field-${escapeHtml(field.name)}" class="gestion-select" name="${escapeHtml(field.name)}" ${field.required ? 'required' : ''}>
+        <div class="${fieldClass}" data-field="${escapeHtml(field.name)}">
+          <label for="${escapeHtml(id)}">${escapeHtml(field.label)}</label>
+          <select id="${escapeHtml(id)}" class="gestion-select" name="${escapeHtml(field.name)}" ${renderFieldAttributes(field, 'select', describedBy)}>
             <option value="">Seleccione...</option>
             ${getOptions(field, metadata)
               .map((option) => `<option value="${escapeHtml(option.id)}" ${String(option.id) === String(value) ? 'selected' : ''}>${escapeHtml(option.name)}</option>`)
               .join('')}
           </select>
           ${help}
+          ${error}
         </div>
       `;
     }
@@ -749,15 +770,16 @@
     const inputType = field.type || 'text';
     const inputValue = inputType === 'password' ? '' : formatInputValue(value);
     return `
-      <div class="${fieldClass}">
-        <label for="field-${escapeHtml(field.name)}">${escapeHtml(field.label)}</label>
-        <input id="field-${escapeHtml(field.name)}" class="gestion-input" name="${escapeHtml(field.name)}" type="${escapeHtml(inputType)}" value="${escapeHtml(inputValue)}" ${field.required ? 'required' : ''} ${field.min ? `min="${escapeHtml(field.min)}"` : ''} ${field.max ? `max="${escapeHtml(field.max)}"` : ''}>
+      <div class="${fieldClass}" data-field="${escapeHtml(field.name)}">
+        <label for="${escapeHtml(id)}">${escapeHtml(field.label)}</label>
+        <input id="${escapeHtml(id)}" class="gestion-input" name="${escapeHtml(field.name)}" type="${escapeHtml(inputType)}" value="${escapeHtml(inputValue)}" ${renderFieldAttributes(field, inputType, describedBy)}>
         ${help}
+        ${error}
       </div>
     `;
   }
 
-  function renderImageField(field, value, help, fieldClass) {
+  function renderImageField(field, value, help, error, describedBy, fieldClass) {
     const inputValue = formatInputValue(value); // Puede ser URL o codigo SVG
     const accept = field.accept || 'image/jpeg,image/png,image/webp,image/gif,image/svg+xml'; // Añadir SVG a los formatos aceptados
     let previewContent = '<span>Sin imagen</span>';
@@ -765,6 +787,8 @@
     const svgPreview = getSvgPreview(inputValue);
     if (svgPreview) {
       previewContent = svgPreview;
+    } else if (String(inputValue).trim().startsWith('<')) {
+      previewContent = '<span>SVG no seguro</span>';
     } else {
       const previewUrl = normalizeAssetUrl(inputValue);
       if (previewUrl) {
@@ -773,25 +797,47 @@
     }
 
     return `
-      <div class="${fieldClass}" data-image-field="${escapeHtml(field.name)}">
-        <label for="field-${escapeHtml(field.name)}">${escapeHtml(field.label)}</label>
+      <div class="${fieldClass}" data-field="${escapeHtml(field.name)}" data-image-field="${escapeHtml(field.name)}">
+        <label for="${escapeHtml(fieldDomId(field.name))}">${escapeHtml(field.label)}</label>
         <div class="gestion-image-control">
           <div class="gestion-image-preview" data-image-preview="${escapeHtml(field.name)}">
             ${previewContent}
           </div>
           <div class="gestion-image-body">
-            <input id="field-${escapeHtml(field.name)}" class="gestion-input" name="${escapeHtml(field.name)}" type="text" value="${escapeHtml(inputValue)}" placeholder="URL o codigo SVG...">
+            <input id="${escapeHtml(fieldDomId(field.name))}" class="gestion-input" name="${escapeHtml(field.name)}" type="text" value="${escapeHtml(inputValue)}" placeholder="${escapeHtml(field.placeholder || 'URL o codigo SVG...')}" ${describedBy ? `aria-describedby="${escapeHtml(describedBy)}"` : ''}>
             <div class="gestion-image-actions">
-              <label class="btn btn-tertiary btn-sm gestion-upload-label" for="field-${escapeHtml(field.name)}-file">Subir imagen</label>
-              <input id="field-${escapeHtml(field.name)}-file" class="sr-only" type="file" accept="${escapeHtml(accept)}" data-image-upload="${escapeHtml(field.name)}">
+              <label class="btn btn-tertiary btn-sm gestion-upload-label" for="${escapeHtml(fieldDomId(field.name))}-file">Subir imagen</label>
+              <input id="${escapeHtml(fieldDomId(field.name))}-file" class="sr-only" type="file" accept="${escapeHtml(accept)}" data-image-upload="${escapeHtml(field.name)}">
               <button type="button" class="btn btn-tertiary btn-sm" data-action="clear-image" data-image-field-name="${escapeHtml(field.name)}">Limpiar</button>
             </div>
             <span class="gestion-upload-status" data-image-status="${escapeHtml(field.name)}" aria-live="polite"></span>
             ${help}
+            ${error}
           </div>
         </div>
       </div>
     `;
+  }
+
+  function fieldDomId(name) {
+    return `field-${String(name || '').replace(/[^a-z0-9_-]/gi, '-')}`;
+  }
+
+  function renderFieldAttributes(field, inputType, describedBy) {
+    const attributes = [];
+    if (field.required) attributes.push('required');
+    if (field.min !== undefined && field.min !== '') attributes.push(`min="${escapeHtml(field.min)}"`);
+    if (field.max !== undefined && field.max !== '') attributes.push(`max="${escapeHtml(field.max)}"`);
+    if (field.step !== undefined && field.step !== '') attributes.push(`step="${escapeHtml(field.step)}"`);
+    if (field.minlength !== undefined && field.minlength !== '') attributes.push(`minlength="${escapeHtml(field.minlength)}"`);
+    if (field.maxlength !== undefined && field.maxlength !== '') attributes.push(`maxlength="${escapeHtml(field.maxlength)}"`);
+    if (field.pattern) attributes.push(`pattern="${escapeHtml(field.pattern)}"`);
+    if (field.placeholder) attributes.push(`placeholder="${escapeHtml(field.placeholder)}"`);
+    if (field.autocomplete) attributes.push(`autocomplete="${escapeHtml(field.autocomplete)}"`);
+    if (field.inputmode) attributes.push(`inputmode="${escapeHtml(field.inputmode)}"`);
+    if (describedBy) attributes.push(`aria-describedby="${escapeHtml(describedBy)}"`);
+    if (inputType === 'time' && field.step === undefined) attributes.push('step="300"');
+    return attributes.join(' ');
   }
 
   function attachImageUploadHandlers(config, dom) {
@@ -864,6 +910,8 @@
     const svgPreview = getSvgPreview(value);
     if (svgPreview) {
       preview.innerHTML = svgPreview;
+    } else if (String(value || '').trim().startsWith('<')) {
+      preview.innerHTML = '<span>SVG no seguro</span>';
     } else {
       const url = normalizeAssetUrl(value);
       preview.innerHTML = url ? `<img src="${escapeHtml(url)}" alt="">` : '<span>Sin imagen</span>';
@@ -881,6 +929,175 @@
       if (!date) return;
       weekdayInput.value = String(date.getDay() === 0 ? 7 : date.getDay());
     });
+  }
+
+  function attachValidationCleanup(dom) {
+    dom.form?.querySelectorAll('input, select, textarea').forEach((field) => {
+      const clear = () => clearFieldError(dom, field.name);
+      field.addEventListener('input', clear);
+      field.addEventListener('change', clear);
+    });
+  }
+
+  function attachUserRoleHandlers(config, dom) {
+    if (config.resource !== 'users') return;
+
+    const roleInput = dom.form?.elements.role;
+    const doctorInput = dom.form?.elements.doctor_id;
+    if (!roleInput || !doctorInput) return;
+
+    const syncDoctorField = () => {
+      const mustLinkDoctor = roleInput.value === 'DOCTOR';
+      const wrapper = getFieldWrapper(dom, 'doctor_id');
+      doctorInput.required = mustLinkDoctor;
+      doctorInput.disabled = !mustLinkDoctor;
+      doctorInput.setAttribute('aria-required', String(mustLinkDoctor));
+      wrapper?.classList.toggle('is-disabled', !mustLinkDoctor);
+
+      if (!mustLinkDoctor) {
+        doctorInput.value = '';
+        clearFieldError(dom, 'doctor_id');
+      }
+    };
+
+    if (roleInput.dataset.roleSyncAttached !== 'true') {
+      roleInput.addEventListener('change', syncDoctorField);
+      roleInput.dataset.roleSyncAttached = 'true';
+    }
+    syncDoctorField();
+  }
+
+  function validateGestionRecord(config, state, dom, record) {
+    clearValidationErrors(dom);
+
+    const isNew = !state.editingId && !config.singleton;
+    const addError = (fieldName, message) => setFieldError(dom, fieldName, message);
+
+    (config.fields || []).forEach((field) => {
+      if (field.type === 'checkbox') return;
+      const value = String(record[field.name] ?? '').trim();
+      const element = dom.form?.elements[field.name];
+
+      if (field.required && !element?.disabled && value === '') {
+        addError(field.name, 'Este campo es requerido.');
+        return;
+      }
+
+      if (value === '') return;
+
+      if (field.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        addError(field.name, 'Ingrese un correo valido.');
+      }
+
+      if (field.type === 'url' && !isValidHttpUrl(value)) {
+        addError(field.name, 'Ingrese una URL valida con http o https.');
+      }
+
+      if (field.type === 'number') {
+        const numberValue = Number(value);
+        if (Number.isNaN(numberValue)) {
+          addError(field.name, 'Ingrese un numero valido.');
+        } else if (field.min !== undefined && numberValue < Number(field.min)) {
+          addError(field.name, `El valor minimo es ${field.min}.`);
+        } else if (field.max !== undefined && numberValue > Number(field.max)) {
+          addError(field.name, `El valor maximo es ${field.max}.`);
+        }
+      }
+
+      if (field.minlength !== undefined && value.length < Number(field.minlength)) {
+        addError(field.name, `Debe tener al menos ${field.minlength} caracteres.`);
+      }
+
+      if (field.pattern && !(new RegExp(field.pattern).test(value))) {
+        addError(field.name, 'Revise el formato de este campo.');
+      }
+
+      if (field.type === 'image' && value.startsWith('<') && !isSafeSvgMarkup(value)) {
+        addError(field.name, 'El SVG contiene codigo no permitido.');
+      }
+    });
+
+    if (config.resource === 'users') {
+      const username = String(record.username || '').trim();
+      if (username && !/^[a-z0-9._-]{3,50}$/i.test(username)) {
+        addError('username', 'Use 3 a 50 caracteres: letras, numeros, punto, guion o guion bajo.');
+      }
+
+      if (record.role === 'DOCTOR' && String(record.doctor_id || '').trim() === '') {
+        addError('doctor_id', 'Los usuarios doctores deben vincularse con un doctor.');
+      }
+
+      const password = String(record.password || '');
+      if (isNew && password.trim() === '') {
+        addError('password', 'La contrasena es requerida para usuarios nuevos.');
+      } else if (password !== '' && password.length < 8) {
+        addError('password', 'Use al menos 8 caracteres.');
+      }
+    }
+
+    if (isScheduleBoard(config)) {
+      const start = String(record.start_time || '');
+      const end = String(record.end_time || '');
+      if (start && end && start >= end) {
+        addError('end_time', 'La hora de fin debe ser posterior a la hora de inicio.');
+      }
+
+      if (isNew && record.date && record.date < todayIso()) {
+        addError('date', 'No cree horarios en fechas anteriores.');
+      }
+    }
+
+    const firstInvalid = dom.form?.querySelector('.is-invalid input, .is-invalid select, .is-invalid textarea');
+    if (firstInvalid instanceof HTMLElement) {
+      firstInvalid.focus({ preventScroll: true });
+      showToast(dom, 'Revise los campos marcados antes de guardar.', 'error');
+      return false;
+    }
+
+    return true;
+  }
+
+  function isValidHttpUrl(value) {
+    try {
+      const url = new URL(value);
+      return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function setFieldError(dom, fieldName, message) {
+    if (!message) return;
+
+    const wrapper = getFieldWrapper(dom, fieldName);
+    const input = dom.form?.elements[fieldName];
+    const error = wrapper?.querySelector('.gestion-field-error');
+
+    wrapper?.classList.add('is-invalid');
+    input?.setAttribute?.('aria-invalid', 'true');
+    if (error) error.textContent = message;
+  }
+
+  function clearFieldError(dom, fieldName) {
+    const wrapper = getFieldWrapper(dom, fieldName);
+    const input = dom.form?.elements[fieldName];
+    const error = wrapper?.querySelector('.gestion-field-error');
+
+    wrapper?.classList.remove('is-invalid');
+    input?.removeAttribute?.('aria-invalid');
+    if (error) error.textContent = '';
+  }
+
+  function clearValidationErrors(dom) {
+    dom.form?.querySelectorAll('[data-field]').forEach((field) => field.classList.remove('is-invalid'));
+    dom.form?.querySelectorAll('[aria-invalid="true"]').forEach((field) => field.removeAttribute('aria-invalid'));
+    dom.form?.querySelectorAll('.gestion-field-error').forEach((error) => {
+      error.textContent = '';
+    });
+  }
+
+  function getFieldWrapper(dom, fieldName) {
+    return Array.from(dom.form?.querySelectorAll('[data-field]') || []).find((field) => field.dataset.field === fieldName) || null;
   }
 
   function getOptions(field, metadata) {
@@ -932,6 +1149,8 @@
 
   async function handleSubmit(event, config, state, dom) {
     event.preventDefault();
+    if (dom.form?.dataset.busy === 'true') return;
+
     const formData = new FormData(dom.form);
     const record = {};
 
@@ -947,11 +1166,16 @@
       record.id = state.editingId;
     }
 
+    if (!validateGestionRecord(config, state, dom, record)) {
+      return;
+    }
+
     await saveRecord(config, state, dom, record);
   }
 
   async function saveRecord(config, state, dom, record) {
     try {
+      setFormBusy(config, dom, true);
       const response = await fetch(`${API_URL}?resource=${encodeURIComponent(config.resource)}`, {
         method: 'POST',
         credentials: 'same-origin',
@@ -977,12 +1201,19 @@
       closeEditorModal(dom);
     } catch (error) {
       showToast(dom, error.message, 'error');
+    } finally {
+      setFormBusy(config, dom, false);
     }
   }
 
   async function deleteRecord(config, state, dom, record) {
     const title = record[config.titleField || 'name'] || record.id;
-    if (!window.confirm(`Eliminar ${title}? Esta accion no se puede deshacer.`)) return;
+    const confirmed = await showConfirmDialog({
+      title: 'Desactivar registro',
+      message: `Se desactivara "${title}". Puede reactivarlo editando el registro.`,
+      confirmText: 'Desactivar',
+    });
+    if (!confirmed) return;
 
     try {
       const response = await fetch(`${API_URL}?resource=${encodeURIComponent(config.resource)}&id=${encodeURIComponent(record.id)}`, {
@@ -1001,7 +1232,7 @@
       state.records = result.data;
       state.metadata = result.metadata || state.metadata;
       state.editingId = null;
-      showToast(dom, 'Registro eliminado.');
+      showToast(dom, 'Registro desactivado correctamente.');
       renderStats(config, state, dom);
       renderList(config, state, dom);
       renderForm(config, state, dom, {});
@@ -1009,6 +1240,72 @@
     } catch (error) {
       showToast(dom, error.message, 'error');
     }
+  }
+
+  function setFormBusy(config, dom, busy) {
+    if (!dom.form) return;
+
+    dom.form.dataset.busy = busy ? 'true' : 'false';
+    dom.form.classList.toggle('is-busy', busy);
+    const submitButton = dom.form.querySelector('[data-submit-btn]');
+
+    dom.form.querySelectorAll('input, select, textarea, button').forEach((element) => {
+      if (!(element instanceof HTMLElement)) return;
+      if (busy) {
+        element.dataset.wasDisabled = element.disabled ? 'true' : 'false';
+        element.disabled = true;
+      } else {
+        element.disabled = element.dataset.wasDisabled === 'true';
+        delete element.dataset.wasDisabled;
+      }
+    });
+
+    if (submitButton) {
+      submitButton.textContent = busy ? 'Guardando...' : submitButton.dataset.defaultLabel || 'Guardar';
+    }
+
+    if (!busy) {
+      attachUserRoleHandlers(config, dom);
+    }
+  }
+
+  function showConfirmDialog({ title, message, confirmText = 'Confirmar' }) {
+    return new Promise((resolve) => {
+      const dialog = document.createElement('div');
+      dialog.className = 'gestion-confirm-modal';
+      dialog.innerHTML = `
+        <div class="gestion-confirm-backdrop" data-confirm-cancel></div>
+        <section class="gestion-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="gestion-confirm-title">
+          <span class="gestion-kicker">Confirmacion</span>
+          <h3 id="gestion-confirm-title">${escapeHtml(title)}</h3>
+          <p>${escapeHtml(message)}</p>
+          <div class="gestion-confirm-actions">
+            <button type="button" class="btn btn-tertiary" data-confirm-cancel>Cancelar</button>
+            <button type="button" class="btn btn-danger" data-confirm-accept>${escapeHtml(confirmText)}</button>
+          </div>
+        </section>
+      `;
+
+      const cleanup = (result) => {
+        document.removeEventListener('keydown', handleKeydown);
+        dialog.remove();
+        resolve(result);
+      };
+
+      const handleKeydown = (event) => {
+        if (event.key === 'Escape') cleanup(false);
+      };
+
+      dialog.addEventListener('click', (event) => {
+        const target = event.target instanceof Element ? event.target : null;
+        if (target?.matches('[data-confirm-cancel]')) cleanup(false);
+        if (target?.matches('[data-confirm-accept]')) cleanup(true);
+      });
+
+      document.addEventListener('keydown', handleKeydown);
+      document.body.appendChild(dialog);
+      dialog.querySelector('[data-confirm-accept]')?.focus({ preventScroll: true });
+    });
   }
 
   function getValue(record, name) {

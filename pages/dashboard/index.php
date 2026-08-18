@@ -30,7 +30,7 @@ $today_iso = date('Y-m-d');
 include __DIR__ . '/../../public/shared/header/header.php';
 ?>
 
-<main id="main-content" class="dashboard-container">
+<main id="main-content" class="dashboard-container" data-default-date-scope="<?php echo htmlspecialchars($default_date_scope); ?>" data-role="<?php echo htmlspecialchars((string) ($user['role'] ?? '')); ?>">
   <div class="container">
     <div class="dashboard-header">
       <div>
@@ -40,7 +40,7 @@ include __DIR__ . '/../../public/shared/header/header.php';
       </div>
       <div class="dashboard-header-actions">
         <?php if ($can_manage): ?>
-          <a href="/clinica/pages/gestion/clinic/" class="dashboard-management-link" aria-label="Abrir gestion administrativa">
+          <a href="/clinica/pages/gestion/" class="dashboard-management-link" aria-label="Abrir gestion administrativa">
             <span class="management-link-icon" aria-hidden="true">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
@@ -141,8 +141,8 @@ include __DIR__ . '/../../public/shared/header/header.php';
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
             </span>
-            <input type="search" id="patient-search-input" placeholder="Buscar por paciente..." class="search-input"
-              aria-label="Buscar por paciente">
+            <input type="search" id="patient-search-input" placeholder="Buscar paciente, telefono o doctor..." class="search-input"
+              aria-label="Buscar por paciente, telefono, doctor o motivo" autocomplete="off">
             </div>
           </div>
         </div>
@@ -150,12 +150,12 @@ include __DIR__ . '/../../public/shared/header/header.php';
 
       <div class="date-filter-row">
         <div class="date-filter-controls" id="date-filter-controls" aria-label="Filtrar citas por fecha">
-          <button type="button" class="btn date-filter-btn <?php echo $default_date_scope === 'today' ? 'active' : ''; ?>" data-date-scope="today">Hoy</button>
-          <button type="button" class="btn date-filter-btn <?php echo $default_date_scope === 'tomorrow' ? 'active' : ''; ?>" data-date-scope="tomorrow">Manana</button>
-          <button type="button" class="btn date-filter-btn <?php echo $default_date_scope === 'future' ? 'active' : ''; ?>" data-date-scope="future">Proximas</button>
+          <button type="button" class="btn date-filter-btn <?php echo $default_date_scope === 'today' ? 'active' : ''; ?>" data-date-scope="today" aria-pressed="<?php echo $default_date_scope === 'today' ? 'true' : 'false'; ?>">Hoy</button>
+          <button type="button" class="btn date-filter-btn <?php echo $default_date_scope === 'tomorrow' ? 'active' : ''; ?>" data-date-scope="tomorrow" aria-pressed="<?php echo $default_date_scope === 'tomorrow' ? 'true' : 'false'; ?>">Manana</button>
+          <button type="button" class="btn date-filter-btn <?php echo $default_date_scope === 'future' ? 'active' : ''; ?>" data-date-scope="future" aria-pressed="<?php echo $default_date_scope === 'future' ? 'true' : 'false'; ?>">Proximas</button>
           <?php if ($can_see_all): ?>
-            <button type="button" class="btn date-filter-btn" data-date-scope="past">Anteriores</button>
-            <button type="button" class="btn date-filter-btn <?php echo $default_date_scope === 'all' ? 'active' : ''; ?>" data-date-scope="all">Todas</button>
+            <button type="button" class="btn date-filter-btn" data-date-scope="past" aria-pressed="false">Anteriores</button>
+            <button type="button" class="btn date-filter-btn <?php echo $default_date_scope === 'all' ? 'active' : ''; ?>" data-date-scope="all" aria-pressed="<?php echo $default_date_scope === 'all' ? 'true' : 'false'; ?>">Todas</button>
           <?php endif; ?>
         </div>
 

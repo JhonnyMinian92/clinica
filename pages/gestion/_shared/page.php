@@ -46,7 +46,8 @@ include __DIR__ . '/../../../public/shared/header/header.php';
         <nav class="gestion-nav">
           <?php foreach ($gestion_actions as $action): ?>
             <a class="gestion-nav-link <?php echo $action['resource'] === $gestion_resource ? 'is-active' : ''; ?>"
-              href="<?php echo htmlspecialchars($action['href']); ?>">
+              href="<?php echo htmlspecialchars($action['href']); ?>"
+              <?php echo $action['resource'] === $gestion_resource ? 'aria-current="page"' : ''; ?>>
               <span aria-hidden="true"></span>
               <?php echo htmlspecialchars($action['label']); ?>
             </a>

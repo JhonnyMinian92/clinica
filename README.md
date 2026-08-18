@@ -64,11 +64,12 @@ Nota: el esquema actual crea indices, pero no declara claves foraneas reales. Es
 
 ## Credenciales Demo Verificadas
 
-En la BD local auditada solo verifico correctamente:
+Credenciales verificadas en la BD local:
 
 - Administracion: `admin` / `password123`
-
-Las credenciales documentadas para `secretaria`, `dr.herrera` y `dr.vargas` no coinciden con los hashes actuales de la base de datos. Deben resetearse o documentarse con valores vigentes antes de validar flujos multirol manualmente.
+- Secretaria: `secretaria` / `secretaria123`
+- Doctor: `dr.herrera` / `doctor123`
+- Doctor: `dr.vargas` / `doctor123`
 
 ## Pendientes Relevantes
 

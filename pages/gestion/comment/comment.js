@@ -7,10 +7,10 @@ window.ClinicaGestion.boot({
     { name: 'avatar', label: 'Avatar' },
   ],
   fields: [
-    { name: 'author', label: 'Autor', type: 'text', required: true },
+    { name: 'author', label: 'Autor', type: 'text', required: true, autocomplete: 'name' },
     { name: 'detail', label: 'Detalle', type: 'text' },
     { name: 'text', label: 'Comentario', type: 'textarea', required: true },
-    { name: 'rating', label: 'Estrellas', type: 'number', min: 1, max: 5, required: true },
+    { name: 'rating', label: 'Estrellas', type: 'number', min: 1, max: 5, step: 1, required: true, inputmode: 'numeric' },
     { name: 'avatar', label: 'Avatar', type: 'image', help: 'Suba JPG, PNG, WEBP o GIF. Si no sube una imagen, puede conservar el avatar placeholder.' },
     { name: 'featured', label: 'Mostrar en home', type: 'checkbox' },
     { name: 'active', label: 'Activo', type: 'checkbox' },

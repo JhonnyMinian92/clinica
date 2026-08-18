@@ -15,7 +15,7 @@ window.ClinicaGestion.boot({
     { name: 'weekday', label: 'Dia de semana', type: 'select', optionSource: 'weekdays', required: true },
     { name: 'start_time', label: 'Hora inicio', type: 'time', required: true },
     { name: 'end_time', label: 'Hora fin', type: 'time', required: true },
-    { name: 'slot_minutes', label: 'Duracion de cupo (min)', type: 'number', min: 5, max: 120 },
+    { name: 'slot_minutes', label: 'Duracion de cupo (min)', type: 'number', min: 5, max: 120, step: 5, required: true, inputmode: 'numeric', help: 'Use intervalos entre 5 y 120 minutos.' },
     { name: 'active', label: 'Activo', type: 'checkbox' },
   ],
 });

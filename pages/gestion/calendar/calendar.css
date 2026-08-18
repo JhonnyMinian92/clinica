@@ -32,6 +32,7 @@
   border: 1px solid var(--gestion-border);
   border-radius: 7px;
   background: var(--gestion-surface-soft);
+  box-shadow: inset 3px 0 0 rgba(25, 87, 194, 0.24);
 }
 
 .schedule-week-title span {
@@ -113,6 +114,7 @@
   border: 1px solid var(--gestion-border);
   border-radius: 8px;
   background: var(--gestion-surface);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.035);
 }
 
 .schedule-doctor-cell {
@@ -121,6 +123,7 @@
   gap: 4px;
   min-height: 92px;
   padding: 9px;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
 }
 
 .schedule-doctor-cell strong {
@@ -178,6 +181,11 @@
   color: var(--gestion-primary);
   cursor: pointer;
   text-align: left;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
 }
 
 .schedule-slot span,
@@ -233,7 +241,13 @@
 .schedule-slot-delete:hover,
 .schedule-slot-delete:focus-visible {
   border-color: var(--gestion-primary);
+  box-shadow: 0 0 0 3px rgba(25, 87, 194, 0.09);
   outline: none;
+}
+
+.schedule-slot:hover,
+.schedule-slot:focus-visible {
+  transform: translateY(-1px);
 }
 
 .schedule-slot-delete:hover,
@@ -302,6 +316,7 @@
     border: 1px solid var(--gestion-border);
     border-radius: 8px;
     background: var(--gestion-surface);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.035);
   }
 
   .schedule-doctor-cell {
@@ -317,6 +332,7 @@
     grid-template-rows: auto;
     align-items: start;
     min-height: auto;
+    box-shadow: none;
   }
 
   .schedule-day-mobile-label {

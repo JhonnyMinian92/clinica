@@ -215,20 +215,14 @@ Pendiente:
 
 ## Credenciales Y Sesiones
 
-Credencial verificada en BD local:
+Credenciales verificadas en BD local:
 
-- `admin` / `password123`: OK
+- `admin` / `password123`: ADMINISTRATOR
+- `secretaria` / `secretaria123`: SECRETARIA
+- `dr.herrera` / `doctor123`: DOCTOR
+- `dr.vargas` / `doctor123`: DOCTOR
 
-Credenciales del seed/documentacion que no verifican contra la BD actual:
-
-- `secretaria` / `secretaria123`: NO
-- `dr.herrera` / `doctor123`: NO
-- `dr.vargas` / `doctor123`: NO
-
-Impacto:
-
-- El flujo admin se puede validar.
-- Los flujos reales de secretaria/doctor no se pueden validar manualmente con las credenciales documentadas hasta resetear o documentar hashes vigentes.
+Nota: las claves demo de secretaria y doctores fueron restauradas en la BD local para permitir pruebas multirol completas.
 
 ## Estado De Pendientes
 

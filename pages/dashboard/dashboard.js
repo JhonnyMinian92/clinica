@@ -10,6 +10,8 @@
     const DASHBOARD_API = '/clinica/api/dashboard/';
     const GENERAL_API = '/clinica/api/general/';
     const STAFF_ROLES = ['ADMINISTRATOR', 'SECRETARIA'];
+    const dashboardShell = document.querySelector('.dashboard-container');
+    const DEFAULT_DATE_SCOPE = dashboardShell?.dataset.defaultDateScope || 'today';
 
     let allAppointments = [];
     let pagination = {
@@ -113,6 +115,7 @@
     };
 
     function init() {
+      activateDateScope(DEFAULT_DATE_SCOPE);
       attachEventListeners();
       fetchDashboardData();
     }
@@ -184,8 +187,9 @@
 
       if (nextPending) {
         const specialty = nextPending.especialidad ? ` - ${nextPending.especialidad}` : '';
-        dom.insights.nextTitle.textContent = `${nextPending.hora} - ${nextPending.nombre_paciente || 'Paciente'}`;
-        dom.insights.nextDetail.textContent = `${formatDate(nextPending.fecha)}${specialty}`;
+        const overdue = appointmentHasStarted(nextPending) ? ' - pendiente vencida' : '';
+        dom.insights.nextTitle.textContent = `${formatTime(nextPending.hora)} - ${nextPending.nombre_paciente || 'Paciente'}`;
+        dom.insights.nextDetail.textContent = `${formatDate(nextPending.fecha)}${specialty}${overdue}`;
       } else {
         dom.insights.nextTitle.textContent = 'Sin pendientes';
         dom.insights.nextDetail.textContent = counts.all > 0 ? 'Todas las citas estan cerradas' : 'No hay citas en este rango';
@@ -275,7 +279,7 @@
           <div class="appointment-card-top">
             <div class="appointment-time-block">
               <span class="appointment-date">${escapeHtml(formatDate(appointment.fecha))}</span>
-              <strong class="appointment-time">${escapeHtml(appointment.hora)}</strong>
+              <strong class="appointment-time">${escapeHtml(formatTime(appointment.hora))}</strong>
             </div>
             <div class="appointment-state">
               ${isNext ? '<span class="next-pill">Siguiente cita</span>' : ''}
@@ -312,18 +316,21 @@
         return renderFinalState(appointment.estado);
       }
 
+      const canCloseClinicalStatus = appointmentHasStarted(appointment);
+      const disabledAttrs = canCloseClinicalStatus ? '' : 'disabled aria-disabled="true" title="Disponible desde la hora de la cita"';
+
       return `
-        <button type="button" class="appointment-action appointment-action-attend" data-action="attend">
+        <button type="button" class="appointment-action appointment-action-attend" data-action="attend" ${disabledAttrs}>
           <span class="action-title">Atender cita</span>
-          <span class="action-help">Paciente atendido</span>
+          <span class="action-help">${canCloseClinicalStatus ? 'Paciente atendido' : 'Disponible al iniciar'}</span>
         </button>
-        <button type="button" class="appointment-action appointment-action-no-show" data-action="no-show">
+        <button type="button" class="appointment-action appointment-action-no-show" data-action="no-show" ${disabledAttrs}>
           <span class="action-title">No se presento</span>
-          <span class="action-help">Paciente ausente</span>
+          <span class="action-help">${canCloseClinicalStatus ? 'Paciente ausente' : 'Disponible al iniciar'}</span>
         </button>
         <button type="button" class="appointment-action appointment-action-reject" data-action="reject">
           <span class="action-title">Rechazar cita</span>
-          <span class="action-help">No atender</span>
+          <span class="action-help">Cancelar o cerrar</span>
         </button>
       `;
     }
@@ -392,9 +399,7 @@
       const dateButton = event.target.closest('.date-filter-btn');
       if (!dateButton) return;
 
-      dom.dateControls.querySelectorAll('.date-filter-btn').forEach((button) => {
-        button.classList.toggle('active', button === dateButton);
-      });
+      activateDateScope(dateButton.dataset.dateScope || DEFAULT_DATE_SCOPE);
 
       if (dom.dateInput) dom.dateInput.value = '';
       pagination.page = 1;
@@ -403,9 +408,12 @@
 
     function handleExactDateChange() {
       if (dom.dateInput?.value) {
-        dom.dateControls?.querySelectorAll('.date-filter-btn').forEach((button) => button.classList.remove('active'));
+        dom.dateControls?.querySelectorAll('.date-filter-btn').forEach((button) => {
+          button.classList.remove('active');
+          button.setAttribute('aria-pressed', 'false');
+        });
       } else {
-        activateDateScope('today');
+        activateDateScope(DEFAULT_DATE_SCOPE);
       }
 
       pagination.page = 1;
@@ -418,13 +426,15 @@
 
       const target = buttons.find((button) => button.dataset.dateScope === scope) || buttons[0];
       buttons.forEach((button) => {
-        button.classList.toggle('active', button === target);
+        const isActive = button === target;
+        button.classList.toggle('active', isActive);
+        button.setAttribute('aria-pressed', String(isActive));
       });
     }
 
     function handleActionClick(event) {
       const actionButton = event.target.closest('[data-action]');
-      if (!actionButton) return;
+      if (!actionButton || actionButton.disabled) return;
 
       const card = actionButton.closest('.appointment-card');
       const appointmentId = card?.dataset.id;
@@ -436,7 +446,7 @@
         attend: {
           status: 'atendida',
           title: 'Atender cita',
-          message: `Confirme que <strong>${escapeHtml(patientName)}</strong> ya fue atendido.`,
+          message: `Confirme que la cita de <strong>${escapeHtml(patientName)}</strong> ya inicio y el paciente fue atendido.`,
           confirmText: 'Si, atender',
           confirmClass: 'btn-primary',
           successText: `Cita de ${patientName} marcada como atendida.`,
@@ -444,7 +454,7 @@
         'no-show': {
           status: 'no-presentado',
           title: 'Paciente ausente',
-          message: `Confirme que <strong>${escapeHtml(patientName)}</strong> no se presento a la cita.`,
+          message: `Confirme que la cita de <strong>${escapeHtml(patientName)}</strong> ya inicio y el paciente no se presento.`,
           confirmText: 'Si, no se presento',
           confirmClass: 'btn-danger',
           successText: `Cita de ${patientName} marcada como no presentada.`,
@@ -452,7 +462,7 @@
         reject: {
           status: 'rechazada',
           title: 'Rechazar cita',
-          message: `Confirme que la cita de <strong>${escapeHtml(patientName)}</strong> debe quedar rechazada.`,
+          message: `Confirme que la cita de <strong>${escapeHtml(patientName)}</strong> debe quedar rechazada o cancelada.`,
           confirmText: 'Si, rechazar',
           confirmClass: 'btn-danger',
           successText: `Cita de ${patientName} rechazada.`,
@@ -489,7 +499,7 @@
             Accept: 'application/json',
             'X-CSRF-Token': (function(){ const match = document.cookie.match(new RegExp('(^|;)\\s*' + 'XSRF-TOKEN' + '\\s*=\\s*([^;]+)')); return match ? decodeURIComponent(match.pop()) : ''; })(),
           },
-          body: JSON.stringify({ appointmentId, newStatus }),
+          body: JSON.stringify({ appointmentId, newStatus, reason: getStatusReason(newStatus) }),
         });
 
         const result = await response.json().catch(() => ({}));
@@ -549,7 +559,7 @@
       const doctorId = dom.doctorSelect?.value || '';
       const exactDate = dom.dateInput?.value || '';
       const activeDateButton = dom.dateControls?.querySelector('.date-filter-btn.active');
-      const dateScope = activeDateButton?.dataset.dateScope || 'today';
+      const dateScope = activeDateButton?.dataset.dateScope || DEFAULT_DATE_SCOPE;
       const status = getActiveStatusFilter();
       const search = dom.searchInput?.value.trim() || '';
 
@@ -743,6 +753,33 @@
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
+    }
+
+    function appointmentHasStarted(appointment) {
+      const appointmentDateTime = parseAppointmentDateTime(appointment);
+      return appointmentDateTime !== null && appointmentDateTime.getTime() <= Date.now();
+    }
+
+    function parseAppointmentDateTime(appointment) {
+      const date = String(appointment?.fecha || '');
+      const time = String(appointment?.hora || '00:00').slice(0, 5);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) return null;
+
+      const value = new Date(`${date}T${time}:00`);
+      return Number.isNaN(value.getTime()) ? null : value;
+    }
+
+    function formatTime(value) {
+      const match = String(value || '').match(/^(\d{2}):(\d{2})/);
+      return match ? `${match[1]}:${match[2]}` : value || '';
+    }
+
+    function getStatusReason(status) {
+      return {
+        atendida: 'Paciente atendido desde dashboard.',
+        'no-presentado': 'Paciente no se presento a la cita.',
+        rechazada: 'Cita rechazada o cancelada desde dashboard.',
+      }[status] || 'Cambio desde dashboard.';
     }
 
     function formatDate(value) {

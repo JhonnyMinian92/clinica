@@ -197,8 +197,8 @@ function clinica_gestion_upload_image(string $resource, array $post, array $file
 
   if ($mime === 'image/svg+xml') {
     $content = file_get_contents($tmpName);
-    if ($content === false || stripos($content, '<script') !== false) {
-      clinica_json(['success' => false, 'error' => 'El archivo SVG parece contener scripts y no es permitido.'], 422);
+    if ($content === false || !clinica_svg_looks_safe($content)) {
+      clinica_json(['success' => false, 'error' => 'El archivo SVG contiene codigo no permitido.'], 422);
     }
   }
 
@@ -280,6 +280,9 @@ function clinica_gestion_save(string $resource, array $record, array $user): voi
     unset($normalized['password']); // Always remove plain password
 
     if ($password !== '') {
+      if (strlen($password) < 8) {
+        clinica_json(['success' => false, 'error' => 'La contrasena debe tener al menos 8 caracteres.'], 422);
+      }
       $normalized['password'] = password_hash($password, PASSWORD_DEFAULT);
     } elseif (!$isUpdate) {
       clinica_json(['success' => false, 'error' => 'Contrasena requerida para nuevos usuarios.'], 422);
@@ -301,6 +304,10 @@ function clinica_gestion_save(string $resource, array $record, array $user): voi
   // Validation for schedules must happen before saving
   if ($resource === 'schedules' && ($normalized['start_time'] ?? '') >= ($normalized['end_time'] ?? '')) {
     clinica_json(['success' => false, 'error' => 'La hora de inicio debe ser menor que la hora de fin.'], 422);
+  }
+
+  if ($resource === 'schedules') {
+    clinica_validate_schedule_constraints($normalized, $isUpdate);
   }
 
   try {
@@ -457,6 +464,17 @@ function clinica_normalize_clinic_record(array $record): array
     }
   }
 
+  $current['name'] = trim((string) ($current['name'] ?? ''));
+  if ($current['name'] === '') {
+    clinica_json(['success' => false, 'error' => 'Nombre comercial requerido.'], 422);
+  }
+
+  clinica_validate_optional_email((string) ($current['email'] ?? ''), 'Correo invalido.');
+  foreach (['canonical_url', 'whatsapp_url', 'facebook_url', 'instagram_url'] as $urlField) {
+    clinica_validate_optional_url((string) ($current[$urlField] ?? ''), 'URL invalida en ' . $urlField . '.');
+  }
+  clinica_validate_optional_phone((string) ($current['phone_href'] ?? ''), 'Telefono enlace invalido.');
+
   return $current;
 }
 
@@ -507,7 +525,7 @@ function clinica_normalize_collection_record(string $resource, array $record, ar
     ],
     'users' => clinica_normalize_user_record($record, $existing),
     'schedules' => [
-      'id' => clinica_record_id($record, $existing, 'doctor_id', 'sch', true),
+      'id' => clinica_record_id($record, $existing, 'doctor_id', 'sch', empty($existing)),
       'doctor_id' => clinica_required_relation($record, 'doctor_id', 'doctors', 'Doctor requerido o invalido.'),
       'date' => clinica_optional_future_date($record, 'date'),
       'weekday' => clinica_schedule_weekday_value($record),
@@ -524,6 +542,11 @@ function clinica_normalize_user_record(array $record, array $existing = []): arr
 {
   $role = clinica_required_role($record);
   $doctorId = trim((string) ($record['doctor_id'] ?? ''));
+  $username = strtolower(clinica_required_string($record, 'username', 'Usuario requerido.'));
+
+  if (!preg_match('/^[a-z0-9._-]{3,50}$/', $username)) {
+    clinica_json(['success' => false, 'error' => 'Usuario invalido. Use 3 a 50 caracteres: letras, numeros, punto, guion o guion bajo.'], 422);
+  }
 
   if ($role === 'DOCTOR') {
     $doctorId = clinica_required_relation($record, 'doctor_id', 'doctors', 'Los usuarios doctores deben vincularse con un doctor valido.');
@@ -535,7 +558,7 @@ function clinica_normalize_user_record(array $record, array $existing = []): arr
 
   return [
     'id' => trim((string) ($record['id'] ?? $existing['id'] ?? '')),
-    'username' => strtolower(clinica_required_string($record, 'username', 'Usuario requerido.')),
+    'username' => $username,
     'name' => clinica_required_string($record, 'name', 'Nombre requerido.'),
     'role' => $role,
     'password' => clinica_string($record, 'password'), // Validation and hashing happens in clinica_gestion_save
@@ -580,6 +603,38 @@ function clinica_required_string(array $record, string $key, string $message): s
 function clinica_string(array $record, string $key, string $default = ''): string
 {
   return trim((string) ($record[$key] ?? $default));
+}
+
+function clinica_validate_optional_email(string $value, string $message): void
+{
+  if (trim($value) !== '' && filter_var($value, FILTER_VALIDATE_EMAIL) === false) {
+    clinica_json(['success' => false, 'error' => $message], 422);
+  }
+}
+
+function clinica_validate_optional_url(string $value, string $message): void
+{
+  $value = trim($value);
+  if ($value === '') {
+    return;
+  }
+
+  if (filter_var($value, FILTER_VALIDATE_URL) === false || !preg_match('/^https?:\/\//i', $value)) {
+    clinica_json(['success' => false, 'error' => $message], 422);
+  }
+}
+
+function clinica_validate_optional_phone(string $value, string $message): void
+{
+  $value = trim($value);
+  if ($value !== '' && !preg_match('/^\+?[0-9()\s-]{7,24}$/', $value)) {
+    clinica_json(['success' => false, 'error' => $message], 422);
+  }
+}
+
+function clinica_svg_looks_safe(string $content): bool
+{
+  return !preg_match('/(<\s*script|<\s*foreignobject|<\s*iframe|<\s*object|<\s*embed|on[a-z]+\s*=|javascript:|data:text\/html)/i', $content);
 }
 
 function clinica_bool(mixed $value): bool
@@ -667,10 +722,73 @@ function clinica_optional_future_date(array $record, string $key): ?string
   return $value;
 }
 
+function clinica_validate_schedule_constraints(array $record, bool $isUpdate): void
+{
+  $date = (string) ($record['date'] ?? '');
+  if (!$isUpdate && $date !== '' && $date < date('Y-m-d')) {
+    clinica_json(['success' => false, 'error' => 'No se pueden crear horarios en fechas anteriores.'], 422);
+  }
+
+  $startMinutes = clinica_time_to_minutes((string) $record['start_time']);
+  $endMinutes = clinica_time_to_minutes((string) $record['end_time']);
+  if ($startMinutes === null || $endMinutes === null) {
+    clinica_json(['success' => false, 'error' => 'Hora de horario invalida.'], 422);
+  }
+
+  $duration = $endMinutes - $startMinutes;
+  $slotMinutes = (int) ($record['slot_minutes'] ?? 15);
+  if ($duration < $slotMinutes) {
+    clinica_json(['success' => false, 'error' => 'La duracion del bloque debe ser mayor o igual al cupo.'], 422);
+  }
+
+  if (($record['active'] ?? true) && clinica_schedule_has_overlap($record)) {
+    clinica_json(['success' => false, 'error' => 'El horario se solapa con otro bloque activo del mismo doctor.'], 409);
+  }
+}
+
+function clinica_schedule_has_overlap(array $record): bool
+{
+  $pdo = clinica_get_db();
+  $doctorId = (string) ($record['doctor_id'] ?? '');
+  $id = (string) ($record['id'] ?? '');
+  $weekday = (int) ($record['weekday'] ?? 0);
+  $date = $record['date'] ?? null;
+
+  if ($doctorId === '' || $weekday < 1 || $weekday > 7) {
+    return false;
+  }
+
+  if ($date !== null && $date !== '') {
+    $stmt = $pdo->prepare("SELECT id, start_time, end_time FROM doctor_schedules WHERE doctor_id = ? AND active = 1 AND id <> ? AND (date = ? OR (date IS NULL AND weekday = ?))");
+    $stmt->execute([$doctorId, $id, $date, $weekday]);
+  } else {
+    $stmt = $pdo->prepare("SELECT id, start_time, end_time FROM doctor_schedules WHERE doctor_id = ? AND active = 1 AND id <> ? AND date IS NULL AND weekday = ?");
+    $stmt->execute([$doctorId, $id, $weekday]);
+  }
+
+  $start = (string) ($record['start_time'] ?? '');
+  $end = (string) ($record['end_time'] ?? '');
+  foreach ($stmt->fetchAll() as $existing) {
+    $existingStart = substr((string) $existing['start_time'], 0, 5);
+    $existingEnd = substr((string) $existing['end_time'], 0, 5);
+    if ($existingStart < $end && $existingEnd > $start) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function clinica_required_time(array $record, string $key, string $message): string
 {
   $value = clinica_required_string($record, $key, $message);
-  if (!preg_match('/^\d{2}:\d{2}$/', $value)) {
+  if (!preg_match('/^(\d{2}):(\d{2})$/', $value, $matches)) {
+    clinica_json(['success' => false, 'error' => $message], 422);
+  }
+
+  $hour = (int) $matches[1];
+  $minute = (int) $matches[2];
+  if ($hour > 23 || $minute > 59) {
     clinica_json(['success' => false, 'error' => $message], 422);
   }
 

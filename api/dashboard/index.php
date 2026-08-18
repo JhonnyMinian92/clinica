@@ -85,7 +85,7 @@ if ($method === 'GET') {
 
   if ($search !== '') {
     $searchLike = '%' . $search . '%';
-    $searchFields = ['p.name', 'p.email', 'a.notes', 's.name', 'CAST(a.id AS CHAR)'];
+    $searchFields = ['p.name', 'p.email', 'p.phone', 'a.notes', 's.name', 'd.name', 'CAST(a.id AS CHAR)'];
     $searchClauses = [];
     foreach ($searchFields as $index => $field) {
       $param = ':search_' . $index;
@@ -204,6 +204,13 @@ if ($method === 'POST') {
     clinica_json(['success' => false, 'error' => 'Solo se pueden actualizar citas pendientes.'], 422);
   }
 
+  if (in_array($newStatus, ['atendida', 'no-presentado'], true)) {
+    $appointmentDateTime = clinica_dashboard_appointment_datetime($appointment);
+    if ($appointmentDateTime !== null && $appointmentDateTime > new DateTimeImmutable('now')) {
+      clinica_json(['success' => false, 'error' => 'Solo puede marcar como atendida o no presentada una cita que ya inicio.'], 422);
+    }
+  }
+
   try {
     $pdo->beginTransaction();
 
@@ -233,6 +240,22 @@ if ($method === 'POST') {
   }
 
   clinica_json(['success' => true, 'message' => 'Estado de la cita actualizado.']);
+}
+
+function clinica_dashboard_appointment_datetime(array $appointment): ?DateTimeImmutable
+{
+  $date = trim((string) ($appointment['date'] ?? ''));
+  $time = substr(trim((string) ($appointment['time'] ?? '00:00')), 0, 5);
+
+  if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || !preg_match('/^\d{2}:\d{2}$/', $time)) {
+    return null;
+  }
+
+  try {
+    return new DateTimeImmutable($date . ' ' . $time . ':00');
+  } catch (Exception $exception) {
+    return null;
+  }
 }
 
 clinica_json(['success' => false, 'error' => 'Metodo no permitido.'], 405);
