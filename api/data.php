@@ -4,7 +4,10 @@ require_once __DIR__ . '/db.php';
 
 const CLINICA_SESSION_TTL_SECONDS = 28800;
 
+const CLINICA_MAX_LOGIN_ATTEMPTS = 5;
+const CLINICA_LOGIN_LOCKOUT_TIME_MINUTES = 15;
 const CLINICA_GESTION_DATA_VERSION = 1;
+const CLINICA_APPOINTMENT_BUFFER_MINUTES = 15;
 const CLINICA_APPOINTMENTS_SEED_VERSION = 1;
 
 /**
@@ -21,10 +24,10 @@ function clinica_is_https(): bool
 function clinica_ensure_session_started(): void
 {
   if (session_status() === PHP_SESSION_ACTIVE) {
-    // Refresh CSRF cookie if token exists
-    if (!empty($_SESSION['csrf_token'])) {
-      clinica_set_csrf_cookie($_SESSION['csrf_token']);
+    if (empty($_SESSION['csrf_token'])) {
+      $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     }
+    clinica_set_csrf_cookie($_SESSION['csrf_token']);
     return;
   }
 
@@ -102,142 +105,6 @@ function clinica_validate_csrf_from_request(): bool
   return hash_equals((string) $_SESSION['csrf_token'], (string) $token);
 }
 
-// This function is now only used by the seeder script as a fallback.
-function clinica_get_seed_data(): array
-{
-  return [
-    'version' => CLINICA_GESTION_DATA_VERSION,
-    'clinic' => [
-      'name' => 'Clinica Estandar',
-      'legal_name' => 'Clinica Estandar',
-      'logo_label' => 'Clinica Estandar',
-      'logo_image' => '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-svg" aria-hidden="true"><path d="M12 5C12 5 9 2 6 2C3 2 2 4 2 6C2 9 5 12 12 19C19 12 22 9 22 6C22 4 21 2 18 2C15 2 12 5 12 5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4" /><path d="M8 12H16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>',
-      'tagline' => 'Medicina de vanguardia con un enfoque humano y personalizado.',
-      'description' => 'Centro medico privado con especialistas, tecnologia avanzada y atencion cercana.',
-      'meta_title' => 'Clinica Estandar | Medicina de Vanguardia y Cuidado Humano',
-      'meta_description' => 'Clinica Estandar: atencion medica especializada, tecnologia de punta y profesionales comprometidos con su bienestar.',
-      'canonical_url' => 'https://www.clinicaestandar.com',
-      'hero_title' => 'Medicina de Vanguardia, Cuidado Humano',
-      'hero_subtitle' => 'Combinamos alta tecnologia con especialistas comprometidos con su salud y bienestar.',
-      'hero_image' => 'public/assets/banner.jpg',
-      'hero_mobile_image' => 'public/assets/banner_mobil.jpg',
-      'about_title' => 'Su Salud, Nuestra Prioridad',
-      'about_subtitle' => 'Descubra por que somos la eleccion de confianza para miles de pacientes.',
-      'services_title' => 'Nuestros Servicios',
-      'services_subtitle' => 'Ofrecemos una gama completa de servicios medicos para cuidar de usted en cada etapa.',
-      'specialties_title' => 'Nuestras Especialidades',
-      'specialties_subtitle' => 'Cobertura medica integral para todas sus necesidades de salud.',
-      'doctors_title' => 'Conozca a Nuestro Equipo',
-      'doctors_subtitle' => 'Profesionales que combinan conocimiento, experiencia y vocacion.',
-      'comments_title' => 'La Voz de Nuestros Pacientes',
-      'comments_subtitle' => 'Historias reales de quienes han confiado su salud en nuestras manos.',
-      'reservation_title' => 'Agendar una Cita',
-      'reservation_subtitle' => 'Siga los pasos para encontrar un horario conveniente para usted.',
-      'reservation_summary_note' => 'Recibira una confirmacion por correo electronico. Por favor, llegue 15 minutos antes de su cita.',
-      'reservation_success_title' => 'Cita Agendada',
-      'reservation_success_text' => 'Su cita ha sido confirmada exitosamente. Recibira un correo electronico con todos los detalles. Gracias por confiar en {clinic}.',
-      'reservation_back_home_label' => 'Volver al Inicio',
-      'reservation_next_label' => 'Siguiente',
-      'reservation_confirm_label' => 'Confirmar Cita',
-      'reservation_previous_label' => 'Anterior',
-      'address' => 'Buenavista y Tarqui, Machala, Ecuador',
-      'email' => 'info@clinicaestandar.com',
-      'phone_display' => '(07) 293-3888',
-      'phone_href' => '+59372933888',
-      'emergency_phone' => '911',
-      'whatsapp_url' => 'https://wa.me/593999999999',
-      'facebook_url' => 'https://facebook.com/clinicaestandar',
-      'instagram_url' => 'https://instagram.com/clinicaestandar',
-      'stats' => [
-        ['label' => 'Pacientes Atendidos', 'value' => 50000, 'suffix' => '+'],
-        ['label' => 'Anos de Experiencia', 'value' => 25, 'suffix' => '+'],
-        ['label' => 'Especialistas Certificados', 'value' => 100, 'suffix' => '+'],
-        ['label' => 'Tasa de Satisfaccion', 'value' => 98, 'suffix' => '%'],
-      ],
-      'about_cards' => [
-        [
-          'title' => 'Tecnologia de Punta',
-          'text' => 'Equipos de ultima generacion para diagnosticos precisos y tratamientos efectivos.',
-          'icon' => '<rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line>',
-        ],
-        [
-          'title' => 'Especialistas de Elite',
-          'text' => 'Un equipo medico de renombre, con amplia experiencia y reconocimiento internacional.',
-          'icon' => '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
-        ],
-        [
-          'title' => 'Atencion Humana',
-          'text' => 'Cuidado calido y personalizado, porque detras de cada paciente hay una historia.',
-          'icon' => '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>',
-        ],
-      ],
-    ],
-    'specialties' => [
-      ['id' => 'cardiologia', 'name' => 'Cardiologia', 'summary' => 'Cuidado integral de su corazon con tecnologia avanzada.', 'description' => 'Cuidado integral de su corazon con tecnologia avanzada para diagnostico y tratamiento.', 'icon' => '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>', 'featured' => true, 'active' => true],
-      ['id' => 'neurologia', 'name' => 'Neurologia', 'summary' => 'Diagnostico y tratamiento de enfermedades del sistema nervioso.', 'description' => 'Diagnostico y tratamiento de enfermedades del sistema nervioso central y periferico.', 'icon' => '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>', 'featured' => true, 'active' => true],
-      ['id' => 'pediatria', 'name' => 'Pediatria', 'summary' => 'Cuidado infantil con dedicacion, prevencion y carino.', 'description' => 'Cuidamos la salud de los mas pequenos con dedicacion, carino y un enfoque preventivo.', 'icon' => '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>', 'featured' => true, 'active' => true],
-      ['id' => 'oncologia', 'name' => 'Oncologia', 'summary' => 'Tratamientos de vanguardia y apoyo continuo contra el cancer.', 'description' => 'Tratamientos de vanguardia y apoyo continuo en la lucha integral contra el cancer.', 'icon' => '<path d="M12 2a2 2 0 0 0-2 2v2H8a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2h2a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2V4a2 2 0 0 0-2-2h-2z"></path>', 'featured' => true, 'active' => true],
-      ['id' => 'dermatologia', 'name' => 'Dermatologia', 'summary' => 'Soluciones avanzadas para piel, cabello y unas.', 'description' => 'Soluciones avanzadas para la salud de su piel, cabello y unas, con enfoque estetico y clinico.', 'icon' => '<path d="M12 12.5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"></path><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"></path>', 'featured' => false, 'active' => true],
-      ['id' => 'ginecologia', 'name' => 'Ginecologia', 'summary' => 'Atencion integral de la salud femenina.', 'description' => 'Atencion integral de la salud femenina en todas las etapas de la vida.', 'icon' => '<circle cx="12" cy="8" r="5"></circle><path d="M12 13v8"></path><path d="M8 17h8"></path>', 'featured' => false, 'active' => true],
-      ['id' => 'traumatologia', 'name' => 'Traumatologia', 'summary' => 'Especialistas en lesiones del aparato locomotor.', 'description' => 'Especialistas en lesiones del aparato locomotor, desde fracturas hasta medicina deportiva.', 'icon' => '<path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3z"></path>', 'featured' => false, 'active' => true],
-      ['id' => 'psiquiatria', 'name' => 'Psiquiatria', 'summary' => 'Cuidado de la salud mental con enfoque humano.', 'description' => 'Cuidado de la salud mental con terapias modernas y un enfoque humano y confidencial.', 'icon' => '<circle cx="12" cy="12" r="10"></circle><path d="M9 10h.01"></path><path d="M15 10h.01"></path><path d="M8 15s1.5 2 4 2 4-2 4-2"></path>', 'featured' => false, 'active' => true],
-    ],
-    'services' => [
-      ['id' => 'consulta-externa', 'title' => 'Consulta Externa', 'description' => 'Acceso a especialistas de todas las areas para diagnostico y seguimiento.', 'icon' => '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>', 'featured' => true, 'active' => true],
-      ['id' => 'emergencias-24-7', 'title' => 'Emergencias 24/7', 'description' => 'Atencion inmediata y especializada para urgencias medicas a cualquier hora.', 'icon' => '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>', 'featured' => true, 'active' => true],
-      ['id' => 'hospitalizacion', 'title' => 'Hospitalizacion', 'description' => 'Habitaciones comodas y monitoreo constante para una recuperacion segura.', 'icon' => '<path d="M2 22h20"></path><path d="M4 14v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2"></path><path d="M4 14h16"></path><path d="M12 4v6"></path><path d="M10 6h4"></path>', 'featured' => true, 'active' => true],
-      ['id' => 'centro-quirurgico', 'title' => 'Centro Quirurgico', 'description' => 'Quirofanos inteligentes equipados para procedimientos de alta complejidad.', 'icon' => '<path d="M14.5 2.5a2.5 2.5 0 0 0-5 0V6H8a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-1.5V2.5z"></path><path d="M9 14h6"></path><path d="M12 11v6"></path>', 'featured' => true, 'active' => true],
-      ['id' => 'imagen', 'title' => 'Diagnostico por Imagen', 'description' => 'Resonancia, tomografia y radiologia digital de ultima generacion.', 'icon' => '<rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line>', 'featured' => true, 'active' => true],
-      ['id' => 'laboratorio', 'title' => 'Laboratorio Clinico', 'description' => 'Analisis precisos y resultados rapidos para un diagnostico confiable.', 'icon' => '<path d="M10 2v6l-5 9a3 3 0 0 0 2.6 4.5h8.8A3 3 0 0 0 19 17l-5-9V2"></path><path d="M8 2h8"></path><path d="M7 14h10"></path>', 'featured' => true, 'active' => true],
-    ],
-    'doctors' => [
-      ['id' => 'doc1', 'name' => 'Dr. Alejandro Vargas', 'photo' => '/clinica/public/assets/doctor_avatar.jpg', 'specialty_id' => 'cardiologia', 'sub_specialty' => 'Cardiologia Intervencionista', 'experience_years' => 15, 'university' => 'Universidad de Buenos Aires', 'recognitions' => ['Miembro Titular de la SAC'], 'languages' => ['Espanol', 'Ingles'], 'rating' => 5, 'patients' => 3200, 'featured' => true, 'active' => true],
-      ['id' => 'doc2', 'name' => 'Dra. Sofia Castillo', 'photo' => '/clinica/public/assets/doctora_avatar.png', 'specialty_id' => 'pediatria', 'sub_specialty' => 'Neonatologia', 'experience_years' => 12, 'university' => 'Universidad Nacional de Colombia', 'recognitions' => ['Certificada por la SCP'], 'languages' => ['Espanol', 'Portugues'], 'rating' => 5, 'patients' => 2800, 'featured' => true, 'active' => true],
-      ['id' => 'doc3', 'name' => 'Dr. Mateo Herrera', 'photo' => '/clinica/public/assets/doctor_avatar.jpg', 'specialty_id' => 'neurologia', 'sub_specialty' => 'Neurofisiologia Clinica', 'experience_years' => 18, 'university' => 'Universidad de Chile', 'recognitions' => ['Fellowship en Clinica Mayo'], 'languages' => ['Espanol', 'Ingles'], 'rating' => 5, 'patients' => 4100, 'featured' => true, 'active' => true],
-      ['id' => 'doc4', 'name' => 'Dra. Valentina Morales', 'photo' => '/clinica/public/assets/doctora_avatar.png', 'specialty_id' => 'dermatologia', 'sub_specialty' => 'Dermatologia Cosmetica', 'experience_years' => 10, 'university' => 'Universidad Autonoma de Mexico', 'recognitions' => ['Miembro de la AAD'], 'languages' => ['Espanol'], 'rating' => 4, 'patients' => 3500, 'featured' => true, 'active' => true],
-      ['id' => 'doc5', 'name' => 'Dr. Lucas Jimenez', 'photo' => '/clinica/public/assets/doctor_avatar.jpg', 'specialty_id' => 'traumatologia', 'sub_specialty' => 'Cirugia de Rodilla y Hombro', 'experience_years' => 20, 'university' => 'Universidad Complutense de Madrid', 'recognitions' => [], 'languages' => ['Espanol', 'Ingles'], 'rating' => 5, 'patients' => 5000, 'featured' => false, 'active' => true],
-      ['id' => 'doc6', 'name' => 'Dra. Camila Rios', 'photo' => '/clinica/public/assets/doctora_avatar.png', 'specialty_id' => 'ginecologia', 'sub_specialty' => 'Medicina Reproductiva', 'experience_years' => 14, 'university' => 'Universidad de Sao Paulo', 'recognitions' => ['Certificacion en Laparoscopia'], 'languages' => ['Espanol', 'Portugues', 'Ingles'], 'rating' => 5, 'patients' => 3900, 'featured' => false, 'active' => true],
-      ['id' => 'doc7', 'name' => 'Dr. Sebastian Pena', 'photo' => '/clinica/public/assets/doctor_avatar.jpg', 'specialty_id' => 'oncologia', 'sub_specialty' => 'Oncologia Toracica', 'experience_years' => 22, 'university' => 'Johns Hopkins University', 'recognitions' => ['Premio Nacional de Medicina'], 'languages' => ['Espanol', 'Ingles'], 'rating' => 5, 'patients' => 2100, 'featured' => false, 'active' => true],
-      ['id' => 'doc8', 'name' => 'Dra. Isabella Gomez', 'photo' => '/clinica/public/assets/doctora_avatar.png', 'specialty_id' => 'psiquiatria', 'sub_specialty' => 'Psicoterapia', 'experience_years' => 9, 'university' => 'Universidad de Barcelona', 'recognitions' => [], 'languages' => ['Espanol', 'Catalan'], 'rating' => 4, 'patients' => 1500, 'featured' => false, 'active' => true],
-    ],
-    'comments' => [
-      ['id' => 'comment1', 'author' => 'Carlos Rodriguez', 'detail' => 'Paciente de Cardiologia', 'text' => 'El nivel de profesionalismo y la calidad humana del equipo son excepcionales. Me senti seguro y bien atendido durante todo mi procedimiento.', 'rating' => 5, 'avatar' => 'public/assets/avatar.png', 'featured' => true, 'active' => true],
-      ['id' => 'comment2', 'author' => 'Ana Sofia Paredes', 'detail' => 'Madre de paciente de Pediatria', 'text' => 'Llevar a mi hijo recien nacido fue la mejor decision. La paciencia y el conocimiento nos dieron mucha tranquilidad.', 'rating' => 5, 'avatar' => 'public/assets/avatar.png', 'featured' => true, 'active' => true],
-      ['id' => 'comment3', 'author' => 'Javier Mendoza', 'detail' => 'Paciente de Dermatologia', 'text' => 'Despues de anos buscando una solucion para mi problema de piel, recibi un diagnostico preciso y un tratamiento efectivo.', 'rating' => 5, 'avatar' => 'public/assets/avatar.png', 'featured' => true, 'active' => true],
-      ['id' => 'comment4', 'author' => 'Lucia Fernandez', 'detail' => 'Paciente de Diagnostico por Imagen', 'text' => 'La tecnologia para diagnosticos por imagen es de otro nivel. Obtuve resultados rapidos y con una claridad impresionante.', 'rating' => 5, 'avatar' => 'public/assets/avatar.png', 'featured' => true, 'active' => true],
-    ],
-    'users' => [
-      // Fallback seed does not include plaintext passwords. Use api/seed.php to create
-      // database users with password_hash() in a controlled environment (staging/dev).
-    ],
-    'schedules' => [
-      ['id' => 'sch1', 'doctor_id' => 'doc1', 'weekday' => 1, 'start_time' => '07:00', 'end_time' => '13:00', 'slot_minutes' => 15, 'active' => true],
-      ['id' => 'sch2', 'doctor_id' => 'doc1', 'weekday' => 3, 'start_time' => '07:00', 'end_time' => '13:00', 'slot_minutes' => 15, 'active' => true],
-      ['id' => 'sch3', 'doctor_id' => 'doc1', 'weekday' => 5, 'start_time' => '13:00', 'end_time' => '22:00', 'slot_minutes' => 15, 'active' => true],
-      ['id' => 'sch4', 'doctor_id' => 'doc2', 'weekday' => 2, 'start_time' => '13:00', 'end_time' => '22:00', 'slot_minutes' => 15, 'active' => true],
-      ['id' => 'sch5', 'doctor_id' => 'doc2', 'weekday' => 4, 'start_time' => '13:00', 'end_time' => '22:00', 'slot_minutes' => 15, 'active' => true],
-      ['id' => 'sch6', 'doctor_id' => 'doc2', 'weekday' => 6, 'start_time' => '07:00', 'end_time' => '13:00', 'slot_minutes' => 15, 'active' => true],
-      ['id' => 'sch7', 'doctor_id' => 'doc3', 'weekday' => 1, 'start_time' => '07:00', 'end_time' => '22:00', 'slot_minutes' => 15, 'active' => true],
-      ['id' => 'sch8', 'doctor_id' => 'doc3', 'weekday' => 2, 'start_time' => '07:00', 'end_time' => '22:00', 'slot_minutes' => 15, 'active' => true],
-      ['id' => 'sch9', 'doctor_id' => 'doc3', 'weekday' => 3, 'start_time' => '07:00', 'end_time' => '22:00', 'slot_minutes' => 15, 'active' => true],
-      ['id' => 'sch10', 'doctor_id' => 'doc3', 'weekday' => 4, 'start_time' => '07:00', 'end_time' => '22:00', 'slot_minutes' => 15, 'active' => true],
-      ['id' => 'sch11', 'doctor_id' => 'doc3', 'weekday' => 5, 'start_time' => '07:00', 'end_time' => '22:00', 'slot_minutes' => 15, 'active' => true],
-      ['id' => 'sch12', 'doctor_id' => 'doc4', 'weekday' => 1, 'start_time' => '13:00', 'end_time' => '22:00', 'slot_minutes' => 15, 'active' => true],
-      ['id' => 'sch13', 'doctor_id' => 'doc4', 'weekday' => 3, 'start_time' => '13:00', 'end_time' => '22:00', 'slot_minutes' => 15, 'active' => true],
-      ['id' => 'sch14', 'doctor_id' => 'doc4', 'weekday' => 5, 'start_time' => '13:00', 'end_time' => '22:00', 'slot_minutes' => 15, 'active' => true],
-      ['id' => 'sch15', 'doctor_id' => 'doc5', 'weekday' => 2, 'start_time' => '07:00', 'end_time' => '13:00', 'slot_minutes' => 15, 'active' => true],
-      ['id' => 'sch16', 'doctor_id' => 'doc5', 'weekday' => 4, 'start_time' => '07:00', 'end_time' => '13:00', 'slot_minutes' => 15, 'active' => true],
-      ['id' => 'sch17', 'doctor_id' => 'doc6', 'weekday' => 1, 'start_time' => '13:00', 'end_time' => '22:00', 'slot_minutes' => 15, 'active' => true],
-      ['id' => 'sch18', 'doctor_id' => 'doc6', 'weekday' => 3, 'start_time' => '07:00', 'end_time' => '22:00', 'slot_minutes' => 15, 'active' => true],
-      ['id' => 'sch19', 'doctor_id' => 'doc6', 'weekday' => 5, 'start_time' => '07:00', 'end_time' => '13:00', 'slot_minutes' => 15, 'active' => true],
-      ['id' => 'sch20', 'doctor_id' => 'doc7', 'weekday' => 2, 'start_time' => '13:00', 'end_time' => '22:00', 'slot_minutes' => 15, 'active' => true],
-      ['id' => 'sch21', 'doctor_id' => 'doc7', 'weekday' => 4, 'start_time' => '13:00', 'end_time' => '22:00', 'slot_minutes' => 15, 'active' => true],
-      ['id' => 'sch22', 'doctor_id' => 'doc8', 'weekday' => 1, 'start_time' => '07:00', 'end_time' => '13:00', 'slot_minutes' => 15, 'active' => true],
-      ['id' => 'sch23', 'doctor_id' => 'doc8', 'weekday' => 4, 'start_time' => '07:00', 'end_time' => '13:00', 'slot_minutes' => 15, 'active' => true],
-    ],
-  ];
-}
-
 function clinica_is_active_record(array $record): bool
 {
   return (bool) ($record['active'] ?? true);
@@ -250,7 +117,9 @@ function clinica_get_clinic_settings(): array
   $clinic = $stmt->fetch();
 
   if (!$clinic) {
-    return []; // Or throw an exception
+    // If database has no clinic row yet, fall back to built-in seed clinic so the public site renders
+    $seed = clinica_get_seed_data();
+    return $seed['clinic'] ?? [];
   }
 
   // Decode JSON fields
@@ -263,13 +132,13 @@ function clinica_get_clinic_settings(): array
 function clinica_get_specialties(bool $activeOnly = false): array
 {
   $pdo = clinica_get_db();
-  $sql = "SELECT * FROM specialties";
+  $sql = "SELECT * FROM specialties WHERE 1=1";
   if ($activeOnly) {
-    $sql .= " WHERE active = 1";
+    $sql .= " AND active = 1";
   }
   $sql .= " ORDER BY name ASC";
   $stmt = $pdo->query($sql);
-  return $stmt->fetchAll();
+  return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 function clinica_get_services(bool $activeOnly = false): array
@@ -279,8 +148,8 @@ function clinica_get_services(bool $activeOnly = false): array
   if ($activeOnly) {
     $sql .= " WHERE active = 1";
   }
-  $stmt = $pdo->query($sql);
-  return $stmt->fetchAll();
+  $stmt = $pdo->query($sql); // No ORDER BY, assuming order is not critical or handled by frontend
+  return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 function clinica_get_comments(bool $activeOnly = false): array
@@ -290,16 +159,16 @@ function clinica_get_comments(bool $activeOnly = false): array
   if ($activeOnly) {
     $sql .= " WHERE active = 1";
   }
-  $stmt = $pdo->query($sql);
-  return $stmt->fetchAll();
+  $stmt = $pdo->query($sql); // No ORDER BY, assuming order is not critical or handled by frontend
+  return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 function clinica_get_doctors(bool $activeOnly = false): array
 {
   $pdo = clinica_get_db();
-  $sql = "SELECT * FROM doctors";
+  $sql = "SELECT * FROM doctors WHERE 1=1";
   if ($activeOnly) {
-    $sql .= " WHERE active = 1";
+    $sql .= " AND active = 1";
   }
   $sql .= " ORDER BY name ASC";
   $stmt = $pdo->query($sql);
@@ -316,22 +185,31 @@ function clinica_get_doctors(bool $activeOnly = false): array
 function clinica_get_schedules(bool $activeOnly = false): array
 {
   $pdo = clinica_get_db();
-  $sql = "SELECT * FROM doctor_schedules";
+  $sql = "SELECT * FROM doctor_schedules WHERE 1=1";
   if ($activeOnly) {
-    $sql .= " WHERE active = 1";
+    $sql .= " AND active = 1";
   }
   $sql .= " ORDER BY doctor_id, date, weekday, start_time";
   $stmt = $pdo->query($sql);
-  return $stmt->fetchAll();
+  return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function clinica_get_all_specialties_map(): array
+{
+  static $specialtiesMap = null;
+  if ($specialtiesMap === null) {
+    $specialtiesMap = [];
+    foreach (clinica_get_specialties() as $specialty) {
+      $specialtiesMap[$specialty['id']] = $specialty['name'];
+    }
+  }
+  return $specialtiesMap;
 }
 
 function clinica_specialty_name_by_id(string $specialtyId): string
 {
-  $pdo = clinica_get_db();
-  $stmt = $pdo->prepare("SELECT name FROM specialties WHERE id = ?");
-  $stmt->execute([$specialtyId]);
-  $result = $stmt->fetchColumn();
-  return $result ?: $specialtyId;
+  $map = clinica_get_all_specialties_map();
+  return $map[$specialtyId] ?? $specialtyId;
 }
 
 function clinica_find_doctor(string $doctorId): ?array
@@ -363,12 +241,10 @@ function clinica_schedule_shift_label(string $startTime, string $endTime): strin
 function clinica_schedule_map_for_doctor(string $doctorId): array
 {
   $map = [];
-
-  foreach (clinica_get_schedules(true) as $schedule) {
-    if (($schedule['doctor_id'] ?? '') !== $doctorId) {
-      continue;
-    }
-
+  $pdo = clinica_get_db();
+  $stmt = $pdo->prepare("SELECT * FROM doctor_schedules WHERE doctor_id = ? AND active = 1 ORDER BY date, weekday, start_time");
+  $stmt->execute([$doctorId]);
+  foreach ($stmt->fetchAll() as $schedule) {
     $weekday = (string) ((int) ($schedule['weekday'] ?? 0));
     if ($weekday === '0') {
       continue;
@@ -391,12 +267,10 @@ function clinica_schedule_map_for_doctor(string $doctorId): array
 function clinica_schedule_rules_for_doctor(string $doctorId): array
 {
   $rules = [];
-
-  foreach (clinica_get_schedules(true) as $schedule) {
-    if (($schedule['doctor_id'] ?? '') !== $doctorId) {
-      continue;
-    }
-
+  $pdo = clinica_get_db();
+  $stmt = $pdo->prepare("SELECT * FROM doctor_schedules WHERE doctor_id = ? AND active = 1 ORDER BY date, weekday, start_time");
+  $stmt->execute([$doctorId]);
+  foreach ($stmt->fetchAll() as $schedule) {
     $weekday = (string) ((int) ($schedule['weekday'] ?? 0));
     if ($weekday === '0') {
       continue;
@@ -421,6 +295,67 @@ function clinica_schedule_rules_for_doctor(string $doctorId): array
   return $rules;
 }
 
+function clinica_time_to_minutes(string $time): ?int
+{
+  if (!preg_match('/^([01]\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/', trim($time), $matches)) {
+    return null;
+  }
+
+  return ((int) $matches[1]) * 60 + (int) $matches[2];
+}
+
+function clinica_is_valid_time_string(?string $time): bool
+{
+  return clinica_time_to_minutes((string) $time) !== null;
+}
+
+function clinica_schedule_rule_matches(DateTimeImmutable $appointmentDateTime, array $rule): bool
+{
+  $appointmentMinutes = clinica_time_to_minutes($appointmentDateTime->format('H:i'));
+  $startMinutes = clinica_time_to_minutes((string) ($rule['start_time'] ?? ''));
+  $endMinutes = clinica_time_to_minutes((string) ($rule['end_time'] ?? ''));
+  $slotMinutes = max(5, (int) ($rule['slot_minutes'] ?? 15));
+
+  if ($appointmentMinutes === null || $startMinutes === null || $endMinutes === null || $startMinutes >= $endMinutes) {
+    return false;
+  }
+
+  if ($appointmentMinutes < $startMinutes || $appointmentMinutes >= $endMinutes) {
+    return false;
+  }
+
+  return (($appointmentMinutes - $startMinutes) % $slotMinutes) === 0;
+}
+
+function clinica_matching_schedule_rule(DateTimeImmutable $appointmentDateTime, array $scheduleRules, int $weekday): ?array
+{
+  $appointmentDate = $appointmentDateTime->format('Y-m-d');
+  $rules = array_merge($scheduleRules[$appointmentDate] ?? [], $scheduleRules[(string) $weekday] ?? []);
+
+  foreach ($rules as $rule) {
+    if (clinica_schedule_rule_matches($appointmentDateTime, $rule)) {
+      return $rule;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Checks if a given DateTime falls within an active schedule slot for a doctor.
+ * Also respects slot_minutes.
+ */
+function clinica_is_time_slot_available(DateTimeImmutable $appointmentDateTime, array $scheduleRules, int $weekday): bool
+{
+  return clinica_matching_schedule_rule($appointmentDateTime, $scheduleRules, $weekday) !== null;
+}
+
+function clinica_get_slot_minutes_for_time(DateTimeImmutable $appointmentDateTime, array $scheduleRules, int $weekday): int
+{
+  $rule = clinica_matching_schedule_rule($appointmentDateTime, $scheduleRules, $weekday);
+  return max(5, (int) ($rule['slot_minutes'] ?? 15));
+}
+
 function clinica_get_doctor_photo_url(array $doctor): string
 {
   $photo = trim((string) ($doctor['photo'] ?? ''));
@@ -437,9 +372,32 @@ function clinica_get_doctor_photo_url(array $doctor): string
   return '/clinica/public/assets/doctor_avatar.jpg';
 }
 
+function clinica_get_display_name($clinic_settings = null): string
+{
+  if ($clinic_settings === null) {
+    $clinic_settings = clinica_get_clinic_settings();
+  }
+
+  $logoLabel = trim((string) ($clinic_settings['logo_label'] ?? ''));
+  $clinicName = trim((string) ($clinic_settings['name'] ?? ''));
+  $legalName = trim((string) ($clinic_settings['legal_name'] ?? ''));
+
+  if ($logoLabel !== '') {
+    return $logoLabel;
+  }
+  if ($clinicName !== '') {
+    return $clinicName;
+  }
+  if ($legalName !== '') {
+    return $legalName;
+  }
+
+  return 'Clinica Estandar';
+}
+
 function clinica_render_logo_element(array $clinic_settings): void
 {
-  $clinic_name = $clinic_settings['logo_label'] ?? $clinic_settings['name'] ?? 'Clinica Estandar';
+  $clinic_name = clinica_get_display_name($clinic_settings);
   $logo_image = $clinic_settings['logo_image'] ?? '';
 
   if (trim($logo_image) !== '') {
@@ -562,7 +520,7 @@ function clinica_public_doctors_for_home(): array
 
 function clinica_public_booked_slots(): array
 {
-  $pdo = clinica_get_db();
+  $pdo = clinica_get_db(); // This function is for public display, not for strict business logic validation.
   $stmt = $pdo->query("SELECT doctor_id, date, time FROM appointments WHERE status != 'rechazada'");
   $results = $stmt->fetchAll();
 
@@ -611,7 +569,7 @@ function clinica_demo_users(): array
 
 function clinica_dashboard_roles(): array
 {
-  return ['DOCTOR', 'ADMINISTRATOR', 'SECRETARIA'];
+  return ['ADMINISTRATOR', 'SECRETARIA', 'DOCTOR'];
 }
 
 function clinica_can_see_all_appointments(string $role): bool
@@ -704,70 +662,7 @@ function clinica_resolve_login_redirect(?string $requestedRedirect, array $user)
 
 function clinica_statuses(): array
 {
-  return ['pendiente', 'atendida', 'no-presentado', 'rechazada'];
-}
-
-function clinica_seed_appointments(): array
-{
-  $today = date('Y-m-d');
-  $yesterday = date('Y-m-d', strtotime('-1 day'));
-  $tomorrow = date('Y-m-d', strtotime('+1 day'));
-  $nextWeek = date('Y-m-d', strtotime('+5 days'));
-
-  return [
-    ['id' => 'CITA001', 'fecha' => $today, 'hora' => '09:00', 'nombre_paciente' => 'Ana Torres', 'email_paciente' => 'ana.torres@example.com', 'telefono_paciente' => '0991112222', 'motivo_consulta' => 'Chequeo anual', 'estado' => 'pendiente', 'doctor_id' => 'doc1', 'doctor_nombre' => 'Dr. Alejandro Vargas', 'especialidad' => 'Cardiologia'],
-    ['id' => 'CITA002', 'fecha' => $today, 'hora' => '09:15', 'nombre_paciente' => 'Luis Mendez', 'email_paciente' => 'luis.mendez@example.com', 'telefono_paciente' => '0992223333', 'motivo_consulta' => 'Dolor de cabeza persistente', 'estado' => 'pendiente', 'doctor_id' => 'doc3', 'doctor_nombre' => 'Dr. Mateo Herrera', 'especialidad' => 'Neurologia'],
-    ['id' => 'CITA003', 'fecha' => $today, 'hora' => '09:30', 'nombre_paciente' => 'Carla Solano', 'email_paciente' => 'carla.solano@example.com', 'telefono_paciente' => '0993334444', 'motivo_consulta' => 'Resultados de analisis', 'estado' => 'atendida', 'doctor_id' => 'doc3', 'doctor_nombre' => 'Dr. Mateo Herrera', 'especialidad' => 'Neurologia'],
-    ['id' => 'CITA004', 'fecha' => $today, 'hora' => '10:00', 'nombre_paciente' => 'Pedro Jimenez', 'email_paciente' => 'pedro.jimenez@example.com', 'telefono_paciente' => '0994445555', 'motivo_consulta' => 'Control post-operatorio', 'estado' => 'pendiente', 'doctor_id' => 'doc5', 'doctor_nombre' => 'Dr. Lucas Jimenez', 'especialidad' => 'Traumatologia'],
-    ['id' => 'CITA005', 'fecha' => $today, 'hora' => '10:30', 'nombre_paciente' => 'Sofia Castro', 'email_paciente' => 'sofia.castro@example.com', 'telefono_paciente' => '0995556666', 'motivo_consulta' => 'Consulta de seguimiento', 'estado' => 'pendiente', 'doctor_id' => 'doc3', 'doctor_nombre' => 'Dr. Mateo Herrera', 'especialidad' => 'Neurologia'],
-    ['id' => 'CITA006', 'fecha' => $today, 'hora' => '11:00', 'nombre_paciente' => 'Elena Rojas', 'email_paciente' => 'elena.rojas@example.com', 'telefono_paciente' => '0996667777', 'motivo_consulta' => 'No especificado', 'estado' => 'no-presentado', 'doctor_id' => 'doc1', 'doctor_nombre' => 'Dr. Alejandro Vargas', 'especialidad' => 'Cardiologia'],
-    ['id' => 'CITA007', 'fecha' => $yesterday, 'hora' => '14:00', 'nombre_paciente' => 'Marco Vera', 'email_paciente' => 'marco.vera@example.com', 'telefono_paciente' => '0997778888', 'motivo_consulta' => 'Revision dermatologica', 'estado' => 'rechazada', 'doctor_id' => 'doc4', 'doctor_nombre' => 'Dra. Valentina Morales', 'especialidad' => 'Dermatologia'],
-    ['id' => 'CITA008', 'fecha' => $tomorrow, 'hora' => '14:30', 'nombre_paciente' => 'Julia Navarro', 'email_paciente' => 'julia.navarro@example.com', 'telefono_paciente' => '0998889999', 'motivo_consulta' => 'Vacunacion infantil', 'estado' => 'pendiente', 'doctor_id' => 'doc2', 'doctor_nombre' => 'Dra. Sofia Castillo', 'especialidad' => 'Pediatria'],
-    ['id' => 'CITA009', 'fecha' => $nextWeek, 'hora' => '15:00', 'nombre_paciente' => 'Ricardo Ponce', 'email_paciente' => 'ricardo.ponce@example.com', 'telefono_paciente' => '0999990000', 'motivo_consulta' => 'Terapia', 'estado' => 'pendiente', 'doctor_id' => 'doc8', 'doctor_nombre' => 'Dra. Isabella Gomez', 'especialidad' => 'Psiquiatria'],
-    ['id' => 'CITA010', 'fecha' => $tomorrow, 'hora' => '11:45', 'nombre_paciente' => 'Marta Aguilar', 'email_paciente' => 'marta.aguilar@example.com', 'telefono_paciente' => '0981112233', 'motivo_consulta' => 'Control neurologico', 'estado' => 'pendiente', 'doctor_id' => 'doc3', 'doctor_nombre' => 'Dr. Mateo Herrera', 'especialidad' => 'Neurologia'],
-    ['id' => 'CITA011', 'fecha' => $yesterday, 'hora' => '08:30', 'nombre_paciente' => 'Diego Molina', 'email_paciente' => 'diego.molina@example.com', 'telefono_paciente' => '0983334455', 'motivo_consulta' => 'Seguimiento de migrana', 'estado' => 'atendida', 'doctor_id' => 'doc3', 'doctor_nombre' => 'Dr. Mateo Herrera', 'especialidad' => 'Neurologia'],
-  ];
-}
-
-function clinica_ensure_appointments(): void
-{
-  if (!isset($_SESSION['appointments']) || !is_array($_SESSION['appointments'])) {
-    $_SESSION['appointments'] = clinica_seed_appointments();
-    $_SESSION['appointments_seed_version'] = CLINICA_APPOINTMENTS_SEED_VERSION;
-    return;
-  }
-
-  if (($_SESSION['appointments_seed_version'] ?? 0) < CLINICA_APPOINTMENTS_SEED_VERSION) {
-    clinica_upgrade_seed_appointments();
-    $_SESSION['appointments_seed_version'] = CLINICA_APPOINTMENTS_SEED_VERSION;
-  }
-}
-
-function clinica_upgrade_seed_appointments(): void
-{
-  $seedAppointments = clinica_seed_appointments();
-  $sessionById = [];
-
-  foreach ($_SESSION['appointments'] as $index => $appointment) {
-    if (isset($appointment['id'])) {
-      $sessionById[$appointment['id']] = $index;
-    }
-  }
-
-  foreach ($seedAppointments as $seedAppointment) {
-    $seedId = $seedAppointment['id'];
-
-    if (!array_key_exists($seedId, $sessionById)) {
-      $_SESSION['appointments'][] = $seedAppointment;
-      continue;
-    }
-
-    $index = $sessionById[$seedId];
-    $currentStatus = $_SESSION['appointments'][$index]['estado'] ?? $seedAppointment['estado'];
-    $_SESSION['appointments'][$index] = array_merge($seedAppointment, [
-      'estado' => $currentStatus,
-    ]);
-  }
+  return ['pendiente', 'atendida', 'no-presentado', 'rechazada', 'cancelada'];
 }
 
 function clinica_public_user(array $user): array
@@ -803,6 +698,68 @@ function clinica_current_user(): ?array
   return $user;
 }
 
+function clinica_is_valid_dashboard_date(?string $date): bool
+{
+  if ($date === null || $date === '') {
+    return false;
+  }
+  if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+    return false;
+  }
+  [$year, $month, $day] = array_map('intval', explode('-', $date));
+  return checkdate($month, $day, $year);
+}
+
+function clinica_normalize_date_scope(string $scope, string $role): string
+{
+  $allowedScopes = ['today', 'tomorrow', 'future', 'past', 'all'];
+  if (!in_array($scope, $allowedScopes, true)) {
+    return 'today'; // Default scope
+  }
+
+  // Doctors cannot see past or all appointments, normalize to 'future'
+  if ($role === 'DOCTOR' && in_array($scope, ['past', 'all'], true)) {
+    return 'future';
+  }
+
+  return $scope;
+}
+
+function clinica_dashboard_status_counts(array $appointments): array
+{
+  $counts = array_fill_keys(clinica_statuses(), 0);
+  $counts['all'] = count($appointments);
+
+  foreach ($appointments as $appointment) {
+    $status = (string) ($appointment['estado'] ?? '');
+    if (array_key_exists($status, $counts)) {
+      $counts[$status]++;
+    }
+  }
+  return $counts;
+}
+
+function clinica_get_user_id_from_session(): ?int
+{
+  $user = clinica_current_user();
+  if (!is_array($user)) {
+    return null;
+  }
+
+  $dbId = (int) ($user['db_id'] ?? 0);
+  if ($dbId > 0) {
+    return $dbId;
+  }
+
+  $role = (string) ($user['role'] ?? '');
+  $sessionId = (string) ($user['id'] ?? '');
+  if ($role !== 'DOCTOR' && ctype_digit($sessionId)) {
+    return (int) $sessionId;
+  }
+
+  return null;
+}
+
 /**
  * Legacy function to read from JSON, only used by the seeder.
  */
@@ -825,6 +782,49 @@ function clinica_read_database(): array
   return clinica_get_seed_data();
 }
 
+/**
+ * Provides the default seed data for the clinic.
+ * This is used as a fallback if the database is empty or if the seeder is run.
+ */
+function clinica_get_seed_data(): array
+{
+  return [
+    'clinic' => [
+      'name' => 'Clinica Estandar',
+      'legal_name' => 'Clinica Estandar S.A.',
+      'logo_label' => 'Clinica Estandar',
+      'logo_image' => '',
+      'tagline' => 'Medicina de vanguardia con un enfoque humano y personalizado.',
+      'description' => 'Centro medico privado con especialistas, tecnologia avanzada y atencion cercana.',
+      'meta_title' => 'Clinica Estandar | Medicina de Vanguardia y Cuidado Humano',
+      'meta_description' => 'Clinica Estandar: atencion medica especializada, tecnologia de punta y profesionales comprometidos con su bienestar.',
+      'canonical_url' => 'http://localhost/clinica/',
+      'hero_title' => 'Medicina de Vanguardia, Cuidado Humano',
+      'hero_subtitle' => 'Combinamos alta tecnologia con especialistas comprometidos con su salud y bienestar.',
+      'hero_image' => '/clinica/public/assets/banner.jpg',
+      'hero_mobile_image' => '/clinica/public/assets/banner_mobil.jpg',
+      'about_title' => 'Su Salud, Nuestra Prioridad',
+      'about_subtitle' => 'Descubra por que somos la eleccion de confianza para miles de pacientes.',
+      'services_title' => 'Nuestros Servicios',
+      'services_subtitle' => 'Ofrecemos una gama completa de servicios medicos para cuidar de usted en cada etapa.',
+      'specialties_title' => 'Nuestras Especialidades',
+      'specialties_subtitle' => 'Cobertura medica integral para todas sus necesidades de salud.',
+      'doctors_title' => 'Conozca a Nuestro Equipo',
+      'doctors_subtitle' => 'Profesionales que combinan conocimiento, experiencia y vocacion.',
+      'comments_title' => 'La Voz de Nuestros Pacientes',
+      'comments_subtitle' => 'Historias reales de quienes han confiado su salud en nuestras manos.',
+      'address' => 'Buenavista y Tarqui, Machala, Ecuador',
+      'email' => 'info@clinicaestandar.com',
+      'phone_display' => '(07) 293-3888',
+      'phone_href' => '+59372933888',
+      'emergency_phone' => '911',
+      'whatsapp_url' => 'https://wa.me/593999999999',
+      'facebook_url' => 'https://facebook.com/clinicaestandar',
+      'instagram_url' => 'https://instagram.com/clinicaestandar',
+    ],
+  ];
+}
+
 function clinica_start_authenticated_session(array $user): void
 {
   // Ensure session cookie params are set correctly and session started
@@ -833,6 +833,7 @@ function clinica_start_authenticated_session(array $user): void
   session_regenerate_id(true);
   $_SESSION['user'] = $user;
   $_SESSION['auth_started_at'] = time();
+  $_SESSION['last_login_attempt_time'] = null; // Clear failed attempts on successful login
   // Refresh CSRF cookie when a new authenticated session starts
   clinica_set_csrf_cookie(clinica_get_csrf_token());
   clinica_set_session_cookie_expiration($_SESSION['auth_started_at'] + CLINICA_SESSION_TTL_SECONDS);
@@ -910,6 +911,71 @@ function clinica_json(array $payload, int $statusCode = 200): never
   exit();
 }
 
+function clinica_log_audit_event(?int $userId, string $action, string $message, array $details = [], ?string $resourceType = null, ?string $resourceId = null): void
+{
+  try {
+    $pdo = clinica_get_db();
+    $ipAddress = $_SERVER['REMOTE_ADDR'] ?? 'UNKNOWN';
+
+    $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, resource_type, resource_id, details, ip_address) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->execute([
+      $userId,
+      $action,
+      $resourceType,
+      $resourceId,
+      json_encode($details),
+      $ipAddress,
+    ]);
+  } catch (PDOException $e) {
+    // Log to error_log or similar, but do not interrupt main flow
+    error_log("Error logging audit event: " . $e->getMessage());
+  }
+}
+
+function clinica_get_failed_login_attempts(string $username): int
+{
+  clinica_ensure_session_started();
+  $lastAttemptTime = $_SESSION['last_login_attempt_time'][$username] ?? 0;
+  $failedCount = $_SESSION['failed_login_attempts'][$username] ?? 0;
+
+  // Reset count if lockout time has passed
+  if ($lastAttemptTime > 0 && (time() - $lastAttemptTime) > (CLINICA_LOGIN_LOCKOUT_TIME_MINUTES * 60)) {
+    $failedCount = 0;
+    $_SESSION['failed_login_attempts'][$username] = 0;
+    $_SESSION['last_login_attempt_time'][$username] = 0;
+  }
+
+  return $failedCount;
+}
+
+function clinica_record_failed_login_attempt(string $username): void
+{
+  clinica_ensure_session_started();
+  $_SESSION['failed_login_attempts'][$username] = ($_SESSION['failed_login_attempts'][$username] ?? 0) + 1;
+  $_SESSION['last_login_attempt_time'][$username] = time();
+  clinica_log_audit_event(null, 'login_failed', 'Intento de autenticacion fallido', ['username' => $username], 'user', $username);
+}
+
+function clinica_clear_failed_login_attempts(string $username): void
+{
+  clinica_ensure_session_started();
+  if (isset($_SESSION['failed_login_attempts'][$username])) {
+    unset($_SESSION['failed_login_attempts'][$username]);
+    unset($_SESSION['last_login_attempt_time'][$username]);
+  }
+}
+
+function clinica_slugify(string $value): string
+{
+  $value = strtolower(trim($value));
+  // Transliterate to ASCII
+  $value = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value) ?: $value;
+  // Replace non-alphanumeric chars with a hyphen
+  $value = preg_replace('/[^a-z0-9]+/', '-', $value);
+  // Trim hyphens from start and end
+  return trim((string) $value, '-');
+}
+
 function clinica_request_json(): array
 {
   $rawInput = file_get_contents('php://input');
@@ -926,7 +992,7 @@ function clinica_transform_appointment(array $appointment, array $user): array
 {
   $transformed = $appointment;
 
-  if (clinica_can_see_all_appointments($user['role'])) {
+  if (clinica_can_see_all_appointments((string) ($user['role'] ?? ''))) {
     $transformed['doctor_info'] = [
       'id' => $appointment['doctor_id'],
       'nombre' => $appointment['doctor_nombre'],
@@ -937,168 +1003,23 @@ function clinica_transform_appointment(array $appointment, array $user): array
   return $transformed;
 }
 
-function clinica_filter_appointments_for_user(array $appointments, array $user, ?string $doctorId = null): array
-{
-  return clinica_filter_dashboard_appointments($appointments, $user, $doctorId);
-}
-
-function clinica_is_valid_dashboard_date(?string $date): bool
-{
-  if ($date === null || $date === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-    return false;
-  }
-
-  [$year, $month, $day] = array_map('intval', explode('-', $date));
-  return checkdate($month, $day, $year);
-}
-
-function clinica_normalize_date_scope(string $dateScope, string $role): string
-{
-  $allowedScopes = ['today', 'tomorrow', 'future', 'past', 'all'];
-  $dateScope = in_array($dateScope, $allowedScopes, true) ? $dateScope : 'today';
-
-  if (!clinica_can_see_past_appointments($role) && in_array($dateScope, ['past', 'all'], true)) {
-    return 'future';
-  }
-
-  return $dateScope;
-}
-
-function clinica_matches_date_filter(array $appointment, array $user, string $dateScope = 'today', ?string $exactDate = null): bool
-{
-  $appointmentDate = (string) ($appointment['fecha'] ?? '');
-  $today = date('Y-m-d');
-
-  if (clinica_is_valid_dashboard_date($exactDate)) {
-    if (!clinica_can_see_past_appointments((string) ($user['role'] ?? '')) && $exactDate < $today) {
-      return false;
-    }
-
-    return $appointmentDate === $exactDate;
-  }
-
-  $dateScope = clinica_normalize_date_scope($dateScope, $user['role']);
-
-  return match ($dateScope) {
-    'tomorrow' => $appointmentDate === date('Y-m-d', strtotime('+1 day')),
-    'future' => $appointmentDate >= $today,
-    'past' => $appointmentDate < $today,
-    'all' => true,
-    default => $appointmentDate === $today,
-  };
-}
-
-function clinica_filter_dashboard_appointment_records(array $appointments, array $user, ?string $doctorId = null, string $dateScope = 'today', ?string $exactDate = null): array
-{
-  $filtered = [];
-
-  foreach ($appointments as $appointment) {
-    if (!clinica_can_see_all_appointments($user['role']) && $appointment['doctor_id'] !== $user['id']) {
-      continue;
-    }
-
-    if (clinica_can_see_all_appointments($user['role']) && $doctorId && $appointment['doctor_id'] !== $doctorId) {
-      continue;
-    }
-
-    if (!clinica_matches_date_filter($appointment, $user, $dateScope, $exactDate)) {
-      continue;
-    }
-
-    $filtered[] = $appointment;
-  }
-
-  usort($filtered, static function (array $a, array $b): int {
-    $dateCompare = strcmp($a['fecha'] ?? '', $b['fecha'] ?? '');
-    return $dateCompare !== 0 ? $dateCompare : strcmp($a['hora'] ?? '', $b['hora'] ?? '');
-  });
-
-  return $filtered;
-}
-
-function clinica_filter_dashboard_appointments(array $appointments, array $user, ?string $doctorId = null, string $dateScope = 'today', ?string $exactDate = null): array
-{
-  return array_map(
-    static fn(array $appointment): array => clinica_transform_appointment($appointment, $user),
-    clinica_filter_dashboard_appointment_records($appointments, $user, $doctorId, $dateScope, $exactDate),
-  );
-}
-
 function clinica_normalize_dashboard_status(?string $status): string
 {
   $status = trim((string) $status);
   return in_array($status, clinica_statuses(), true) ? $status : 'all';
 }
 
-function clinica_matches_dashboard_status(array $appointment, string $status): bool
-{
-  return $status === 'all' || ($appointment['estado'] ?? '') === $status;
-}
-
-function clinica_dashboard_search_text(array $appointment): string
-{
-  return strtolower(implode(' ', array_filter([
-    $appointment['id'] ?? '',
-    $appointment['fecha'] ?? '',
-    $appointment['hora'] ?? '',
-    $appointment['nombre_paciente'] ?? '',
-    $appointment['email_paciente'] ?? '',
-    $appointment['telefono_paciente'] ?? '',
-    $appointment['motivo_consulta'] ?? '',
-    $appointment['estado'] ?? '',
-    $appointment['doctor_nombre'] ?? '',
-    $appointment['especialidad'] ?? '',
-  ], static fn(mixed $value): bool => trim((string) $value) !== '')));
-}
-
-function clinica_matches_dashboard_search(array $appointment, string $search): bool
-{
-  $search = strtolower(trim($search));
-  if ($search === '') {
-    return true;
-  }
-
-  return str_contains(clinica_dashboard_search_text($appointment), $search);
-}
-
-function clinica_dashboard_status_counts(array $appointments): array
-{
-  $counts = [
-    'all' => count($appointments),
-    'pendiente' => 0,
-    'atendida' => 0,
-    'no-presentado' => 0,
-    'rechazada' => 0,
-  ];
-
-  foreach ($appointments as $appointment) {
-    $status = (string) ($appointment['estado'] ?? '');
-    if (array_key_exists($status, $counts)) {
-      $counts[$status]++;
-    }
-  }
-
-  return $counts;
-}
-
-function clinica_doctors_from_appointments(array $appointments): array
-{
-  $doctors = [];
-
-  foreach ($appointments as $appointment) {
-    $doctors[$appointment['doctor_id']] = [
-      'id' => $appointment['doctor_id'],
-      'nombre' => $appointment['doctor_nombre'],
-    ];
-  }
-
-  usort($doctors, static fn(array $a, array $b): int => strcmp($a['nombre'], $b['nombre']));
-  return array_values($doctors);
-}
-
 function clinica_get_all_doctors_for_select(): array
 {
   $pdo = clinica_get_db();
-  $stmt = $pdo->query("SELECT id, name AS nombre FROM doctors WHERE active = 1 ORDER BY name ASC");
+  $stmt = $pdo->query("SELECT id, name AS nombre FROM doctors WHERE active = 1 ORDER BY name ASC"); // Filter by active
+  return $stmt->fetchAll();
+}
+
+function clinica_get_all_users_for_gestion(): array
+{
+  $pdo = clinica_get_db();
+  // We select all fields except the password hash for security.
+  $stmt = $pdo->query("SELECT id, username, name, role, doctor_id, active, created_at, updated_at FROM users ORDER BY name ASC"); // Filter by active is not needed here as management can see inactive users
   return $stmt->fetchAll();
 }

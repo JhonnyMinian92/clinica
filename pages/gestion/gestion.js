@@ -8,6 +8,11 @@
 
   const API_URL = '/clinica/api/gestion/';
 
+  function getCsrfToken() {
+    const match = document.cookie.match(new RegExp('(^|;)\\s*XSRF-TOKEN\\s*=\\s*([^;]+)'));
+    return match ? decodeURIComponent(match.pop()) : '';
+  }
+
   function boot(config) {
     const start = () => init(config);
     if (document.readyState === 'loading') {
@@ -828,7 +833,10 @@
       const response = await fetch(`${API_URL}?resource=${encodeURIComponent(config.resource)}`, {
         method: 'POST',
         credentials: 'same-origin',
-        headers: { Accept: 'application/json' },
+        headers: {
+          Accept: 'application/json',
+          'X-CSRF-Token': getCsrfToken(),
+        },
         body: uploadData,
       });
       const result = await response.json().catch(() => ({}));
@@ -950,6 +958,7 @@
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
+          'X-CSRF-Token': getCsrfToken(),
         },
         body: JSON.stringify({ action: 'save', record }),
       });
@@ -976,14 +985,13 @@
     if (!window.confirm(`Eliminar ${title}? Esta accion no se puede deshacer.`)) return;
 
     try {
-      const response = await fetch(`${API_URL}?resource=${encodeURIComponent(config.resource)}`, {
-        method: 'POST',
+      const response = await fetch(`${API_URL}?resource=${encodeURIComponent(config.resource)}&id=${encodeURIComponent(record.id)}`, {
+        method: 'DELETE',
         credentials: 'same-origin',
         headers: {
-          'Content-Type': 'application/json',
           Accept: 'application/json',
+          'X-CSRF-Token': getCsrfToken(),
         },
-        body: JSON.stringify({ action: 'delete', id: record.id }),
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok || !result.success) {

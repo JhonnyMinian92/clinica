@@ -37,6 +37,7 @@ include __DIR__ . '/../../public/shared/header/header.php';
         <?php foreach ($especialidades as $i => $especialidad): ?>
           <div class="specialty-catalog-card animate-on-scroll fade-in-up"
             style="--animation-delay: <?php echo ($i * 50); ?>ms;"
+            data-id="<?php echo htmlspecialchars(strtolower($especialidad['id'])); ?>"
             data-title="<?php echo strtolower(htmlspecialchars($especialidad['titulo'])); ?>">
             <div class="specialty-icon">
               <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"

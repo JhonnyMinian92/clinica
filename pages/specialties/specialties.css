@@ -7,29 +7,60 @@
 .specialty-catalog-card {
   background-color: var(--color-background-white);
   border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-medium);
-  padding: calc(var(--spacing-unit) * 4);
+  border-radius: var(--border-radius-soft);
+  padding: calc(var(--spacing-unit) * 3);
   display: flex;
   flex-direction: column;
   text-align: left;
   transition: all var(--transition-duration-medium) var(--ease-out-cubic);
   box-shadow: var(--shadow-soft);
+  min-height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.specialty-catalog-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+  opacity: 0;
+  transition: opacity var(--transition-duration-fast) ease;
 }
 
 .specialty-catalog-card:hover {
-  transform: translateY(-8px);
-  box-shadow: var(--shadow-hard);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-medium);
   border-color: var(--color-primary);
+}
+
+.specialty-catalog-card:hover::before,
+.specialty-catalog-card.is-filtered-match::before,
+.specialty-catalog-card.is-url-selected::before {
+  opacity: 1;
+}
+
+.specialty-catalog-card.is-url-selected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(0, 91, 234, 0.14), var(--shadow-medium);
 }
 
 .specialty-catalog-card .specialty-icon {
   color: var(--color-primary);
   margin-bottom: calc(var(--spacing-unit) * 2);
   align-self: flex-start;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--border-radius-soft);
+  background-color: #eef7ff;
 }
 
 .specialty-catalog-card .specialty-title {
-  font-size: var(--font-size-h3);
+  font-size: 1.25rem;
+  line-height: 1.2;
   margin-bottom: var(--spacing-unit);
 }
 
@@ -41,6 +72,7 @@
 
 .specialty-catalog-card .btn {
   margin-top: auto; /* Pushes the button to the bottom */
+  width: 100%;
 }
 
 .no-results-message {
@@ -52,4 +84,25 @@
   border-radius: var(--border-radius-medium);
   margin-top: calc(var(--spacing-unit) * 4);
   display: none; /* Oculto por defecto, JS lo gestiona */
+}
+
+@media (min-width: 768px) {
+  .specialty-catalog-card {
+    padding: calc(var(--spacing-unit) * 4);
+  }
+
+  .specialty-catalog-card .btn {
+    width: auto;
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  .specialty-catalog-card {
+    padding: calc(var(--spacing-unit) * 2.5);
+  }
+
+  .specialty-catalog-card:hover {
+    transform: none;
+  }
 }

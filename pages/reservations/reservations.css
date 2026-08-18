@@ -22,7 +22,7 @@ body {
   margin: 0 auto;
   background-color: var(--color-background-white);
   padding: calc(var(--spacing-unit) * 3); /* Reduced padding for mobile */
-  border-radius: var(--border-radius-hard);
+  border-radius: var(--border-radius-soft);
   box-shadow: var(--shadow-medium);
   border: 1px solid var(--color-border);
 }
@@ -145,13 +145,13 @@ body {
 .selection-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); /* Smaller min for mobile */
-  gap: var(--spacing-unit) * 2.5;
+  gap: calc(var(--spacing-unit) * 2);
 }
 
 .selectable-card {
   border: 2px solid var(--color-border);
-  border-radius: var(--border-radius-medium);
-  padding: var(--spacing-unit) * 2;
+  border-radius: var(--border-radius-soft);
+  padding: calc(var(--spacing-unit) * 2);
   cursor: pointer;
   transition: all var(--transition-duration-fast) var(--ease-out-cubic);
   display: flex;
@@ -200,7 +200,7 @@ body {
 
 .selectable-card .card-icon {
   color: var(--color-primary);
-  margin-bottom: var(--spacing-unit) * 1.5;
+  margin-bottom: calc(var(--spacing-unit) * 1.5);
 }
 
 .selectable-card .card-icon svg {
@@ -323,7 +323,9 @@ body {
   z-index: 5;
   opacity: 0;
   visibility: hidden;
-  transition: opacity var(--transition-duration-fast) ease, visibility 0s var(--transition-duration-fast);
+  transition:
+    opacity var(--transition-duration-fast) ease,
+    visibility 0s var(--transition-duration-fast);
   border-radius: var(--border-radius-medium); /* Para que coincida con el contenedor */
 }
 
@@ -345,9 +347,14 @@ body {
 /* --- Calendario Interactivo --- */
 .calendar-container {
   border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-medium);
+  border-radius: var(--border-radius-soft);
   padding: calc(var(--spacing-unit) * 2);
   background-color: var(--color-background-white);
+}
+
+.date-time-container {
+  display: grid;
+  gap: calc(var(--spacing-unit) * 3);
 }
 
 .calendar-header {
@@ -390,7 +397,9 @@ body {
   grid-template-columns: repeat(7, 1fr);
   text-align: center;
   gap: calc(var(--spacing-unit) * 0.5); /* 4px, más compacto para mobile */
-  transition: opacity 300ms var(--ease-out-cubic), transform 300ms var(--ease-out-cubic);
+  transition:
+    opacity 300ms var(--ease-out-cubic),
+    transform 300ms var(--ease-out-cubic);
 }
 
 .calendar-weekdays span {
@@ -439,87 +448,11 @@ body {
   pointer-events: none;
 }
 
-/* --- Estilos para campos de formulario --- */
-.date-time-container,
-.patient-info-grid {
-  display: grid;
-  gap: calc(var(--spacing-unit) * 4);
-}
-
-.form-group-styled {
-  position: relative;
-}
-.form-group-styled input,
-.form-group-styled textarea {
-  width: 100%;
-  padding: calc(var(--spacing-unit) * 1.5);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-soft);
-  font-family: inherit;
-  font-size: var(--font-size-normal);
-  background-color: transparent;
-}
-.form-group-styled label {
-  position: absolute;
-  top: calc(var(--spacing-unit) * 1.5);
-  left: var(--spacing-unit);
-  transform: translateY(0);
-  color: var(--color-text-secondary);
-  pointer-events: none;
-  transition: all var(--transition-duration-fast) var(--ease-out-cubic);
-  background-color: var(--color-background-white);
-  padding: 0 calc(var(--spacing-unit) * 0.5);
-}
-.form-group-styled input:focus + label,
-.form-group-styled input:not(:placeholder-shown) + label,
-.form-group-styled textarea:focus + label,
-.form-group-styled textarea:not(:placeholder-shown) + label {
-  top: -0.5em;
-  font-size: 0.75rem;
-  color: var(--color-primary);
-}
-.form-group-styled input:focus,
-.form-group-styled textarea:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(0, 91, 234, 0.2);
-}
-
-/* Estilos de validación de errores */
-.form-group-styled.has-error input,
-.form-group-styled.has-error textarea {
-  border-color: #e53e3e; /* Rojo de error */
-}
-.form-group-styled.has-error label {
-  color: #e53e3e;
-}
-.form-group-styled.has-error input:focus,
-.form-group-styled.has-error textarea:focus {
-  border-color: #e53e3e;
-  box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.2);
-}
-
-.form-error-message {
-  color: #e53e3e; /* Rojo de error */
-  font-size: var(--font-size-small);
-  padding-left: calc(var(--spacing-unit) * 1.5);
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-  transition: all var(--transition-duration-fast) var(--ease-out-cubic);
-}
-
-.form-group-styled.has-error .form-error-message {
-  margin-top: calc(var(--spacing-unit) * 0.5);
-  max-height: 20px; /* Altura suficiente para una línea de texto */
-  opacity: 1;
-}
-
 /* --- Tarjeta de Resumen --- */
 .summary-card {
   background-color: var(--color-background-light);
   border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-medium);
+  border-radius: var(--border-radius-soft);
   padding: calc(var(--spacing-unit) * 3);
 }
 .summary-list {
@@ -527,7 +460,7 @@ body {
   line-height: 2;
 }
 .summary-footer {
-  margin-top: var(--spacing-unit) * 2;
+  margin-top: calc(var(--spacing-unit) * 2);
   font-size: var(--font-size-small);
   color: var(--color-text-secondary);
   text-align: center;
@@ -537,6 +470,7 @@ body {
 .form-navigation {
   display: flex;
   justify-content: space-between;
+  gap: calc(var(--spacing-unit) * 2);
   margin-top: calc(var(--spacing-unit) * 5);
   border-top: 1px solid var(--color-border);
   padding-top: calc(var(--spacing-unit) * 3);
@@ -590,8 +524,10 @@ body {
   border: 3px solid rgba(255, 255, 255, 0.3);
   border-top-color: var(--color-white);
   border-radius: 50%;
-  animation: spin 1s linear infinite;
-  transform: translate(-50%, -50%);
+  /* Se usa margen negativo para centrar y evitar conflicto con la animación 'transform' */
+  margin-top: -12px;
+  margin-left: -12px;
+  animation: spin 1s linear infinite; /* 'spin' ahora es una animación global */
 }
 
 /* --- Skeletons --- */
@@ -651,7 +587,7 @@ body {
   .patient-info-grid {
     grid-template-columns: 1fr 1fr;
   }
-  .patient-info-grid .form-group-styled:last-child {
+  .patient-info-grid .form-group:last-child {
     grid-column: 1 / -1;
   }
 
@@ -663,6 +599,46 @@ body {
 @media (min-width: 500px) {
   .selection-grid {
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .reservation-container {
+    padding: calc(var(--header-height) + var(--spacing-unit) * 3) var(--container-padding) calc(var(--spacing-unit) * 3);
+  }
+
+  .reservation-form-wrapper {
+    padding: calc(var(--spacing-unit) * 2);
+  }
+
+  .progress-step {
+    width: 34px;
+    height: 34px;
+    font-size: var(--font-size-small);
+  }
+
+  .selection-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .doctor-grid .selectable-card {
+    justify-content: flex-start;
+  }
+
+  .time-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .calendar-day {
+    height: 38px;
+  }
+
+  .form-navigation {
+    flex-direction: column-reverse;
+  }
+
+  .form-navigation .btn {
+    width: 100%;
   }
 }
 
@@ -679,8 +655,16 @@ body {
   color: var(--color-text-secondary);
 }
 
-@keyframes spin {
-  to {
-    transform: translate(-50%, -50%) rotate(360deg);
-  }
+/* Estilo para el mensaje de error de envío del formulario */
+.form-submission-error {
+  padding: var(--spacing-unit) calc(var(--spacing-unit) * 2);
+  margin-bottom: calc(var(--spacing-unit) * 2);
+  border: 1px solid #b42318; /* Rojo de error, consistente con el sistema de gestión */
+  border-radius: var(--border-radius-soft);
+  background-color: #fff1f0; /* Fondo rojo claro */
+  color: #b42318;
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  text-align: center;
+  animation: menuFadeIn 0.3s ease; /* Reutiliza animación de aparición */
 }

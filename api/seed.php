@@ -1,217 +1,330 @@
 <?php
-header('Content-Type: text/plain; charset=utf-8');
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/data.php';
 
+header('Content-Type: text/plain; charset=utf-8');
+
+echo "Inicializando base de datos de Clinica...\n";
+
 try {
+  $credentials = clinica_db_credentials();
+  $serverDsn = "mysql:host={$credentials['host']};charset={$credentials['charset']}";
+  $serverPdo = new PDO($serverDsn, $credentials['user'], $credentials['password'], [
+    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+  ]);
+
+  $dbName = str_replace('`', '``', $credentials['dbname']);
+  $serverPdo->exec("CREATE DATABASE IF NOT EXISTS `{$dbName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
   $pdo = clinica_get_db();
-  echo "Conexión a la base de datos establecida.\n\n";
+  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  // 1. OBTENER DATOS DEL JSON
-  $data = clinica_read_database();
-  echo "Datos leídos desde gestion-data.json.\n";
+  clinica_seed_create_schema($pdo);
+  clinica_seed_apply_migrations($pdo);
+  clinica_seed_base_data($pdo);
 
-  // 2. CREAR TABLAS (ELIMINANDO LAS ANTERIORES SI EXISTEN)
-  $schema = file_get_contents(__DIR__ . '/../context.md');
-  preg_match('/```sql(.*?)```/s', $schema, $matches);
-  $sqlSchema = $matches[1] ?? '';
-
-  if (empty($sqlSchema)) {
-    throw new Exception("No se pudo extraer el esquema SQL del context.md");
-  }
-
-  // Separar y ejecutar cada sentencia
-  $pdo->exec("SET FOREIGN_KEY_CHECKS=0;");
-  $tables = ['audit_logs', 'appointments', 'patients', 'doctor_schedules', 'users', 'doctors', 'specialties', 'services', 'testimonials', 'clinics'];
-  foreach ($tables as $table) {
-    $pdo->exec("DROP TABLE IF EXISTS `$table`;");
-    echo "Tabla `$table` eliminada (si existía).\n";
-  }
-
-  // Separar y ejecutar cada sentencia SQL del esquema para mayor fiabilidad.
-  // Se eliminan comentarios y se divide por ';'.
-  $sqlSchema = preg_replace('/--.*$/m', '', $sqlSchema);
-  $statements = explode(';', $sqlSchema);
-
-  foreach ($statements as $statement) {
-    $statement = trim($statement);
-    if (!empty($statement)) {
-      $pdo->exec($statement);
-    }
-  }
-
-  $pdo->exec("SET FOREIGN_KEY_CHECKS=1;");
-  echo "\nEsquema de base de datos creado exitosamente.\n\n";
-
-  // 3. POBLAR TABLAS
-  echo "Iniciando el poblamiento de datos (seeding)...\n";
-
-  // Clinics
-  $defaultClinicData = clinica_get_seed_data()['clinic'];
-  $jsonClinicData = $data['clinic'] ?? [];
-  $clinicData = array_merge($defaultClinicData, $jsonClinicData);
-  $clinicData['stats'] = json_encode($clinicData['stats'] ?? []);
-  $clinicData['about_cards'] = json_encode($clinicData['about_cards'] ?? []);
-  $stmt = $pdo->prepare("
-    INSERT INTO clinics (
-      name, legal_name, logo_label, logo_image, tagline, description, meta_title, meta_description, canonical_url,
-      hero_title, hero_subtitle, hero_image, hero_mobile_image,
-      about_title, about_subtitle, services_title, services_subtitle, specialties_title, specialties_subtitle,
-      doctors_title, doctors_subtitle, comments_title, comments_subtitle,
-      reservation_title, reservation_subtitle, reservation_summary_note, reservation_success_title, reservation_success_text,
-      reservation_back_home_label, reservation_next_label, reservation_confirm_label, reservation_previous_label,
-      address, email, phone_display, phone_href, emergency_phone, whatsapp_url, facebook_url, instagram_url,
-      stats, about_cards
-    ) VALUES (
-      :name, :legal_name, :logo_label, :logo_image, :tagline, :description, :meta_title, :meta_description, :canonical_url,
-      :hero_title, :hero_subtitle, :hero_image, :hero_mobile_image,
-      :about_title, :about_subtitle, :services_title, :services_subtitle, :specialties_title, :specialties_subtitle,
-      :doctors_title, :doctors_subtitle, :comments_title, :comments_subtitle,
-      :reservation_title, :reservation_subtitle, :reservation_summary_note, :reservation_success_title, :reservation_success_text,
-      :reservation_back_home_label, :reservation_next_label, :reservation_confirm_label, :reservation_previous_label,
-      :address, :email, :phone_display, :phone_href, :emergency_phone, :whatsapp_url, :facebook_url, :instagram_url,
-      :stats, :about_cards
-    )
-  ");
-  $stmt->execute($clinicData);
-  echo "- Tabla 'clinics' poblada.\n";
-
-  // Specialties
-  $stmt = $pdo->prepare("INSERT INTO specialties (id, name, summary, description, icon, featured, active) VALUES (:id, :name, :summary, :description, :icon, :featured, :active)");
-  foreach ($data['specialties'] as $item) {
-    $stmt->execute([
-      ':id' => $item['id'],
-      ':name' => $item['name'],
-      ':summary' => $item['summary'],
-      ':description' => $item['description'],
-      ':icon' => $item['icon'],
-      ':featured' => (int)(bool)$item['featured'],
-      ':active' => (int)(bool)$item['active'],
-    ]);
-  }
-  echo "- Tabla 'specialties' poblada.\n";
-
-  // Services (asumiendo que existe en el JSON)
-  if (isset($data['services'])) {
-    $stmt = $pdo->prepare("INSERT INTO services (id, title, description, icon, featured, active) VALUES (:id, :title, :description, :icon, :featured, :active)");
-    foreach ($data['services'] as $item) {
-      $stmt->execute([
-        ':id' => $item['id'],
-        ':title' => $item['title'],
-        ':description' => $item['description'],
-        ':icon' => $item['icon'],
-        ':featured' => (int)(bool)$item['featured'],
-        ':active' => (int)(bool)$item['active'],
-      ]);
-    }
-    echo "- Tabla 'services' poblada.\n";
-  }
-
-  // Doctors
-  $stmt = $pdo->prepare("INSERT INTO doctors (id, name, photo, specialty_id, sub_specialty, experience_years, university, languages, recognitions, rating, patients, featured, active) VALUES (:id, :name, :photo, :specialty_id, :sub_specialty, :experience_years, :university, :languages, :recognitions, :rating, :patients, :featured, :active)");
-  foreach ($data['doctors'] as $item) {
-    $stmt->execute([
-      ':id' => $item['id'],
-      ':name' => $item['name'],
-      ':photo' => $item['photo'],
-      ':specialty_id' => $item['specialty_id'],
-      ':sub_specialty' => $item['sub_specialty'],
-      ':experience_years' => $item['experience_years'],
-      ':university' => $item['university'],
-      ':languages' => json_encode($item['languages']),
-      ':recognitions' => json_encode($item['recognitions']),
-      ':rating' => $item['rating'],
-      ':patients' => $item['patients'],
-      ':featured' => (int)(bool)$item['featured'],
-      ':active' => (int)(bool)$item['active'],
-    ]);
-  }
-  echo "- Tabla 'doctors' poblada.\n";
-
-  // Users
-  $stmt = $pdo->prepare("INSERT INTO users (username, password, name, role, doctor_id, active) VALUES (:username, :password, :name, :role, :doctor_id, :active)");
-  foreach ($data['users'] as $item) {
-    $stmt->execute([
-      ':username' => $item['username'],
-      ':password' => password_hash($item['password'], PASSWORD_DEFAULT), // HASHING PASSWORD
-      ':name' => $item['name'],
-      ':role' => $item['role'],
-      ':doctor_id' => empty($item['doctor_id']) ? null : $item['doctor_id'],
-      ':active' => (int)(bool)$item['active'],
-    ]);
-  }
-  echo "- Tabla 'users' poblada (contraseñas hasheadas).\n";
-
-  // Doctor Schedules
-  $stmt = $pdo->prepare("INSERT INTO doctor_schedules (doctor_id, weekday, start_time, end_time, slot_minutes, active, date) VALUES (:doctor_id, :weekday, :start_time, :end_time, :slot_minutes, :active, :date)");
-  foreach ($data['schedules'] as $item) {
-    $stmt->execute([
-      ':doctor_id' => $item['doctor_id'],
-      ':weekday' => $item['weekday'],
-      ':start_time' => $item['start_time'],
-      ':end_time' => $item['end_time'],
-      ':slot_minutes' => $item['slot_minutes'],
-      ':active' => (int)(bool)$item['active'],
-      ':date' => empty($item['date']) ? null : $item['date'],
-    ]);
-  }
-  echo "- Tabla 'doctor_schedules' poblada.\n";
-
-  // Seed initial appointments
-  $appointments = clinica_seed_appointments();
-  $patientStmt = $pdo->prepare("INSERT INTO patients (name, email, phone) VALUES (:name, :email, :phone) ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id), name=VALUES(name), phone=VALUES(phone)");
-  $appointmentStmt = $pdo->prepare("INSERT IGNORE INTO appointments (patient_id, doctor_id, specialty_id, date, time, status, notes) VALUES (:patient_id, :doctor_id, :specialty_id, :date, :time, :status, :notes)");
-
-  foreach ($appointments as $app) {
-    // 1. Find or create patient
-    $patientStmt->execute([
-      ':name' => $app['nombre_paciente'],
-      ':email' => $app['email_paciente'],
-      ':phone' => $app['telefono_paciente'],
-    ]);
-    $patientId = $pdo->lastInsertId();
-
-    // 2. Find specialty_id from doctor_id
-    $docStmt = $pdo->prepare("SELECT specialty_id FROM doctors WHERE id = ?");
-    $docStmt->execute([$app['doctor_id']]);
-    $doctor = $docStmt->fetch();
-    $specialtyId = $doctor['specialty_id'] ?? 'cardiologia'; // Fallback
-
-    // 3. Insert appointment
-    $appointmentStmt->execute([
-      ':patient_id' => $patientId,
-      ':doctor_id' => $app['doctor_id'],
-      ':specialty_id' => $specialtyId,
-      ':date' => $app['fecha'],
-      ':time' => $app['hora'],
-      ':status' => $app['estado'],
-      ':notes' => $app['motivo_consulta'],
-    ]);
-  }
-  echo "- Tablas 'patients' y 'appointments' pobladas con datos de ejemplo.\n";
-
-  // Testimonials (comments)
-  if (isset($data['comments'])) {
-    $stmt = $pdo->prepare("INSERT INTO testimonials (id, author, detail, text, rating, avatar, featured, active) VALUES (:id, :author, :detail, :text, :rating, :avatar, :featured, :active)");
-    foreach ($data['comments'] as $item) {
-      $stmt->execute([
-        ':id' => $item['id'],
-        ':author' => $item['author'],
-        ':detail' => $item['detail'],
-        ':text' => $item['text'],
-        ':rating' => $item['rating'],
-        ':avatar' => $item['avatar'],
-        ':featured' => (int)(bool)$item['featured'],
-        ':active' => (int)(bool)$item['active'],
-      ]);
-    }
-    echo "- Tabla 'testimonials' poblada.\n";
-  }
-
-  echo "\n¡PROCESO DE SEEDING COMPLETADO!\n";
+  echo "Base de datos lista sin eliminar datos existentes.\n";
 } catch (PDOException $e) {
-  die("Error de base de datos: " . $e->getMessage());
-} catch (Exception $e) {
-  die("Error general: " . $e->getMessage());
+  echo "Error durante la inicializacion: " . $e->getMessage() . "\n";
+  exit(1);
+}
+
+function clinica_seed_create_schema(PDO $pdo): void
+{
+  $pdo->exec("
+    CREATE TABLE IF NOT EXISTS clinics (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+      name VARCHAR(255) NOT NULL,
+      legal_name VARCHAR(255) DEFAULT NULL,
+      logo_label VARCHAR(255) DEFAULT NULL,
+      logo_image VARCHAR(255) DEFAULT NULL,
+      tagline VARCHAR(255) DEFAULT NULL,
+      description TEXT DEFAULT NULL,
+      meta_title VARCHAR(255) DEFAULT NULL,
+      meta_description TEXT DEFAULT NULL,
+      canonical_url VARCHAR(255) DEFAULT NULL,
+      hero_title VARCHAR(255) DEFAULT NULL,
+      hero_subtitle TEXT DEFAULT NULL,
+      hero_image VARCHAR(255) DEFAULT NULL,
+      hero_mobile_image VARCHAR(255) DEFAULT NULL,
+      about_title VARCHAR(255) DEFAULT NULL,
+      about_subtitle TEXT DEFAULT NULL,
+      services_title VARCHAR(255) DEFAULT NULL,
+      services_subtitle TEXT DEFAULT NULL,
+      specialties_title VARCHAR(255) DEFAULT NULL,
+      specialties_subtitle TEXT DEFAULT NULL,
+      doctors_title VARCHAR(255) DEFAULT NULL,
+      doctors_subtitle TEXT DEFAULT NULL,
+      comments_title VARCHAR(255) DEFAULT NULL,
+      comments_subtitle TEXT DEFAULT NULL,
+      reservation_title VARCHAR(255) DEFAULT NULL,
+      reservation_subtitle TEXT DEFAULT NULL,
+      reservation_summary_note TEXT DEFAULT NULL,
+      reservation_success_title VARCHAR(255) DEFAULT NULL,
+      reservation_success_text TEXT DEFAULT NULL,
+      reservation_back_home_label VARCHAR(100) DEFAULT NULL,
+      reservation_next_label VARCHAR(100) DEFAULT NULL,
+      reservation_confirm_label VARCHAR(100) DEFAULT NULL,
+      reservation_previous_label VARCHAR(100) DEFAULT NULL,
+      address VARCHAR(255) DEFAULT NULL,
+      email VARCHAR(255) DEFAULT NULL,
+      phone_display VARCHAR(50) DEFAULT NULL,
+      phone_href VARCHAR(50) DEFAULT NULL,
+      emergency_phone VARCHAR(50) DEFAULT NULL,
+      whatsapp_url VARCHAR(255) DEFAULT NULL,
+      facebook_url VARCHAR(255) DEFAULT NULL,
+      instagram_url VARCHAR(255) DEFAULT NULL,
+      stats LONGTEXT DEFAULT NULL,
+      about_cards LONGTEXT DEFAULT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+    CREATE TABLE IF NOT EXISTS specialties (
+      id VARCHAR(50) NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      summary TEXT DEFAULT NULL,
+      description TEXT DEFAULT NULL,
+      icon TEXT DEFAULT NULL,
+      featured BOOLEAN NOT NULL DEFAULT FALSE,
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+    CREATE TABLE IF NOT EXISTS doctors (
+      id VARCHAR(50) NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      photo VARCHAR(255) DEFAULT NULL,
+      specialty_id VARCHAR(50) NOT NULL,
+      sub_specialty VARCHAR(255) DEFAULT NULL,
+      experience_years INT UNSIGNED DEFAULT 0,
+      university VARCHAR(255) DEFAULT NULL,
+      languages LONGTEXT DEFAULT NULL,
+      recognitions LONGTEXT DEFAULT NULL,
+      rating TINYINT UNSIGNED DEFAULT 5,
+      patients INT UNSIGNED DEFAULT 0,
+      featured BOOLEAN NOT NULL DEFAULT FALSE,
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      KEY doctors_specialty_id_foreign (specialty_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+    CREATE TABLE IF NOT EXISTS users (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+      username VARCHAR(50) NOT NULL UNIQUE,
+      password VARCHAR(255) NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      role ENUM('ADMINISTRATOR', 'SECRETARIA', 'DOCTOR') NOT NULL,
+      doctor_id VARCHAR(50) DEFAULT NULL,
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      KEY users_doctor_id_foreign (doctor_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+    CREATE TABLE IF NOT EXISTS services (
+      id VARCHAR(50) NOT NULL,
+      title VARCHAR(255) NOT NULL,
+      description TEXT DEFAULT NULL,
+      icon TEXT DEFAULT NULL,
+      featured BOOLEAN NOT NULL DEFAULT FALSE,
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+    CREATE TABLE IF NOT EXISTS testimonials (
+      id VARCHAR(50) NOT NULL,
+      author VARCHAR(255) NOT NULL,
+      detail VARCHAR(255) DEFAULT NULL,
+      text TEXT NOT NULL,
+      rating TINYINT UNSIGNED NOT NULL,
+      avatar VARCHAR(255) DEFAULT NULL,
+      featured BOOLEAN NOT NULL DEFAULT FALSE,
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+    CREATE TABLE IF NOT EXISTS doctor_schedules (
+      id VARCHAR(50) NOT NULL,
+      doctor_id VARCHAR(50) NOT NULL,
+      date DATE DEFAULT NULL,
+      weekday TINYINT UNSIGNED NOT NULL,
+      start_time TIME NOT NULL,
+      end_time TIME NOT NULL,
+      slot_minutes INT UNSIGNED NOT NULL DEFAULT 15,
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      KEY doctor_schedules_doctor_id_foreign (doctor_id),
+      KEY idx_schedule_lookup (doctor_id, weekday, start_time),
+      KEY idx_schedule_date_lookup (doctor_id, date)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+    CREATE TABLE IF NOT EXISTS patients (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+      name VARCHAR(255) NOT NULL,
+      email VARCHAR(255) NOT NULL UNIQUE,
+      phone VARCHAR(50) DEFAULT NULL,
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+    CREATE TABLE IF NOT EXISTS appointments (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+      patient_id INT UNSIGNED NOT NULL,
+      doctor_id VARCHAR(50) NOT NULL,
+      specialty_id VARCHAR(50) NOT NULL,
+      date DATE NOT NULL,
+      time TIME NOT NULL,
+      slot_minutes INT UNSIGNED NOT NULL DEFAULT 15,
+      status ENUM('pendiente','atendida','no-presentado','rechazada','cancelada') NOT NULL DEFAULT 'pendiente',
+      notes TEXT DEFAULT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY uq_appointment_slot (doctor_id, date, time),
+      KEY appointments_patient_id_foreign (patient_id),
+      KEY appointments_specialty_id_foreign (specialty_id),
+      KEY idx_appointment_lookup (date, time),
+      KEY idx_appointment_status (status, date)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+    CREATE TABLE IF NOT EXISTS appointment_status_history (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      appointment_id INT UNSIGNED NOT NULL,
+      old_status ENUM('pendiente','atendida','no-presentado','rechazada','cancelada') DEFAULT NULL,
+      new_status ENUM('pendiente','atendida','no-presentado','rechazada','cancelada') NOT NULL,
+      changed_by_user_id INT UNSIGNED DEFAULT NULL,
+      reason TEXT DEFAULT NULL,
+      changed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      KEY appointment_status_history_appointment_id_foreign (appointment_id),
+      KEY appointment_status_history_changed_by_user_id_foreign (changed_by_user_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      user_id INT UNSIGNED DEFAULT NULL,
+      action VARCHAR(100) NOT NULL,
+      resource_type VARCHAR(50) DEFAULT NULL,
+      resource_id VARCHAR(50) DEFAULT NULL,
+      details LONGTEXT DEFAULT NULL,
+      ip_address VARCHAR(45) DEFAULT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      KEY audit_logs_user_id_foreign (user_id),
+      KEY idx_audit_resource (resource_type, resource_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  ");
+}
+
+function clinica_seed_apply_migrations(PDO $pdo): void
+{
+  $pdo->exec("ALTER TABLE appointments MODIFY status ENUM('pendiente','atendida','no-presentado','rechazada','cancelada') NOT NULL DEFAULT 'pendiente'");
+  clinica_seed_add_column($pdo, 'appointments', 'slot_minutes', "ALTER TABLE appointments ADD COLUMN slot_minutes INT UNSIGNED NOT NULL DEFAULT 15 AFTER time");
+  clinica_seed_add_column($pdo, 'patients', 'active', "ALTER TABLE patients ADD COLUMN active BOOLEAN NOT NULL DEFAULT TRUE AFTER phone");
+
+  $stmt = $pdo->query("SELECT DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'doctor_schedules' AND COLUMN_NAME = 'id'");
+  if (($stmt->fetchColumn() ?: '') !== 'varchar') {
+    $pdo->exec("ALTER TABLE doctor_schedules MODIFY id VARCHAR(50) NOT NULL");
+  }
+}
+
+function clinica_seed_add_column(PDO $pdo, string $table, string $column, string $sql): void
+{
+  $stmt = $pdo->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?");
+  $stmt->execute([$table, $column]);
+  if ((int) $stmt->fetchColumn() === 0) {
+    $pdo->exec($sql);
+  }
+}
+
+function clinica_seed_base_data(PDO $pdo): void
+{
+  $seed = clinica_read_database();
+
+  if ((int) $pdo->query("SELECT COUNT(*) FROM clinics")->fetchColumn() === 0 && !empty($seed['clinic'])) {
+    $clinic = $seed['clinic'];
+    $clinic['stats'] = json_encode($clinic['stats'] ?? [], JSON_UNESCAPED_UNICODE);
+    $clinic['about_cards'] = json_encode($clinic['about_cards'] ?? [], JSON_UNESCAPED_UNICODE);
+    clinica_seed_insert_assoc($pdo, 'clinics', $clinic);
+    echo "Clinica insertada.\n";
+  }
+
+  if (clinica_seed_table_is_empty($pdo, 'specialties')) {
+    clinica_seed_insert_rows_ignore($pdo, 'specialties', $seed['specialties'] ?? []);
+  }
+
+  if (clinica_seed_table_is_empty($pdo, 'doctors')) {
+    clinica_seed_insert_rows_ignore($pdo, 'doctors', array_map(static function (array $doctor): array {
+      $doctor['languages'] = json_encode($doctor['languages'] ?? [], JSON_UNESCAPED_UNICODE);
+      $doctor['recognitions'] = json_encode($doctor['recognitions'] ?? [], JSON_UNESCAPED_UNICODE);
+      return $doctor;
+    }, $seed['doctors'] ?? []));
+  }
+
+  if (clinica_seed_table_is_empty($pdo, 'services')) {
+    clinica_seed_insert_rows_ignore($pdo, 'services', $seed['services'] ?? []);
+  }
+
+  if (clinica_seed_table_is_empty($pdo, 'testimonials')) {
+    clinica_seed_insert_rows_ignore($pdo, 'testimonials', $seed['testimonials'] ?? []);
+  }
+
+  if (clinica_seed_table_is_empty($pdo, 'doctor_schedules')) {
+    clinica_seed_insert_rows_ignore($pdo, 'doctor_schedules', $seed['schedules'] ?? []);
+  }
+
+  foreach ($seed['users'] ?? [] as $user) {
+    $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
+    $stmt->execute([$user['username'] ?? '']);
+    if ($stmt->fetch()) {
+      continue;
+    }
+
+    $user['password'] = password_hash((string) ($user['password'] ?? ''), PASSWORD_DEFAULT);
+    unset($user['id']);
+    clinica_seed_insert_assoc($pdo, 'users', $user);
+    echo "Usuario {$user['username']} insertado.\n";
+  }
+}
+
+function clinica_seed_table_is_empty(PDO $pdo, string $table): bool
+{
+  $safeTable = str_replace('`', '``', $table);
+  return (int) $pdo->query("SELECT COUNT(*) FROM `{$safeTable}`")->fetchColumn() === 0;
+}
+
+function clinica_seed_insert_rows_ignore(PDO $pdo, string $table, array $rows): void
+{
+  foreach ($rows as $row) {
+    if (is_array($row)) {
+      clinica_seed_insert_assoc($pdo, $table, $row, true);
+    }
+  }
+}
+
+function clinica_seed_insert_assoc(PDO $pdo, string $table, array $row, bool $ignore = false): void
+{
+  $columns = array_keys($row);
+  $columnSql = implode(', ', array_map(static fn(string $column): string => "`$column`", $columns));
+  $placeholderSql = implode(', ', array_map(static fn(string $column): string => ":$column", $columns));
+  $verb = $ignore ? 'INSERT IGNORE' : 'INSERT';
+  $stmt = $pdo->prepare("$verb INTO `$table` ($columnSql) VALUES ($placeholderSql)");
+  $stmt->execute($row);
 }

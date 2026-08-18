@@ -100,8 +100,9 @@
     const target = document.getElementById('home-about-cards');
     if (!target) return;
 
-    target.innerHTML = cards
-      .map((card, index) => `
+    const markup = (cards || [])
+      .map(
+        (card, index) => `
         <div class="card animate-on-scroll fade-in-up" style="--animation-delay: ${index * 100 + 200}ms;">
           <div class="card-icon">
             ${renderSvg(card.icon || '', 40, 1.5)}
@@ -109,30 +110,38 @@
           <h3 class="card-title">${escapeHtml(card.title || '')}</h3>
           <p class="card-text">${escapeHtml(card.text || '')}</p>
         </div>
-      `)
+      `,
+      )
       .join('');
+
+    ClinicaUtils.safeSetInnerHTML(target, markup);
   }
 
   function renderStats(stats) {
     const target = document.getElementById('home-stats');
     if (!target) return;
 
-    target.innerHTML = stats
-      .map((stat, index) => `
+    const markup = (stats || [])
+      .map(
+        (stat, index) => `
         <div class="stat-item animate-on-scroll fade-in-up" style="--animation-delay: ${index * 100}ms;">
           <span class="stat-number" data-target="${Number(stat.value || 0)}">0</span><span class="stat-suffix">${escapeHtml(stat.suffix || '')}</span>
           <p class="stat-label">${escapeHtml(stat.label || '')}</p>
         </div>
-      `)
+      `,
+      )
       .join('');
+
+    ClinicaUtils.safeSetInnerHTML(target, markup);
   }
 
   function renderServices(services) {
     const target = document.getElementById('home-services');
     if (!target) return;
 
-    target.innerHTML = services
-      .map((service, index) => `
+    const markup = (services || [])
+      .map(
+        (service, index) => `
         <div class="service-card animate-on-scroll fade-in-up" style="--animation-delay: ${index * 100 + 200}ms;">
           <div class="service-icon">
             ${renderSvg(service.icono || '', 48, 1.5)}
@@ -140,16 +149,20 @@
           <h3 class="service-title">${escapeHtml(service.titulo || '')}</h3>
           <p class="service-text">${escapeHtml(service.descripcion || '')}</p>
         </div>
-      `)
+      `,
+      )
       .join('');
+
+    ClinicaUtils.safeSetInnerHTML(target, markup);
   }
 
   function renderSpecialties(specialties) {
     const target = document.getElementById('home-specialties');
     if (!target) return;
 
-    target.innerHTML = specialties
-      .map((specialty, index) => `
+    const markup = (specialties || [])
+      .map(
+        (specialty, index) => `
         <div class="specialty-card animate-on-scroll fade-in-up" style="--animation-delay: ${index * 100 + 200}ms;">
           <div class="specialty-icon">
             ${renderSvg(specialty.icono || '', 32, 2)}
@@ -158,16 +171,20 @@
           <p class="specialty-text">${escapeHtml(specialty.resumen || specialty.descripcion || '')}</p>
           <a href="pages/specialties/?specialty=${encodeURIComponent(specialty.id || '')}" class="specialty-link">Saber mas</a>
         </div>
-      `)
+      `,
+      )
       .join('');
+
+    ClinicaUtils.safeSetInnerHTML(target, markup);
   }
 
   function renderDoctors(doctors) {
     const target = document.getElementById('home-doctors');
     if (!target) return;
 
-    target.innerHTML = doctors
-      .map((doctor, index) => `
+    const markup = (doctors || [])
+      .map(
+        (doctor, index) => `
         <div class="doctor-card animate-on-scroll fade-in-up" style="--animation-delay: ${index * 100 + 200}ms;" data-id="${escapeAttribute(doctor.id || '')}">
           <div class="doctor-photo skeleton">
             <img data-src="${escapeAttribute(doctor.foto || 'public/assets/avatar.png')}"
@@ -184,15 +201,18 @@
             </div>
           </div>
         </div>
-      `)
+      `,
+      )
       .join('');
+
+    ClinicaUtils.safeSetInnerHTML(target, markup);
   }
 
   function renderTestimonials(comments) {
     const target = document.getElementById('home-testimonials');
     if (!target) return;
 
-    target.innerHTML = comments
+    const markup = (comments || [])
       .map((comment) => {
         const rating = Math.max(0, Math.min(5, Number(comment.valoracion || 0)));
         return `
@@ -208,6 +228,8 @@
         `;
       })
       .join('');
+
+    ClinicaUtils.safeSetInnerHTML(target, markup);
   }
 
   function renderHomeError(message) {
@@ -446,15 +468,23 @@
       prevSlide();
       stopAutoPlay();
     });
-    dom.testimonialWrapper.addEventListener('touchstart', (event) => {
-      touchStartX = event.changedTouches[0].screenX;
-      stopAutoPlay();
-    }, { passive: true });
-    dom.testimonialWrapper.addEventListener('touchend', (event) => {
-      touchEndX = event.changedTouches[0].screenX;
-      handleSwipe();
-      startAutoPlay();
-    }, { passive: true });
+    dom.testimonialWrapper.addEventListener(
+      'touchstart',
+      (event) => {
+        touchStartX = event.changedTouches[0].screenX;
+        stopAutoPlay();
+      },
+      { passive: true },
+    );
+    dom.testimonialWrapper.addEventListener(
+      'touchend',
+      (event) => {
+        touchEndX = event.changedTouches[0].screenX;
+        handleSwipe();
+        startAutoPlay();
+      },
+      { passive: true },
+    );
 
     updateCarousel();
     startAutoPlay();

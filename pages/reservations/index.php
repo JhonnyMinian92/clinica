@@ -40,7 +40,7 @@ function clinica_reservation_specialty_id_from_param(string $param, array $espec
     return '';
   }
 
-  $normalizedParam = clinica_reservation_slugify($param);
+  $normalizedParam = clinica_slugify($param);
 
   foreach ($especialidades as $especialidad) {
     $id = (string) ($especialidad['id'] ?? '');
@@ -49,8 +49,8 @@ function clinica_reservation_specialty_id_from_param(string $param, array $espec
     if (
       $id === $param ||
       strcasecmp($title, $param) === 0 ||
-      clinica_reservation_slugify($id) === $normalizedParam ||
-      clinica_reservation_slugify($title) === $normalizedParam
+      clinica_slugify($id) === $normalizedParam ||
+      clinica_slugify($title) === $normalizedParam
     ) {
       return $id;
     }
@@ -59,21 +59,14 @@ function clinica_reservation_specialty_id_from_param(string $param, array $espec
   return '';
 }
 
-function clinica_reservation_slugify(string $value): string
-{
-  $value = strtolower(trim($value));
-  $value = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value) ?: $value;
-  $value = preg_replace('/[^a-z0-9]+/', '-', $value);
-  return trim((string) $value, '-');
-}
-
 include __DIR__ . '/../../public/shared/header/header.php';
 ?>
 
 <main id="main-content">
   <div class="reservation-container">
     <div class="reservation-form-wrapper">
-      <h1 class="form-main-title"><?php echo htmlspecialchars($clinic['reservation_title'] ?? 'Agendar una Cita'); ?></h1>
+      <h1 class="form-main-title"><?php echo htmlspecialchars($clinic['reservation_title'] ?? 'Agendar una Cita'); ?>
+      </h1>
       <p class="form-main-subtitle">
         <?php echo htmlspecialchars($clinic['reservation_subtitle'] ?? 'Siga los pasos para encontrar un horario conveniente para usted.'); ?>
       </p>
@@ -103,14 +96,14 @@ include __DIR__ . '/../../public/shared/header/header.php';
 
           <div class="selection-grid" id="specialty-grid">
             <?php foreach ($especialidades as $item): ?>
-              <div class="selectable-card" data-value="<?php echo htmlspecialchars($item['id']); ?>"
-                data-name="<?php echo htmlspecialchars($item['titulo']); ?>">
-                <div class="card-icon">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round"><?php echo $item['icono']; ?></svg>
-                </div>
-                <span class="card-title"><?php echo htmlspecialchars($item['titulo']); ?></span>
+            <div class="selectable-card" data-value="<?php echo htmlspecialchars($item['id']); ?>"
+              data-name="<?php echo htmlspecialchars($item['titulo']); ?>">
+              <div class="card-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round"><?php echo $item['icono']; ?></svg>
               </div>
+              <span class="card-title"><?php echo htmlspecialchars($item['titulo']); ?></span>
+            </div>
             <?php endforeach; ?>
           </div>
           <div class="no-results-message" style="display: none;">
@@ -142,9 +135,11 @@ include __DIR__ . '/../../public/shared/header/header.php';
           <div class="date-time-container">
             <div class="calendar-container">
               <div class="calendar-header">
-                <button type="button" id="prev-month-btn" class="calendar-nav-btn" aria-label="Mes anterior">&lt;</button>
+                <button type="button" id="prev-month-btn" class="calendar-nav-btn"
+                  aria-label="Mes anterior">&lt;</button>
                 <h3 id="calendar-month-year" class="calendar-title"></h3>
-                <button type="button" id="next-month-btn" class="calendar-nav-btn" aria-label="Mes siguiente">&gt;</button>
+                <button type="button" id="next-month-btn" class="calendar-nav-btn"
+                  aria-label="Mes siguiente">&gt;</button>
               </div>
               <div class="calendar-weekdays">
                 <span>Lun</span><span>Mar</span><span>Mie</span><span>Jue</span><span>Vie</span><span>Sab</span><span>Dom</span>
@@ -169,22 +164,22 @@ include __DIR__ . '/../../public/shared/header/header.php';
         <div class="form-step">
           <h2 class="step-title">Complete sus datos</h2>
           <div class="patient-info-grid">
-            <div class="form-group-styled">
+            <div class="form-group">
               <input type="text" id="patient-name" name="patient-name" required placeholder=" ">
               <label for="patient-name">Nombre Completo</label>
             </div>
-            <div class="form-group-styled">
+            <div class="form-group">
               <input type="email" id="patient-email" name="patient-email" required placeholder=" ">
               <label for="patient-email">Correo Electronico</label>
               <div class="form-error-message">Por favor, ingrese un correo valido.</div>
             </div>
-            <div class="form-group-styled">
+            <div class="form-group">
               <input type="tel" id="patient-phone" name="patient-phone" required placeholder=" " inputmode="numeric"
                 pattern="[0-9]{7,10}" title="Ingrese solo numeros (de 7 a 10 digitos).">
               <label for="patient-phone">Telefono (solo numeros)</label>
               <div class="form-error-message">Debe ser un numero valido de 7 a 10 digitos.</div>
             </div>
-            <div class="form-group-styled">
+            <div class="form-group">
               <textarea id="patient-notes" name="patient-notes" rows="3" placeholder=" "></textarea>
               <label for="patient-notes">Notas adicionales (opcional)</label>
             </div>
@@ -211,8 +206,10 @@ include __DIR__ . '/../../public/shared/header/header.php';
         </div>
 
         <div class="form-navigation">
-          <button type="button" id="prev-btn" class="btn btn-tertiary"><?php echo htmlspecialchars($clinic['reservation_previous_label'] ?? 'Anterior'); ?></button>
-          <button type="button" id="next-btn" class="btn btn-primary"><?php echo htmlspecialchars($clinic['reservation_next_label'] ?? 'Siguiente'); ?></button>
+          <button type="button" id="prev-btn"
+            class="btn btn-tertiary"><?php echo htmlspecialchars($clinic['reservation_previous_label'] ?? 'Anterior'); ?></button>
+          <button type="button" id="next-btn"
+            class="btn btn-primary"><?php echo htmlspecialchars($clinic['reservation_next_label'] ?? 'Siguiente'); ?></button>
         </div>
       </form>
     </div>
@@ -220,10 +217,12 @@ include __DIR__ . '/../../public/shared/header/header.php';
 </main>
 
 <script>
-  const doctorsData = <?php echo json_encode($doctores, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
-  const bookedAppointmentsData = <?php echo json_encode($citas_reservadas, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
-  const reservationConfig = <?php echo json_encode([
-    'clinicName' => $clinic['name'] ?? 'Clinica',
+const doctorsData = <?php echo json_encode($doctores, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+const bookedAppointmentsData =
+  <?php echo json_encode($citas_reservadas, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+const reservationConfig = <?php echo json_encode([
+    // Use clinic label (preferred for header/footer) then clinic name, fallback to seed label
+    'clinicName' => $clinic['logo_label'] ?? $clinic['name'] ?? 'Clinica Estandar',
     'successTitle' => $clinic['reservation_success_title'] ?? 'Cita Agendada',
     'successText' => $clinic['reservation_success_text'] ?? 'Su cita ha sido confirmada exitosamente. Recibira un correo electronico con todos los detalles. Gracias por confiar en {clinic}.',
     'backHomeLabel' => $clinic['reservation_back_home_label'] ?? 'Volver al Inicio',

@@ -16,14 +16,22 @@
 
 .footer-col .logo {
   color: var(--color-white);
-  margin-bottom: var(--spacing-unit) * 2;
+  margin-bottom: calc(var(--spacing-unit) * 2);
+}
+
+/* Footer visible clinic name */
+.footer-logo-label {
+  display: inline-block;
+  color: var(--color-white);
+  font-weight: 700;
+  margin-left: 0.5rem;
 }
 
 .footer-title {
   font-size: var(--font-size-large);
   font-weight: 600;
   color: var(--color-white);
-  margin-bottom: var(--spacing-unit) * 2;
+  margin-bottom: calc(var(--spacing-unit) * 2);
 }
 
 .footer-list {
@@ -44,12 +52,18 @@
 
 .social-links {
   display: flex;
-  gap: var(--spacing-unit) * 2;
-  margin-top: var(--spacing-unit) * 2;
+  gap: calc(var(--spacing-unit) * 2);
+  margin-top: calc(var(--spacing-unit) * 2);
 }
 .social-links a {
   color: rgba(255, 255, 255, 0.7);
   transition: color var(--transition-duration-fast) ease;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--border-radius-soft);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 .social-links a:hover {
   color: var(--color-white);
@@ -95,5 +109,20 @@
 @media (min-width: 1024px) {
   .footer-grid {
     grid-template-columns: 2fr 1fr 1.5fr 1.5fr;
+  }
+}
+
+@media (max-width: 767px) {
+  .main-footer {
+    padding-top: calc(var(--spacing-unit) * 6);
+  }
+
+  .footer-col,
+  .footer-bottom {
+    text-align: left;
+  }
+
+  .contact-info li {
+    align-items: flex-start;
   }
 }

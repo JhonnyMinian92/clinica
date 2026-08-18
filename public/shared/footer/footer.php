@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../../../api/data.php';
 
 $clinic_footer = clinica_get_clinic_settings();
-$footer_name = $clinic_footer['logo_label'] ?? $clinic_footer['name'] ?? 'Clinica Estandar';
+$footer_name = clinica_get_display_name($clinic_footer);
 $footer_tagline = $clinic_footer['tagline'] ?? '';
 $footer_address = $clinic_footer['address'] ?? '';
 $footer_email = $clinic_footer['email'] ?? '';
@@ -21,6 +21,7 @@ $logo_image_footer = $clinic_footer['logo_image'] ?? '';
         <a href="/clinica/" class="logo footer-logo"
           aria-label="Pagina de inicio de <?php echo htmlspecialchars($footer_name); ?>">
           <?php clinica_render_logo_element($clinic_footer); ?>
+          <span class="footer-logo-label"><?php echo htmlspecialchars($footer_name); ?></span>
         </a>
         <p><?php echo htmlspecialchars($footer_tagline); ?></p>
       </div>
@@ -112,6 +113,7 @@ $logo_image_footer = $clinic_footer['logo_image'] ?? '';
   </div>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
 <script src="/clinica/public/js/utils.js" defer></script>
 <script src="/clinica/public/js/app.js" defer></script>
 <script src="/clinica/public/shared/header/header.js" defer></script>

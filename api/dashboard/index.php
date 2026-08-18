@@ -40,8 +40,9 @@ if ($method === 'GET') {
   $params = [];
 
   // Base query
-  $countSql = "SELECT COUNT(a.id) FROM appointments a JOIN patients p ON a.patient_id = p.id JOIN doctors d ON a.doctor_id = d.id";
-  $dataSql = "SELECT a.id, a.date AS fecha, a.time AS hora, p.name AS nombre_paciente, p.email AS email_paciente, p.phone AS telefono_paciente, a.notes AS motivo_consulta, a.status AS estado, a.doctor_id, d.name AS doctor_nombre FROM appointments a JOIN patients p ON a.patient_id = p.id JOIN doctors d ON a.doctor_id = d.id";
+  $baseJoinSql = " FROM appointments a JOIN patients p ON a.patient_id = p.id JOIN doctors d ON a.doctor_id = d.id LEFT JOIN specialties s ON a.specialty_id = s.id";
+  $countSql = "SELECT COUNT(a.id)" . $baseJoinSql;
+  $dataSql = "SELECT a.id, a.date AS fecha, a.time AS hora, p.name AS nombre_paciente, p.email AS email_paciente, p.phone AS telefono_paciente, a.notes AS motivo_consulta, a.status AS estado, s.name AS especialidad, a.doctor_id, d.name AS doctor_nombre" . $baseJoinSql;
 
   // WHERE clauses
   $where = [];
@@ -83,12 +84,19 @@ if ($method === 'GET') {
   }
 
   if ($search !== '') {
-    $where[] = "(p.name LIKE :search OR p.email LIKE :search OR a.notes LIKE :search OR a.id LIKE :search)";
-    $params[':search'] = '%' . $search . '%';
+    $searchLike = '%' . $search . '%';
+    $searchFields = ['p.name', 'p.email', 'a.notes', 's.name', 'CAST(a.id AS CHAR)'];
+    $searchClauses = [];
+    foreach ($searchFields as $index => $field) {
+      $param = ':search_' . $index;
+      $searchClauses[] = "$field LIKE $param";
+      $params[$param] = $searchLike;
+    }
+    $where[] = '(' . implode(' OR ', $searchClauses) . ')';
   }
 
   // Build summary query before status filter
-  $summarySql = $dataSql . (empty($where) ? '' : ' WHERE ' . implode(' AND ', $where));
+  $summarySql = $dataSql . (empty($where) ? '' : ' WHERE ' . implode(' AND ', $where)) . " ORDER BY a.date, a.time";
   $summaryStmt = $pdo->prepare($summarySql);
   $summaryStmt->execute($params);
   $summaryRecords = $summaryStmt->fetchAll();
@@ -181,8 +189,48 @@ if ($method === 'POST') {
     clinica_json(['success' => false, 'error' => 'No puede actualizar citas anteriores.'], 403);
   }
 
-  $updateStmt = $pdo->prepare("UPDATE appointments SET status = ? WHERE id = ?");
-  $updateStmt->execute([$newStatus, $appointmentId]);
+  $oldStatus = (string) ($appointment['status'] ?? '');
+  $finalStatuses = ['atendida', 'no-presentado', 'rechazada', 'cancelada'];
+
+  if ($oldStatus === $newStatus) {
+    clinica_json(['success' => true, 'message' => 'La cita ya tenia ese estado.']);
+  }
+
+  if (in_array($oldStatus, $finalStatuses, true)) {
+    clinica_json(['success' => false, 'error' => 'No puede cambiar una cita que ya esta cerrada.'], 422);
+  }
+
+  if ($oldStatus !== 'pendiente') {
+    clinica_json(['success' => false, 'error' => 'Solo se pueden actualizar citas pendientes.'], 422);
+  }
+
+  try {
+    $pdo->beginTransaction();
+
+    $updateStmt = $pdo->prepare("UPDATE appointments SET status = ? WHERE id = ?");
+    $updateStmt->execute([$newStatus, $appointmentId]);
+
+    $historyStmt = $pdo->prepare("INSERT INTO appointment_status_history (appointment_id, old_status, new_status, changed_by_user_id, reason) VALUES (?, ?, ?, ?, ?)");
+    $historyStmt->execute([
+      $appointmentId,
+      $oldStatus,
+      $newStatus,
+      clinica_get_user_id_from_session(),
+      trim((string) ($payload['reason'] ?? 'Cambio desde dashboard')),
+    ]);
+
+    $pdo->commit();
+    clinica_log_audit_event(clinica_get_user_id_from_session(), 'appointment_status_updated', 'Estado de cita actualizado', [
+      'appointment_id' => $appointmentId,
+      'old_status' => $oldStatus,
+      'new_status' => $newStatus,
+    ], 'appointment', $appointmentId);
+  } catch (PDOException $e) {
+    if ($pdo->inTransaction()) {
+      $pdo->rollBack();
+    }
+    clinica_json(['success' => false, 'error' => 'No se pudo actualizar el estado de la cita.'], 500);
+  }
 
   clinica_json(['success' => true, 'message' => 'Estado de la cita actualizado.']);
 }

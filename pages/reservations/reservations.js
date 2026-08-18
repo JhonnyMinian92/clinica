@@ -562,6 +562,11 @@
       return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
     }
 
+    function getCsrfToken() {
+      const match = document.cookie.match(new RegExp('(^|;)\\s*XSRF-TOKEN\\s*=\\s*([^;]+)'));
+      return match ? decodeURIComponent(match.pop()) : '';
+    }
+
     /**
      * Navega al mes anterior o siguiente en el calendario.
      * @param {number} direction - 1 para siguiente, -1 para anterior.
@@ -666,7 +671,7 @@
      * Simulates the form submission and displays the success message.
      */
     async function submitForm() {
-      const existingError = form.querySelector('.form-error-message');
+      const existingError = form.querySelector('.form-submission-error');
       if (existingError) {
         existingError.remove();
       }
@@ -683,6 +688,7 @@
           headers: {
             'Content-Type': 'application/json',
             Accept: 'application/json',
+            'X-CSRF-Token': getCsrfToken(),
           },
           body: JSON.stringify({
             action: 'create_appointment',
@@ -712,7 +718,7 @@
         nextBtn.classList.remove('is-loading');
 
         const errorContainer = document.createElement('div');
-        errorContainer.className = 'form-error-message';
+        errorContainer.className = 'form-submission-error';
         errorContainer.textContent = error.message || 'No se pudo crear la cita. Intente nuevamente.';
         errorContainer.setAttribute('role', 'alert');
 

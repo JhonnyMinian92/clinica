@@ -1,11 +1,13 @@
 <?php
 require_once __DIR__ . '/../../../api/data.php';
 
+clinica_ensure_session_started();
+
 $clinic_header = clinica_get_clinic_settings();
 $page_title = $page_title ?? ($clinic_header['meta_title'] ?? 'Clinica Estandar');
 $page_description = $page_description ?? ($clinic_header['meta_description'] ?? '');
 $page_canonical = $page_canonical ?? ($clinic_header['canonical_url'] ?? '');
-$clinic_name = $clinic_header['logo_label'] ?? $clinic_header['name'] ?? 'Clinica Estandar';
+$clinic_name = clinica_get_display_name($clinic_header);
 $logo_image = $clinic_header['logo_image'] ?? '';
 ?>
 <!DOCTYPE html>
@@ -43,6 +45,7 @@ $logo_image = $clinic_header['logo_image'] ?? '';
     <div class="container header-container">
       <a href="/clinica/" class="logo" aria-label="Página de inicio de <?php echo htmlspecialchars($clinic_name); ?>">
         <?php clinica_render_logo_element($clinic_header); ?>
+        <span class="logo-label"><?php echo htmlspecialchars($clinic_name); ?></span>
       </a>
       <nav class="main-nav" id="main-nav" aria-label="Navegacion principal">
         <ul class="nav-list">

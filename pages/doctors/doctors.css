@@ -6,20 +6,21 @@
 
 /* --- Filtros --- */
 .doctors-filters {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: calc(var(--spacing-unit) * 2);
   margin-bottom: calc(var(--spacing-unit) * 5);
-  padding: calc(var(--spacing-unit) * 3);
+  padding: calc(var(--spacing-unit) * 2);
   background-color: var(--color-background-light);
-  border-radius: var(--border-radius-medium);
+  border-radius: var(--border-radius-soft);
   border: 1px solid var(--color-border);
   align-items: center;
+  box-shadow: var(--shadow-soft);
 }
 
 .filter-group {
-  flex: 1 1 200px; /* Flex-grow, flex-shrink, flex-basis */
   position: relative;
+  min-width: 0;
 }
 
 .filter-icon {
@@ -50,23 +51,17 @@
   background-size: 1.25em 1.25em;
 }
 
-.filter-input:focus,
-.filter-select:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(0, 91, 234, 0.2);
-}
-
 .filter-reset-btn {
-  flex-basis: auto;
-  flex-grow: 0;
   background: transparent;
-  border: none;
+  border: 1px solid var(--color-border);
   color: var(--color-primary);
   font-weight: 600;
   cursor: pointer;
-  padding: 10px;
+  min-height: 48px;
+  padding: 10px 14px;
   border-radius: var(--border-radius-soft);
+  background-color: var(--color-background-white);
+  width: 100%;
 }
 
 /* Estilo para el nuevo interruptor de filtro */
@@ -122,12 +117,13 @@
 .doctors-grid {
   display: grid;
   gap: calc(var(--spacing-unit) * 4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
 }
 
 .doctor-profile-card {
   background-color: var(--color-background-white);
   border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-medium);
+  border-radius: var(--border-radius-soft);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -139,8 +135,8 @@
 }
 
 .doctor-profile-card:hover {
-  transform: translateY(-10px);
-  box-shadow: var(--shadow-hard);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-medium);
 }
 
 .doctor-profile-photo-wrapper {
@@ -256,6 +252,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: calc(var(--spacing-unit) * 2);
   padding-top: calc(var(--spacing-unit) * 2);
   border-top: 1px solid var(--color-border);
 }
@@ -307,11 +304,44 @@
 }
 
 @media (min-width: 768px) {
+  .doctors-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: calc(var(--spacing-unit) * 3);
+  }
+
+  .filter-reset-btn {
+    width: auto;
+  }
+
   .doctor-profile-card {
     flex-direction: row;
     align-items: flex-start;
   }
   .doctor-profile-content {
     padding: calc(var(--spacing-unit) * 3);
+  }
+}
+
+@media (min-width: 1120px) {
+  .doctors-filters {
+    grid-template-columns: minmax(240px, 1.4fr) minmax(180px, 1fr) minmax(180px, 1fr) minmax(220px, 1fr) auto;
+  }
+}
+
+@media (max-width: 767px) {
+  .doctor-profile-photo-wrapper {
+    width: 96px;
+    height: 96px;
+    margin: calc(var(--spacing-unit) * 2) auto 0;
+  }
+
+  .doctor-profile-header,
+  .doctor-profile-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .doctor-profile-footer .btn {
+    width: 100%;
   }
 }
