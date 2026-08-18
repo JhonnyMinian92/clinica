@@ -28,6 +28,11 @@
     const doctorNoResultsMessage = document.getElementById('doctor-no-results');
     const timeSlotWrapper = document.querySelector('.time-slot-wrapper');
     const timeSlotsGrid = document.getElementById('time-slots');
+    const selectedDateLabel = document.getElementById('selected-date-label');
+    const availableSlotsCount = document.getElementById('available-slots-count');
+    const scheduleDoctorLabel = document.getElementById('schedule-doctor-label');
+    const scheduleDateLabel = document.getElementById('schedule-date-label');
+    const scheduleTimeLabel = document.getElementById('schedule-time-label');
     const patientNameInput = document.getElementById('patient-name');
     const patientEmailInput = document.getElementById('patient-email');
     const patientNotesInput = document.getElementById('patient-notes');
@@ -74,6 +79,74 @@
 
     function findCardByValue(container, value) {
       return Array.from(container.querySelectorAll('.selectable-card')).find((card) => card.dataset.value === value) || null;
+    }
+
+    function markSelectedCard(container, selectedCard) {
+      container.querySelectorAll('.selectable-card').forEach((card) => {
+        const isSelected = card === selectedCard;
+        card.classList.toggle('active', isSelected);
+        if (card.hasAttribute('aria-pressed')) {
+          card.setAttribute('aria-pressed', String(isSelected));
+        }
+      });
+    }
+
+    function formatDateLabel(dateString, options = {}) {
+      if (!dateString) return 'Pendiente';
+
+      return new Date(dateString + 'T00:00:00').toLocaleDateString('es-ES', {
+        weekday: options.weekday || 'short',
+        day: 'numeric',
+        month: options.month || 'short',
+      });
+    }
+
+    function updateScheduleSummary(slotCountText = null) {
+      if (scheduleDoctorLabel) {
+        scheduleDoctorLabel.textContent = selection.doctorName || 'Pendiente';
+      }
+      if (scheduleDateLabel) {
+        scheduleDateLabel.textContent = selection.date ? formatDateLabel(selection.date) : 'Pendiente';
+      }
+      if (scheduleTimeLabel) {
+        scheduleTimeLabel.textContent = selection.time || 'Pendiente';
+      }
+      if (selectedDateLabel) {
+        selectedDateLabel.textContent = selection.date
+          ? formatDateLabel(selection.date, { weekday: 'long', month: 'long' })
+          : 'Seleccione una fecha';
+      }
+      if (availableSlotsCount) {
+        availableSlotsCount.textContent = slotCountText ?? (selection.date ? 'Buscando' : '--');
+      }
+      if (timeSlotWrapper) {
+        timeSlotWrapper.classList.toggle('has-date', !!selection.date);
+        if (!selection.date) {
+          timeSlotWrapper.classList.remove('has-slots', 'has-no-slots');
+        }
+      }
+    }
+
+    function getTimePeriod(time) {
+      const minutes = timeToMinutes(time);
+      if (minutes === null) return 'other';
+      if (minutes < 12 * 60) return 'morning';
+      if (minutes < 18 * 60) return 'afternoon';
+      return 'evening';
+    }
+
+    function getTimePeriodLabel(period) {
+      return {
+        morning: 'Mañana',
+        afternoon: 'Tarde',
+        evening: 'Noche',
+        other: 'Otros',
+      }[period] || 'Otros';
+    }
+
+    function getSlotCountLabel(count) {
+      if (count === 0) return 'Sin cupos';
+      return count === 1 ? '1 cupo' : `${count} cupos`;
     }
 
     /**
@@ -133,6 +206,11 @@
       // 2. Actualizar la barra de progreso
       progressSteps.forEach((step, index) => {
         step.classList.toggle('active', index <= currentStep);
+        if (index === currentStep) {
+          step.setAttribute('aria-current', 'step');
+        } else {
+          step.removeAttribute('aria-current');
+        }
       });
 
       // 3. Actualizar el ancho de la línea de progreso
@@ -154,20 +232,7 @@
      * Ajusta la altura del contenedor del formulario al del paso activo.
      */
     function adjustFormHeight() {
-      const activeStepElement = formSteps[currentStep];
-      if (activeStepElement) {
-        const formNavigation = form.querySelector('.form-navigation');
-        let totalHeight = activeStepElement.offsetHeight;
-
-        if (formNavigation) {
-          // Se suma la altura visible del contenedor de navegación (incluye padding y borde)
-          totalHeight += formNavigation.offsetHeight;
-          // Y también su margen superior, que ocupa espacio en el layout
-          totalHeight += parseInt(window.getComputedStyle(formNavigation).marginTop, 10);
-        }
-
-        form.style.height = `${totalHeight}px`;
-      }
+      form.style.height = 'auto';
     }
 
     /**
@@ -214,12 +279,14 @@
           selection.doctorId = null;
           selection.doctorName = null;
           if (doctorFilterInput) doctorFilterInput.value = '';
+          updateScheduleSummary();
         }
         // Dejando el Paso 3 (Fecha/Hora) para ir al Paso 2 (Doctor)
         else if (currentStep === 2) {
           selection.date = null;
           selection.time = null;
           timeSlotsGrid.innerHTML = '<div class="no-time-selected"><p>Seleccione una fecha en el calendario para ver los horarios.</p></div>';
+          updateScheduleSummary();
         }
         // Dejando el Paso 4 (Datos) para ir al Paso 3 (Fecha/Hora)
         else if (currentStep === 3) {
@@ -263,7 +330,7 @@
       cards.forEach((card) => {
         const name = card.dataset.name.toLowerCase();
         const isVisible = name.includes(searchTerm);
-        card.style.display = isVisible ? 'flex' : 'none';
+        card.style.display = isVisible ? '' : 'none';
         if (isVisible) {
           visibleCount++;
         }
@@ -287,8 +354,7 @@
     }
 
     function selectSpecialtyCard(selectedCard, autoAdvance = false) {
-      specialtyGrid.querySelectorAll('.selectable-card').forEach((card) => card.classList.remove('active'));
-      selectedCard.classList.add('active');
+      markSelectedCard(specialtyGrid, selectedCard);
 
       const specialtyId = selectedCard.dataset.value;
       const specialtyName = selectedCard.dataset.name;
@@ -299,6 +365,7 @@
         selection.doctorName = null;
         selection.date = null;
         selection.time = null;
+        updateScheduleSummary();
       }
 
       selection.specialtyId = specialtyId;
@@ -333,13 +400,13 @@
             const rating = doctor.valoracion || 0;
             const ratingStars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
             return `
-              <div class="selectable-card" data-value="${doctor.id}" data-name="${doctor.nombre}">
-                <img src="${doctor.foto}" alt="Foto de ${doctor.nombre}" class="doctor-photo">
+              <button type="button" class="selectable-card" data-value="${escapeHtml(doctor.id)}" data-name="${escapeHtml(doctor.nombre)}" aria-pressed="false">
+                <img src="${escapeHtml(doctor.foto)}" alt="Foto de ${escapeHtml(doctor.nombre)}" class="doctor-photo">
                 <div class="doctor-info">
-                  <span class="card-title">${doctor.nombre}</span>
+                  <span class="card-title">${escapeHtml(doctor.nombre)}</span>
                   <div class="doctor-rating" aria-label="Valoración: ${rating} de 5 estrellas">${ratingStars}</div>
                 </div>
-              </div>
+              </button>
             `;
           })
           .join('');
@@ -362,8 +429,7 @@
     }
 
     function selectDoctorCard(selectedCard, autoAdvance = false) {
-      doctorSelectionGrid.querySelectorAll('.selectable-card').forEach((card) => card.classList.remove('active'));
-      selectedCard.classList.add('active');
+      markSelectedCard(doctorSelectionGrid, selectedCard);
 
       const doctorId = selectedCard.dataset.value;
       const selectedDoctor = doctorsData[selection.specialtyId]?.find((doc) => doc.id === doctorId);
@@ -382,6 +448,7 @@
       selection.date = null;
       selection.time = null;
       timeSlotsGrid.innerHTML = '<div class="no-time-selected"><p>Seleccione una fecha en el calendario para ver los horarios.</p></div>';
+      updateScheduleSummary();
 
       // Validate and automatically proceed
       validateStep();
@@ -440,7 +507,15 @@
           classes += ' is-selected';
         }
 
-        calendarGrid.innerHTML += `<button type="button" class="${classes}" data-date="${dateString}">${day}</button>`;
+        const dayLabel = date.toLocaleDateString('es-ES', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        });
+        const disabledAttr = classes.includes('is-disabled') ? 'disabled aria-disabled="true"' : '';
+        const pressedAttr = dateString === selection.date ? 'true' : 'false';
+        calendarGrid.innerHTML += `<button type="button" class="${classes}" data-date="${dateString}" aria-label="${escapeHtml(dayLabel)}" aria-pressed="${pressedAttr}" ${disabledAttr}>${day}</button>`;
       }
 
       // Adjust height after rendering
@@ -458,8 +533,13 @@
       selection.date = selectedDay.dataset.date;
 
       // Update UI
-      calendarGrid.querySelectorAll('.calendar-day.is-selected').forEach((el) => el.classList.remove('is-selected'));
+      calendarGrid.querySelectorAll('.calendar-day.is-selected').forEach((el) => {
+        el.classList.remove('is-selected');
+        el.setAttribute('aria-pressed', 'false');
+      });
       selectedDay.classList.add('is-selected');
+      selectedDay.setAttribute('aria-pressed', 'true');
+      updateScheduleSummary('Buscando');
 
       // Render time slots for the selected date
       renderTimeSlots();
@@ -468,12 +548,26 @@
     /**
      * Simula y renderiza los horarios disponibles para la fecha seleccionada.
      */
+    function buildTimeSlotButton(time, index, isBooked) {
+      const bookedClass = isBooked ? 'is-booked is-disabled' : '';
+      const disabledAttr = isBooked ? 'disabled aria-disabled="true"' : '';
+      const timeLabel = isBooked ? `Horario ${time} no disponible` : `Seleccionar horario ${time}`;
+
+      return `
+        <button type="button" class="selectable-card ${bookedClass}" data-value="${time}" aria-label="${timeLabel}" aria-pressed="false" style="--animation-order: ${index};" ${disabledAttr}>
+          <span class="card-title">${time}</span>
+        </button>
+      `;
+    }
+
     function renderTimeSlots() {
       selection.time = null; // Reset time on new date selection
       validateStep();
+      updateScheduleSummary('Buscando');
 
       // Mostrar el estado de carga
       timeSlotWrapper.classList.add('is-loading');
+      timeSlotWrapper.classList.remove('has-slots', 'has-no-slots');
 
       // Simulación de una llamada a la API para obtener horarios
       setTimeout(() => {
@@ -494,20 +588,42 @@
 
         // 3. Obtener las citas ya reservadas para este doctor y fecha
         const bookedSlots = bookedAppointmentsData[selection.doctorId]?.[selection.date] || [];
+        const availableSlotCount = filteredTimes.filter((time) => !bookedSlots.includes(time)).length;
+        timeSlotWrapper.classList.toggle('has-slots', availableSlotCount > 0);
+        timeSlotWrapper.classList.toggle('has-no-slots', availableSlotCount === 0);
+        updateScheduleSummary(getSlotCountLabel(availableSlotCount));
 
         if (filteredTimes.length === 0) {
-          timeSlotsGrid.innerHTML = `<p class="no-results-message" style="display: block;">No hay horarios disponibles para este turno.</p>`;
+          timeSlotsGrid.innerHTML = `<div class="no-time-selected"><p>No hay horarios disponibles para este turno.</p></div>`;
         } else {
-          const timeSlotsHTML = filteredTimes
-            .map((time, index) => {
-              const isBooked = bookedSlots.includes(time);
-              const bookedClass = isBooked ? 'is-booked is-disabled' : '';
-              const disabledAttr = isBooked ? 'disabled' : '';
+          const groupedTimes = filteredTimes.reduce((groups, time) => {
+            const period = getTimePeriod(time);
+            groups[period] = groups[period] || [];
+            groups[period].push(time);
+            return groups;
+          }, {});
+
+          let slotIndex = 0;
+          const timeSlotsHTML = ['morning', 'afternoon', 'evening', 'other']
+            .filter((period) => groupedTimes[period]?.length)
+            .map((period) => {
+              const times = groupedTimes[period];
+              const availableInPeriod = times.filter((time) => !bookedSlots.includes(time)).length;
+              const buttons = times
+                .map((time) => buildTimeSlotButton(time, slotIndex++, bookedSlots.includes(time)))
+                .join('');
+
               return `
-                  <button type="button" class="selectable-card ${bookedClass}" data-value="${time}" style="--animation-order: ${index};" ${disabledAttr}>
-                    <span class="card-title">${time}</span>
-                  </button>
-                `;
+                <section class="time-period" aria-label="${getTimePeriodLabel(period)}">
+                  <div class="time-period-header">
+                    <h4>${getTimePeriodLabel(period)}</h4>
+                    <span>${getSlotCountLabel(availableInPeriod)}</span>
+                  </div>
+                  <div class="time-period-grid">
+                    ${buttons}
+                  </div>
+                </section>
+              `;
             })
             .join('');
           timeSlotsGrid.innerHTML = timeSlotsHTML;
@@ -606,10 +722,10 @@
       const selectedCard = e.target.closest('.selectable-card:not(.is-disabled)');
       if (!selectedCard) return;
 
-      timeSlotsGrid.querySelectorAll('.selectable-card').forEach((card) => card.classList.remove('active'));
-      selectedCard.classList.add('active');
+      markSelectedCard(timeSlotsGrid, selectedCard);
 
       selection.time = selectedCard.dataset.value;
+      updateScheduleSummary();
 
       // Validate and automatically proceed
       validateStep();
@@ -785,6 +901,7 @@
     patientEmailInput.addEventListener('input', handlePatientDataInput);
     patientPhoneInput.addEventListener('input', handlePatientDataInput);
     patientNotesInput.addEventListener('input', handlePatientDataInput);
+    updateScheduleSummary();
 
     // --- Initialization ---
 

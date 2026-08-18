@@ -9,9 +9,7 @@
 /* ---------------------------------- */
 
 .page-header {
-  background:
-    linear-gradient(180deg, rgba(0, 91, 234, 0.08), rgba(255, 255, 255, 0)),
-    var(--color-background-light);
+  background: linear-gradient(180deg, rgba(0, 91, 234, 0.08), rgba(255, 255, 255, 0)), var(--color-background-light);
   padding: calc(var(--header-height) + var(--spacing-unit) * 6) 0 calc(var(--spacing-unit) * 6);
   text-align: center;
   border-bottom: 1px solid var(--color-border);
@@ -40,23 +38,34 @@
   max-width: 720px;
   margin-left: auto;
   margin-right: auto;
+  width: 100%;
 }
 
 .filter-input {
   width: 100%;
-  height: 52px;
-  padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 2) calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 6);
+  min-height: 52px;
+  padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 2) calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 7);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-soft);
-  font-size: 1.1rem;
+  font-size: var(--font-size-normal);
+  line-height: 1.35;
+  color: var(--color-text-primary);
+  background-color: var(--color-background-white);
   transition: all var(--transition-duration-fast) ease;
   box-shadow: var(--shadow-soft);
+  text-indent: 30px;
+}
+
+.filter-wrapper:focus-within .filter-icon {
+  color: var(--color-primary);
 }
 
 .filter-input:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(0, 91, 234, 0.2);
+  box-shadow:
+    0 0 0 3px rgba(0, 91, 234, 0.16),
+    var(--shadow-soft);
 }
 
 .filter-icon {
@@ -66,6 +75,9 @@
   transform: translateY(-50%);
   color: var(--color-text-secondary);
   pointer-events: none;
+  width: 20px;
+  height: 20px;
+  transition: color var(--transition-duration-fast) ease;
 }
 
 @media (max-width: 640px) {
@@ -83,7 +95,7 @@
   }
 
   .filter-input {
-    height: 48px;
+    min-height: 48px;
     font-size: var(--font-size-normal);
   }
 }

@@ -330,16 +330,22 @@ body.mobile-nav-open .nav-link {
 input[type="text"],
 input[type="email"],
 input[type="password"],
+input[type="tel"],
+input[type="url"],
+input[type="number"],
+input[type="date"],
+input[type="time"],
 input[type="search"],
 select,
 textarea {
   width: 100%;
   height: 48px; /* Altura estándar para inputs/selects */
-  padding: calc(var(--spacing-unit) * 1.5) var(--spacing-unit); /* Padding por defecto */
+  padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 1.5); /* Padding por defecto */
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-soft);
   font-family: inherit;
   font-size: var(--font-size-normal);
+  line-height: 1.3;
   background-color: var(--color-background-white);
   transition: all var(--transition-duration-fast) var(--ease-out-cubic);
   -webkit-appearance: none; /* Reset para selects */
@@ -353,9 +359,36 @@ textarea {
   resize: vertical; /* Permitir redimensionamiento vertical */
 }
 
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-secondary);
+  opacity: 0.72;
+}
+
+input[type="search"]::-webkit-search-decoration,
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-results-button,
+input[type="search"]::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background-color: var(--color-background-light);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
 input[type="text"]:focus,
 input[type="email"]:focus,
 input[type="password"]:focus,
+input[type="tel"]:focus,
+input[type="url"]:focus,
+input[type="number"]:focus,
+input[type="date"]:focus,
+input[type="time"]:focus,
 input[type="search"]:focus,
 select:focus,
 textarea:focus {

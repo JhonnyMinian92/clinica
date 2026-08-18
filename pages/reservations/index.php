@@ -71,12 +71,12 @@ include __DIR__ . '/../../public/shared/header/header.php';
         <?php echo htmlspecialchars($clinic['reservation_subtitle'] ?? 'Siga los pasos para encontrar un horario conveniente para usted.'); ?>
       </p>
 
-      <div class="progress-bar">
-        <div class="progress-step active" data-step-name="Especialidad">1</div>
-        <div class="progress-step" data-step-name="Doctor">2</div>
-        <div class="progress-step" data-step-name="Fecha y Hora">3</div>
-        <div class="progress-step" data-step-name="Sus Datos">4</div>
-        <div class="progress-step" data-step-name="Confirmar">5</div>
+      <div class="progress-bar" role="list" aria-label="Progreso de agendamiento">
+        <div class="progress-step active" role="listitem" aria-current="step" data-step-name="Especialidad">1</div>
+        <div class="progress-step" role="listitem" data-step-name="Doctor">2</div>
+        <div class="progress-step" role="listitem" data-step-name="Fecha y Hora">3</div>
+        <div class="progress-step" role="listitem" data-step-name="Sus Datos">4</div>
+        <div class="progress-step" role="listitem" data-step-name="Confirmar">5</div>
       </div>
 
       <form id="reservation-form" class="reservation-form" novalidate
@@ -91,19 +91,20 @@ include __DIR__ . '/../../public/shared/header/header.php';
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
-            <input type="text" id="specialty-filter" class="filter-input" placeholder="Buscar especialidad">
+            <input type="search" id="specialty-filter" class="filter-input" placeholder="Buscar especialidad"
+              aria-label="Buscar especialidad" autocomplete="off">
           </div>
 
           <div class="selection-grid" id="specialty-grid">
             <?php foreach ($especialidades as $item): ?>
-            <div class="selectable-card" data-value="<?php echo htmlspecialchars($item['id']); ?>"
-              data-name="<?php echo htmlspecialchars($item['titulo']); ?>">
+            <button type="button" class="selectable-card" data-value="<?php echo htmlspecialchars($item['id']); ?>"
+              data-name="<?php echo htmlspecialchars($item['titulo']); ?>" aria-pressed="false">
               <div class="card-icon">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                   stroke-linecap="round" stroke-linejoin="round"><?php echo $item['icono']; ?></svg>
               </div>
               <span class="card-title"><?php echo htmlspecialchars($item['titulo']); ?></span>
-            </div>
+            </button>
             <?php endforeach; ?>
           </div>
           <div class="no-results-message" style="display: none;">
@@ -119,7 +120,8 @@ include __DIR__ . '/../../public/shared/header/header.php';
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
-            <input type="text" id="doctor-filter" class="filter-input" placeholder="Buscar por nombre del doctor...">
+            <input type="search" id="doctor-filter" class="filter-input" placeholder="Buscar por nombre del doctor..."
+              aria-label="Buscar por nombre del doctor" autocomplete="off">
           </div>
           <div id="doctor-selection-grid" class="selection-grid doctor-grid">
             <div class="skeleton-card"></div>
@@ -131,7 +133,24 @@ include __DIR__ . '/../../public/shared/header/header.php';
         </div>
 
         <div class="form-step">
-          <h2 class="step-title">Seleccione fecha y hora</h2>
+          <div class="schedule-step-header">
+            <h2 class="step-title">Seleccione fecha y hora</h2>
+            <div class="schedule-summary" aria-live="polite">
+              <div class="schedule-summary-item">
+                <span class="schedule-summary-label">Doctor</span>
+                <strong id="schedule-doctor-label">Pendiente</strong>
+              </div>
+              <div class="schedule-summary-item">
+                <span class="schedule-summary-label">Fecha</span>
+                <strong id="schedule-date-label">Pendiente</strong>
+              </div>
+              <div class="schedule-summary-item">
+                <span class="schedule-summary-label">Hora</span>
+                <strong id="schedule-time-label">Pendiente</strong>
+              </div>
+            </div>
+          </div>
+
           <div class="date-time-container">
             <div class="calendar-container">
               <div class="calendar-header">
@@ -145,14 +164,25 @@ include __DIR__ . '/../../public/shared/header/header.php';
                 <span>Lun</span><span>Mar</span><span>Mie</span><span>Jue</span><span>Vie</span><span>Sab</span><span>Dom</span>
               </div>
               <div id="calendar-grid" class="calendar-grid"></div>
+              <div class="calendar-legend" aria-hidden="true">
+                <span><i class="legend-mark is-available"></i>Disponible</span>
+                <span><i class="legend-mark is-today"></i>Hoy</span>
+                <span><i class="legend-mark is-disabled"></i>No disponible</span>
+              </div>
             </div>
 
             <div class="time-slot-wrapper">
-              <p class="time-slot-title">Horarios disponibles</p>
+              <div class="time-slot-heading">
+                <div>
+                  <p class="time-slot-title">Horarios disponibles</p>
+                  <span id="selected-date-label" class="time-slot-date">Seleccione una fecha</span>
+                </div>
+                <span id="available-slots-count" class="time-slot-count">--</span>
+              </div>
               <div class="time-slot-loader">
                 <div class="spinner"></div>
               </div>
-              <div id="time-slots" class="selection-grid time-grid">
+              <div id="time-slots" class="selection-grid time-grid" aria-live="polite">
                 <div class="no-time-selected">
                   <p>Seleccione una fecha en el calendario para ver los horarios.</p>
                 </div>
@@ -175,9 +205,9 @@ include __DIR__ . '/../../public/shared/header/header.php';
             </div>
             <div class="form-group">
               <input type="tel" id="patient-phone" name="patient-phone" required placeholder=" " inputmode="numeric"
-                pattern="[0-9]{7,10}" title="Ingrese solo numeros (de 7 a 10 digitos).">
+                pattern="[0-9]{7,15}" title="Ingrese solo numeros (de 7 a 15 digitos).">
               <label for="patient-phone">Telefono (solo numeros)</label>
-              <div class="form-error-message">Debe ser un numero valido de 7 a 10 digitos.</div>
+              <div class="form-error-message">Debe ser un numero valido de 7 a 15 digitos.</div>
             </div>
             <div class="form-group">
               <textarea id="patient-notes" name="patient-notes" rows="3" placeholder=" "></textarea>
