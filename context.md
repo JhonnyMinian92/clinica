@@ -1,1327 +1,499 @@
-# Contexto del Proyecto - Clinica Estandar
+# Contexto Del Proyecto - Clinica Estandar
 
-Actualizado: 2026-08-05
-Ruta local: `C:\xampp\htdocs\clinica`
+Actualizado: 2026-08-18  
+Ruta local: `C:\xampp\htdocs\clinica`  
 Base URL esperada en XAMPP: `/clinica/`
 
-## Vision del Producto
+## Resumen Ejecutivo
 
-El proyecto representa la pagina principal y el portal operativo de una clinica privada de alto nivel. La experiencia debe transmitir confianza, prestigio, tecnologia medica avanzada y trato humano.
+Se audito el proyecto completo contra `pendiente.md`, el checklist historico de `context.md` y la implementacion actual. No se modifico codigo de aplicacion. Solo se actualizo documentacion.
 
-El estado actual sigue siendo front-first, pero ya tiene una simulacion de backend mas concreta con endpoints PHP bajo `api/`, sesiones reales de demo y citas persistidas temporalmente en `$_SESSION`.
+El sistema esta en un estado mas avanzado que la documentacion previa: ya existe backend con MySQL/PDO, hashes de contrasena, CSRF, persistencia de citas, dashboard paginado, gestion administrativa y auditoria basica. Aun asi, no esta listo para produccion clinica porque quedan pendientes de responsive design, accesibilidad, credenciales multirol, integridad relacional, pruebas automatizadas y flujos clinicos completos como cancelacion/reprogramacion.
+
+Hallazgo principal de UI/UX: en viewport mobile de 390 px se corta contenido en home, reservas y login. El problema queda oculto por `overflow-x: hidden`, pero visualmente se pierden partes de textos, botones, calendario y formulario.
 
 ## Entorno Detectado
 
 - PHP: `8.2.12`
 - Node.js: `v20.19.0`
 - npm: `10.8.2`
-- Sin `composer.json`, `package.json`, lockfiles, bundler, `.env` o `.htaccess`.
-
-Tecnologias usadas:
-
-- PHP procedural con includes, sesiones, JSON y arreglos como datos simulados.
-- HTML5, CSS3 y JavaScript vanilla moderno.
-- APIs del navegador: Fetch API, Web Storage e Intersection Observer.
-- Fuente externa: Google Fonts (`Inter`).
+- Base de datos: MySQL/MariaDB via PDO.
+- Servidor local usado para smoke: PHP built-in server apuntando a `C:\xampp\htdocs`.
+- Chrome headless disponible en `C:\Program Files\Google\Chrome\Application\chrome.exe`.
+- Sin `composer.json`, `package.json`, lockfiles, bundler, framework frontend ni migrador dedicado.
+- `.gitignore` ignora `.env`, vendor, node_modules, logs y builds.
 
 ## Arquitectura Actual
 
-La aplicacion corre como sitio PHP tradicional servido desde XAMPP. Las paginas publicas usan PHP para layout, SEO y datos iniciales cuando conviene, pero la home ya hidrata su contenido principal desde una API JSON publica. El backend real aun no existe, pero la demo ya usa endpoints JSON.
+Aplicacion PHP tradicional servida bajo `/clinica/`, con includes compartidos, endpoints JSON y frontend vanilla. La capa comun vive mayormente en `api/data.php`; la conexion PDO vive en `api/db.php`.
 
-### Estructura
+### Estructura Relevante
 
 ```text
 clinica/
 ├── api/
+│   ├── db.php
 │   ├── data.php
-│   ├── dashboard/
-│   │   └── index.php
-│   └── general/
-│       └── index.php
-├── context.md
-├── favicon.ico
-├── index.php
+│   ├── seed.php
+│   ├── public/index.php
+│   ├── general/index.php
+│   ├── dashboard/index.php
+│   └── gestion/index.php
 ├── pages/
-│   ├── dashboard/
-│   │   ├── dashboard.css
-│   │   ├── dashboard.js
-│   │   └── index.php
-│   ├── doctors/
-│   │   ├── doctors.css
-│   │   ├── doctors.js
-│   │   └── index.php
 │   ├── login/
-│   │   ├── index.php
-│   │   ├── login.css
-│   │   └── login.js
+│   ├── dashboard/
 │   ├── reservations/
-│   │   ├── index.php
-│   │   ├── reservations.css
-│   │   └── reservations.js
-│   └── specialties/
-│       ├── index.php
-│       ├── specialties.css
-│       └── specialties.js
-└── public/
-    ├── assets/
-    ├── css/
-    │   ├── components.css
-    │   └── style.css
-    ├── js/
-    │   └── app.js
-    └── shared/
-        ├── footer/
-        └── header/
+│   ├── doctors/
+│   ├── specialties/
+│   └── gestion/
+├── public/
+│   ├── css/
+│   ├── js/
+│   ├── shared/header/
+│   ├── shared/footer/
+│   └── assets/
+├── context.md
+├── pendiente.md
+└── README.md
 ```
 
-### API
-
-- `api/data.php`
-  - Centraliza usuarios demo, roles, estados, citas semilla, helpers JSON y transformacion de citas.
-  - Inicializa citas en `$_SESSION['appointments']` con una agenda demo que cubre ayer, hoy, manana y proximos dias.
-  - Incluye versionado/migracion de citas semilla para actualizar sesiones de demo existentes sin borrar citas creadas por reserva.
-  - Centraliza filtros de dashboard por rol, doctor, rango de fecha (`date_scope`) y fecha exacta (`date`).
-  - Soporta JSON con BOM UTF-8 para hacer el parser mas tolerante.
-
-- `api/general/index.php`
-  - `GET action=session`: devuelve si hay usuario autenticado y el `expires_at` de la sesion vigente.
-  - `POST action=login`: valida credenciales demo, crea `$_SESSION['user']`, registra `auth_started_at`, fija expiracion de cookie y prepara citas.
-  - `POST action=logout`: destruye sesion y devuelve redirect al login.
-  - `POST action=create_appointment`: crea una cita pendiente desde el formulario de reservas y la agrega a la sesion.
-  - La autenticacion demo dura 8 horas absolutas (`CLINICA_SESSION_TTL_SECONDS = 28800`); sesiones antiguas o vencidas se destruyen y vuelven a login.
-
-- `api/public/index.php`
-  - Endpoint publico sin sesion para informacion visible en la web.
-  - `GET resource=home`: entrega `clinic`, `about_cards`, `stats`, `services`, `specialties`, `doctors` y `comments`.
-  - La fuente temporal sigue siendo `api/data.php` / `api/storage/gestion-data.json`; al conectar la base de datos, este endpoint debe leer de repositorios/modelos reales sin cambiar el contrato del frontend.
-
-- `api/dashboard/index.php`
-  - Requiere usuario con rol `DOCTOR`, `ADMINISTRATOR` o `SECRETARIA`.
-  - `GET`: devuelve citas filtradas por rol; doctores solo ven sus citas de hoy, manana, futuras o una fecha exacta no anterior; secretaria/administracion ven anteriores, actuales y futuras, y pueden filtrar por `doctor_id`.
-  - Parametros soportados: `doctor_id`, `date_scope=today|tomorrow|future|past|all` y `date=YYYY-MM-DD`.
-  - `POST`: actualiza estado de cita (`pendiente`, `atendida`, `no-presentado`, `rechazada`) respetando permisos; doctores no pueden actualizar citas anteriores.
-
-### Credenciales Demo
-
-Estas credenciales son solo para la simulacion front/back:
-
-- Administracion: `admin` / `password123`
-- Secretaria: `secretaria` / `secretaria123`
-- Doctor: `dr.herrera` / `doctor123`
-
-## Paginas y Responsabilidades
-
-- `index.php`: home publica con estructura base, SEO y contenedores vacios; el contenido principal se carga por Fetch desde `/clinica/api/public/?resource=home`.
-- `pages/specialties/`: catalogo de especialidades con buscador. Enlaza reservas usando `?specialty={id}`.
-- `pages/doctors/`: catalogo de doctores con filtros. Enlaza reservas usando `?doctor_id={id}`.
-- `pages/reservations/`: stepper de reserva. Ahora acepta preseleccion por `?specialty=`, `?especialidad=` y `?doctor_id=`. Al confirmar, crea cita via `api/general/`.
-- `pages/login/`: login standalone. Si ya hay sesion valida redirige al dashboard. Si el login es correcto, crea sesion por API y redirige.
-- `pages/dashboard/`: pagina protegida. Renderiza usuario/rol reales, KPIs, filtros de fecha/estado/paciente, selector de doctor para secretaria/administracion, logout y una bandeja de citas por tarjetas compactas. Ya no usa tabla ni scroll horizontal para operar citas.
-
-## Flujos Actuales
-
-### Publico
-
-1. Usuario entra en `/clinica/`.
-2. Navega a especialidades, doctores o reservas.
-3. Las paginas publicas usan header/footer compartidos, salvo login que mantiene experiencia standalone.
-
-### Reserva
-
-1. El usuario selecciona especialidad, doctor, fecha/hora y datos.
-2. Si llega con `?specialty=neurologia`, el formulario abre con la especialidad preseleccionada.
-3. Si llega con `?doctor_id=doc3`, el formulario abre con especialidad y doctor preseleccionados.
-4. Al confirmar, `reservations.js` envia `POST action=create_appointment` a `/clinica/api/general/`.
-5. La cita queda en sesion como `pendiente` y puede verse en dashboard dentro de la misma sesion de demo.
-
-### Login y Dashboard
-
-1. Dashboard sin sesion redirige a `/clinica/pages/login/?redirect=/clinica/pages/dashboard/`.
-2. Login exitoso crea `$_SESSION['user']`.
-3. Dashboard carga citas desde `/clinica/api/dashboard/`.
-4. Doctores solo ven sus citas asignadas de hoy, manana, futuras o una fecha exacta no pasada.
-5. Secretaria y administracion ven citas anteriores, actuales y futuras; tambien pueden filtrar por doctor.
-6. Las citas pendientes se muestran como tarjetas con acciones directas: `Atender cita`, `No se presento` y `Rechazar cita`.
-7. Estados de cita se actualizan por `POST`, muestran aviso visual y persisten en `$_SESSION`.
-8. Logout destruye sesion.
-
-## Correcciones Realizadas en Esta Iteracion
-
-- Se elimino el uso del antiguo `dashboard_handler.php`; la ruta vigente es `/clinica/api/dashboard/`.
-- Se agrego `api/data.php` como capa compartida de datos y helpers.
-- Se implemento `api/general/index.php` para login, logout, sesion y creacion de citas.
-- Se reescribio `api/dashboard/index.php` para `GET`/`POST`, permisos por rol y persistencia en sesion.
-- Se agrego filtrado de citas por `date_scope` y `date` directamente en la API del dashboard.
-- Se restringio a doctores para que no puedan ver ni actualizar citas anteriores.
-- Se amplio la data semilla de citas para incluir fechas anteriores, actuales y futuras.
-- Se conecto `pages/login/login.js` con la API real de demo.
-- Se protegio `pages/dashboard/index.php` con sesion real.
-- Se actualizo `pages/dashboard/dashboard.js` con ruta correcta, selector de doctor, logout, filtros, acciones y modal con focus trap.
-- Se amplio `pages/dashboard/dashboard.css` para los nuevos KPIs, filtros, herramientas y estados.
-- Se unificaron IDs de especialidades/doctores en `pages/reservations/index.php`.
-- Se implemento preseleccion de reservas por URL en `reservations.js`.
-- Se conecto la confirmacion de reserva con `api/general/`.
-- Se corrigio el favicon de login a `/clinica/favicon.ico`.
-- Se corrigio el enlace de WhatsApp de `httpsa://` a `https://`.
-- Se reemplazo `strftime()` en doctores por un mapa compatible con PHP 8.2.
-- Se eliminaron logs de debug del dashboard.
-- Se redujo la escala visual del dashboard: tipografias, KPIs, tarjetas, botones de accion y modal ahora usan tamanos normales.
-- Se agregaron filtros de fecha al dashboard:
-  - Doctores: `Hoy`, `Manana`, `Proximas` y fecha exacta desde hoy.
-  - Secretaria/administracion: `Hoy`, `Manana`, `Proximas`, `Anteriores`, `Todas` y fecha exacta sin minimo.
-
-## Mejora de Dashboard Responsive y UX Senior
-
-- Se reemplazo la tabla del dashboard por una bandeja de tarjetas clinicas, evitando scroll horizontal y columnas pequeñas.
-- Cada tarjeta muestra hora, fecha, paciente, motivo, estado y datos del doctor/especialidad cuando aplica, con escala visual compacta y legible.
-- La primera cita pendiente queda marcada como `Siguiente cita`.
-- Las acciones pendientes ahora son botones claros con texto completo:
-  - `Atender cita`
-  - `No se presento`
-  - `Rechazar cita`
-- Se agrego un aviso visual accesible (`dashboard-toast`) para confirmar cambios de estado sin depender de alertas del navegador.
-- Los filtros se convirtieron en controles tipo boton, pensados para tacto y lectura rapida sin ocupar demasiado espacio.
-- Se agrego una fila de fechas con botones rapidos y campo `input[type=date]`.
-- Los doctores solo tienen opciones actuales o futuras; secretaria y administracion tienen controles para anteriores, actuales y futuras.
-- El responsive usa una sola columna en movil, dos o mas columnas solo cuando hay espacio suficiente, y evita min-widths de tabla.
-- Se mantuvo el modal de confirmacion con focus trap, ahora en tamano normal.
-- El diseño usa un lenguaje mas premium y clinico: cabecera con fondo sereno, KPIs definidos, tarjetas blancas con borde por estado y acciones de alto contraste.
-
-## Verificacion Realizada
-
-Servidor local usado para pruebas:
-
-- `http://127.0.0.1:8765/clinica/`
-
-Comandos/verificaciones:
-
-- `php -l` en todos los `.php`: sin errores.
-- `node --check` en todos los `.js`: sin errores.
-- Render con `error_reporting=E_ALL` en paginas clave: sin warnings/deprecations detectados.
-- Smoke HTTP con `curl.exe`:
-  - `/clinica/`: 200
-  - `/clinica/pages/login/`: 200
-  - `/clinica/pages/specialties/`: 200
-  - `/clinica/pages/doctors/`: 200
-  - `/clinica/pages/reservations/?specialty=neurologia`: 200
-  - `/clinica/pages/reservations/?doctor_id=doc3`: 200
-- API flow:
-  - Dashboard sin sesion: 401.
-  - Login secretaria: success.
-  - Dashboard con sesion: citas devueltas.
-  - Cambio de estado: success.
-  - Creacion de cita desde API general: success.
-  - Dashboard filtrado por `doctor_id=doc3`: devuelve citas del doctor.
-- API flow despues del rediseño:
-  - Login secretaria: success.
-  - Dashboard respondio citas desde la agenda demo inicial de esa iteracion.
-  - Cambio de estado desde el contrato usado por las tarjetas: success.
-  - Pagina dashboard autenticada: 200.
-  - HTML del dashboard contiene `appointments-list` y ya no contiene `appointments-table`.
-- API flow despues del ajuste de fechas y escala:
-  - Fecha del servidor usada en prueba: `2026-08-04`.
-  - Login doctor: success.
-  - Doctor con `date_scope=today`: 3 citas.
-  - Doctor con `date_scope=future`: 1 cita.
-  - Doctor con `date_scope=past`: la API normaliza a `today`; no expone citas anteriores.
-  - Doctor con `date=2026-08-03`: 0 citas.
-  - Login secretaria: success.
-  - Secretaria con `date_scope=past`: 2 citas.
-  - Secretaria con `date_scope=future`: 3 citas.
-  - Secretaria con `date_scope=all`: 11 citas.
-  - Secretaria con `doctor_id=doc3&date=2026-08-05`: 1 cita.
-  - Actualizacion de estado doctor sobre `CITA002`: success, queda `atendida` en esa sesion de prueba.
-- HTML protegido por rol:
-  - Doctor: 200, contiene filtros de fecha, no contiene botones `past` ni `all`, y el campo fecha usa `min=2026-08-04`.
-  - Secretaria: 200, contiene filtros de fecha y botones `past`/`all`.
-- Pagina protegida:
-  - Dashboard sin sesion: 302 hacia login.
-  - Dashboard con cookie autenticada: 200.
-- Verificacion visual con navegador integrado: no disponible en esta sesion (`agent.browsers.list()` devolvio lista vacia). Queda pendiente revisar screenshots reales en navegador cuando el entorno lo permita.
-
-## Gestion de Base de Datos Simulada
-
-Se agrego un modulo administrativo completo bajo `pages/gestion/` para gestionar la informacion publica y operativa que antes estaba repetida en arreglos por pagina. Como el proyecto aun no tiene MySQL ni migraciones, la persistencia se implementa como una base JSON versionada en:
-
-- `api/storage/gestion-data.json`
-
-La capa compartida vive en `api/data.php`. Si el archivo JSON no existe o esta corrupto, se regenera desde `clinica_default_database()`.
-
-### Recursos Administrables
-
-- `pages/gestion/clinic/`
-  - Administra nombre comercial/legal, texto del logo, SEO, hero, titulos de secciones, contacto, telefonos, emergencia, WhatsApp y redes.
-  - Header, footer y home leen estos datos desde `clinica_get_clinic_settings()`.
-- `pages/gestion/comment/`
-  - CRUD de resenas/testimonios visibles en home.
-  - Campos: autor, detalle, comentario, rating, avatar, destacado y activo.
-- `pages/gestion/doctors/`
-  - CRUD de doctores.
-  - Campos: nombre, foto, especialidad vinculada, subespecialidad, experiencia, formacion, idiomas, reconocimientos, rating, pacientes, destacado y activo.
-  - Alimenta home, catalogo de doctores y seleccion de doctor en reservas.
-- `pages/gestion/specialties/`
-  - CRUD de especialidades.
-  - Campos: nombre, resumen, descripcion, icono SVG, destacado y activo.
-  - Alimenta home, catalogo de especialidades y paso de especialidad en reservas.
-- `pages/gestion/users/`
-  - CRUD de usuarios operativos.
-  - Roles permitidos: `ADMINISTRATOR`, `SECRETARIA`, `DOCTOR`.
-  - Login demo ahora lee desde este recurso via `clinica_demo_users()`.
-  - Los usuarios con rol `DOCTOR` deben vincularse a un doctor.
-- `pages/gestion/services/`
-  - CRUD de servicios clinicos.
-  - Campos: servicio, descripcion, icono SVG, destacado y activo.
-  - Alimenta la seccion de servicios del home.
-- `pages/gestion/calendar/`
-  - CRUD de horarios por doctor.
-  - Campos: doctor, fecha especifica opcional, dia ISO de semana, hora inicio, hora fin, duracion de cupo y activo.
-  - Si `date` esta vacio, el horario es semanal recurrente; si `date` tiene valor, aplica solo a esa fecha futura.
-  - Reservas usa estos horarios por numero de dia (`1` lunes a `7` domingo) y por fecha concreta cuando exista una regla puntual.
-
-### API de Gestion
-
-Nuevo endpoint:
-
-- `api/gestion/index.php`
-
-Contrato:
-
-- Requiere sesion con rol `ADMINISTRATOR`.
-- `GET ?resource=clinic|comments|doctors|specialties|users|services|schedules`
-  - Devuelve `data` y `metadata` para selects (`roles`, `weekdays`, `specialties`, `doctors`).
-- `POST { action: "save", record: {...} }`
-  - Crea o actualiza registros.
-  - En `clinic` actualiza el registro maestro.
-- `POST multipart/form-data action=upload`
-  - Sube imagenes desde Gestion y devuelve una ruta en `/clinica/public/assets/...`.
-  - Campos permitidos: `clinic.hero_image`, `clinic.hero_mobile_image`, `doctors.photo` y `comments.avatar`.
-  - Formatos permitidos: JPG, PNG, WEBP y GIF, hasta 5 MB.
-- `POST { action: "delete", id: "..." }`
-  - Elimina registros de colecciones.
-  - No permite eliminar el registro maestro de clinica.
-  - No permite eliminar el usuario actual ni dejar el sistema sin administradores activos.
-
-### UI de Gestion
-
-Se agregaron:
-
-- `pages/gestion/_shared/page.php`
-  - Plantilla protegida por admin, nav de gestion y layout comun.
-- `pages/gestion/gestion.css`
-  - Sistema visual responsive para modulos CRUD.
-- `pages/gestion/gestion.js`
-  - Motor CRUD compartido: carga, filtros, stats, formulario dinamico, crear, editar, eliminar y toast.
-  - Renderiza campos `type: image` con preview, input de archivo y subida multipart a `api/gestion/`.
-- Cada componente mantiene su propio `index.php`, `.css` y `.js` con configuracion especifica.
-
-### Paginas Publicas Conectadas
-
-- `index.php`
-  - Reescrito como shell dinamico: mantiene SEO/header/footer con PHP, pero hero, about, stats, servicios, especialidades, doctores y comentarios se hidratan desde `/clinica/api/public/?resource=home`.
-- `api/public/index.php`
-  - Publica el contrato JSON para la home y reutiliza la capa compartida `api/data.php`.
-- `public/js/app.js`
-  - Consume la API publica de home, pinta tarjetas/secciones, reinicia animaciones, contadores, lazy loading y carrusel despues de recibir datos.
-- `public/shared/header/header.php`
-  - Lee nombre, SEO/canonical y marca desde clinic.
-- `public/shared/footer/footer.php`
-  - Lee nombre, tagline, direccion, correo, telefono, emergencia, WhatsApp y redes desde clinic.
-- `pages/specialties/index.php`
-  - Sobrescribe el catalogo desde `clinica_public_specialties_for_catalog()`.
-- `pages/doctors/index.php`
-  - Sobrescribe el catalogo desde `clinica_public_doctors_for_catalog()`.
-- `pages/reservations/index.php`
-  - Lee especialidades, doctores agrupados, copy de reserva y cupos ocupados desde la capa compartida.
-- `pages/reservations/reservations.js`
-  - La disponibilidad usa dia ISO numerico del calendario.
-  - Los cupos se generan desde `horarios_detallados` (`start_time`, `end_time`, `slot_minutes`) publicados por `clinica_schedule_rules_for_doctor()`.
-  - Reconoce reglas semanales recurrentes y reglas puntuales por fecha (`YYYY-MM-DD`) para semanas futuras.
-
-### Verificacion Gestion
-
-Servidor local usado:
-
-- `http://127.0.0.1:8096/clinica/`
-
-Validaciones realizadas:
-
-- `php -l` en todos los `.php`: sin errores.
-- `node --check` en todos los `.js`: sin errores.
-- Smoke HTTP publico:
-  - `/clinica/`: 200
-  - `/clinica/pages/specialties/`: 200
-  - `/clinica/pages/doctors/`: 200
-  - `/clinica/pages/reservations/?specialty=neurologia`: 200
-- API gestion con login admin:
-  - `clinic`: 200
-  - `comments`: 4 registros
-  - `doctors`: 8 registros
-  - `specialties`: 8 registros
-  - `users`: 3 registros
-  - `services`: 6 registros
-  - `schedules`: 23 registros
-  - Crear/eliminar servicio temporal: success.
-- Verificacion headless Chrome:
-  - Gestion `clinic`, `doctors`, `calendar`: renderizan filas, formularios y navegacion sin errores de consola.
-  - Gestion movil `doctors`: sin overflow horizontal.
-  - Home: renderiza 6 servicios, 4 especialidades destacadas, 4 doctores destacados y 4 resenas desde la fuente administrable.
-  - Reservas con `?doctor_id=doc3`: preselecciona doctor, avanza al paso calendario y genera dias habilitados desde horarios.
-
-## Politica de Acceso por Rol
-
-La politica central vive en `api/data.php`:
-
-- `clinica_can_access_management($role)`
-  - Solo `ADMINISTRATOR` puede abrir `pages/gestion/*` y `api/gestion/*`.
-- `clinica_can_see_all_appointments($role)`
-  - `ADMINISTRATOR` y `SECRETARIA` ven citas de todos los doctores en fechas pasadas, presentes y futuras.
-- `clinica_can_see_past_appointments($role)`
-  - Solo roles con agenda global pueden consultar historico.
-- `clinica_resolve_login_redirect($requestedRedirect, $user)`
-  - Normaliza redirects internos desde login.
-  - Bloquea rutas externas, login como destino final, APIs y gestion cuando el rol no es administrador.
-
-### Flujo desde Login
-
-- `ADMINISTRATOR`
-  - Si entra con `redirect=/clinica/pages/gestion/clinic/`, el login respeta el destino.
-  - En dashboard ve el boton `Gestion`.
-  - Dashboard carga por defecto `Todas`, con todas las citas de todos los doctores.
-- `SECRETARIA`
-  - Si intenta entrar a gestion desde login, el redirect se reemplaza por `/clinica/pages/dashboard/`.
-  - No ve boton `Gestion`.
-  - Ve selector de doctor y filtros de fechas `Anteriores` y `Todas`.
-  - `api/gestion/*` responde `403`.
-- `DOCTOR`
-  - Si intenta entrar a gestion desde login, el redirect se reemplaza por `/clinica/pages/dashboard/`.
-  - No ve boton `Gestion`, selector de doctor, `Anteriores` ni `Todas`.
-  - Dashboard carga por defecto `Proximas`; en backend `future` significa hoy en adelante.
-  - Si fuerza `date_scope=past` o `date_scope=all`, el backend normaliza a `future`.
-  - Si fuerza `doctor_id` de otro medico, el backend lo ignora.
-  - Si consulta una fecha exacta pasada, recibe cero citas.
-  - `api/gestion/*` responde `403`.
-
-### Verificacion de Roles
-
-Servidor local usado:
-
-- `http://127.0.0.1:8096/clinica/`
-
-Resultados de smoke por sesion:
-
-- Admin: redirect a gestion permitido; `api/gestion` 200; `date_scope=all` devuelve 11 citas; historico devuelve 2.
-- Secretaria: redirect a gestion cae en dashboard; `api/gestion` 403; `date_scope=all` devuelve 11 citas; historico devuelve 2.
-- Doctor `dr.herrera`: redirect a gestion cae en dashboard; `api/gestion` 403; `date_scope=all` y `past` normalizan a `future`; solo devuelve 4 citas propias presentes/futuras; fecha exacta pasada devuelve 0.
-- HTML dashboard:
-  - Admin tiene link de gestion y `Todas` activo.
-  - Secretaria no tiene link de gestion, tiene selector de doctor y `Todas` activo.
-  - Doctor no tiene selector de doctor ni filtros `Anteriores`/`Todas`, y `Proximas` queda activo.
-- Verificacion global:
-  - `php -l` en todos los `.php`: OK.
-  - `node --check` en todos los `.js`: OK.
-
-## Refinamiento UI Gestion
-
-- `pages/gestion/gestion.css`
-  - Rediseño sobrio orientado a herramienta operativa: fondo neutro, paneles planos, sombras suaves, tipografia mas compacta y botones menos grandes.
-  - Acciones de filas reemplazadas por iconos accesibles de editar/eliminar; se eliminaron letras grandes `E`/`X`.
-  - KPIs de modulos CRUD reducidos a una barra compacta; se eliminaron colores por modulo y bordes saturados.
-  - Responsive mejorado: navegacion superior compacta en tablet, filas con labels por celda en movil y acciones alineadas sin overflow.
-- `pages/gestion/_shared/page.php`
-  - `clinic` se trata como singleton: no renderiza listado, filtros, boton Nuevo ni numeraciones.
-  - Los modulos de coleccion mantienen listado, busqueda, estado, Nuevo y Actualizar.
-- `pages/gestion/gestion.js`
-  - Distingue `is-singleton` e `is-collection`.
-  - El formulario de `clinic` usa grilla amplia para editar datos institucionales sin una lista innecesaria al lado.
-- `pages/gestion/calendar/`
-  - `calendar.js` usa `view: schedule-board`.
-  - `gestion.js` renderiza una matriz multi-semana para horarios: doctores por filas, dias fechados por columnas y bloques editables por celda.
-  - Incluye filtros especificos por especialidad y doctor, ademas de busqueda y estado.
-  - Incluye selector de semana inicial y cantidad de semanas futuras visibles (`1`, `2`, `4`, `8`, `12`).
-  - Cada celda futura permite agregar un horario prellenando doctor, fecha, dia, hora inicio, hora fin, duracion de cupo y estado.
-  - Las celdas de fechas anteriores a hoy mantienen lectura/edicion de bloques existentes, pero no permiten crear nuevos horarios puntuales.
-  - `calendar.css` define responsive propio: tablero semanal en desktop y agenda apilada por doctor/dia en tablet y movil.
-- CSS internos de `clinic`, `comment`, `doctors`, `specialties`, `users`, `services` y `calendar`
-  - Quedaron como import del sistema compartido, sin colores decorativos por modulo.
-
-Validacion Gestion UI:
-
-- `php -l` en `pages/gestion/**/*.php`: OK.
-- `node --check` en `pages/gestion/**/*.js`: OK.
-- Smoke autenticado admin:
-  - `clinic`, `comment`, `doctors`, `specialties`, `users`, `services`, `calendar`: 200, sin fatal errors y con shell de gestion.
-  - `clinic`: sin `gestion-filters`, sin `gestion-list-panel`, sin `gestion-stats` y sin `gestion-new-btn`.
-  - API `resource=schedules`: 23 horarios, 8 doctores, 8 especialidades y 7 dias de metadata.
-  - Busqueda de restos visuales antiguos: sin `border-left-color`, sin botones `>E<`/`>X<`, sin textos `Campos completos`/`Registro maestro`.
-
-## Mejoras Dashboard y Auditoria Dinamica
-
-### Paginacion de Citas
-
-- `api/dashboard/index.php`
-  - `GET` acepta `page`, `per_page`, `status`, `search`, `date_scope`, `date` y `doctor_id`.
-  - Devuelve solo la pagina solicitada en `appointments`.
-  - Devuelve `pagination` con `page`, `per_page`, `total`, `total_pages`, `from`, `to`.
-  - Devuelve `summary.counts` y `summary.next_pending` calculados sobre el rango filtrado completo, no solo sobre la pagina actual.
-- `pages/dashboard/dashboard.js`
-  - Los filtros de estado, busqueda y KPIs disparan nuevas consultas al servidor.
-  - La paginacion conserva permisos por rol y reinicia a pagina 1 cuando cambian filtros o fecha.
-  - Selector de tamano: 6, 12, 24 o 48 citas por pagina.
-
-### Acceso a Gestion
-
-- El boton simple `Gestion` fue reemplazado por una entrada administrativa con icono, titulo y descripcion.
-- Sigue visible solo para `ADMINISTRATOR`.
-- Link directo: `/clinica/pages/gestion/clinic/`.
-
-### Refinamiento Visual
-
-- Dashboard con paleta mas sobria: fondos neutros, sombras menos pesadas y menos degradados.
-- KPIs e insights reducen saturacion y usan color como senal funcional.
-- Acciones de cita (`Atender`, `No se presento`, `Rechazar`) usan estilo suave con fondo claro, borde y texto de color.
-- Paginacion compacta bajo la lista, sin competir con el contenido operativo.
-- Nueva iteracion dashboard:
-  - Header alineado al lenguaje visual de Gestion: superficie blanca, bordes mate, tipografia mas compacta y boton de Gestion menos dominante.
-  - KPIs e insights agrupados en `dashboard-summary-panel` con separacion inferior clara y colores de estado apagados.
-  - Panel de citas enmarcado como herramienta operativa; filtros, fechas, busqueda, tarjetas y paginacion reducen escala y saturacion.
-  - Tarjetas de cita con menos sombra, borde lateral mas delgado, badges suaves y acciones compactas.
-
-### Auditoria Dinamica
-
-Paginas revisadas:
-
-- Home `index.php`
-  - Dinamico por API: `index.php` solo deja contenedores y `data-home-api`; `public/js/app.js` consulta `/clinica/api/public/?resource=home`.
-  - Datos hidratados: clinic, servicios, especialidades destacadas, doctores destacados, resenas, stats y tarjetas about desde la capa compartida.
-- Header/footer compartidos
-  - Dinamico: nombre, SEO/canonical, marca, direccion, correo, telefono, emergencia, WhatsApp y redes desde clinic.
-- Especialidades `pages/specialties/index.php`
-  - Se eliminaron arreglos simulados locales.
-  - Dinamico: titulo/subtitulo desde clinic y catalogo desde `clinica_public_specialties_for_catalog()`.
-- Doctores `pages/doctors/index.php`
-  - Se eliminaron arreglos simulados locales.
-  - Dinamico: titulo/subtitulo desde clinic; doctores, especialidades, idiomas, fotos, rating, pacientes y disponibilidad desde `clinica_public_doctors_for_catalog()`.
-- Reservas `pages/reservations/index.php`
-  - Se eliminaron arreglos simulados locales.
-  - Dinamico: titulo/subtitulo/nota de confirmacion desde clinic; especialidades, doctores, citas ocupadas y horarios detallados desde la capa compartida.
-  - Preseleccion por `specialty` / `especialidad` resuelve contra IDs o nombres administrados, sin alias quemados por especialidad.
-  - Mensajes de exito y labels principales de navegacion de reserva salen de la configuracion clinic (`reservation_success_*`, `reservation_*_label`).
-  - `pages/reservations/reservations.js` genera cupos solo desde `horarios_detallados`; no quedan rangos fijos tipo manana/tarde en el frontend.
-- Gestion clinic
-  - Nuevos campos editables: `reservation_title`, `reservation_subtitle`, `reservation_summary_note`, `reservation_success_title`, `reservation_success_text`, `reservation_back_home_label`, `reservation_next_label`, `reservation_confirm_label`, `reservation_previous_label`.
-
-### Editor Modal en Gestion
-
-- El editor CRUD compartido de `pages/gestion/_shared/page.php` ya no ocupa una columna fija en la maqueta.
-- Todas las paginas de Gestion abren el formulario en un modal responsive al crear o editar registros.
-- El modal soporta cierre por boton, fondo oscuro, tecla Escape y boton `Cancelar`; al guardar o eliminar vuelve al listado/resumen.
-- `pages/gestion/clinic/` queda como vista resumen de la unica clinica, sin filtros, sin numeraciones y sin lista artificial.
-- `pages/gestion/calendar/` mantiene la agenda multi-semana a ancho completo; los bloques de horario y botones `Agregar` abren el editor modal.
-
-### Auditoria Integral 2026-08-04
-
-Estado: no se detectaron errores funcionales ni de logica de negocio en la maqueta actual.
-
-Validaciones ejecutadas:
-
-- Lint y parseo:
-  - `php -l` en todos los archivos PHP del proyecto: OK.
-  - `node --check` en todos los archivos JS del proyecto: OK.
-  - `api/storage/gestion-data.json` parsea correctamente como JSON: OK.
-  - Escaneo estatico sin `Fatal error`, `Parse error`, `Warning`, `Notice`, `TODO`, `FIXME`, `console.log` ni `debugger` en codigo PHP/JS revisado.
-- Smoke HTTP publico:
-  - `/clinica/`, `/pages/login/`, `/pages/specialties/`, `/pages/doctors/`, `/pages/reservations/`, `/pages/reservations/?doctor_id=doc3` y `/pages/reservations/?specialty=Neurologia`: 200 sin errores PHP visibles.
-  - `/api/public/?resource=home`: OK, devuelve servicios, especialidades y doctores dinamicos.
-- Login, dashboard y roles:
-  - Login admin, secretaria y doctor: OK.
-  - Admin y secretaria consultan dashboard con `date_scope=all`: OK.
-  - Doctor con `date_scope=all` se normaliza a `future`: OK.
-  - Doctor recibe solo citas propias futuras: `CITA002`, `CITA003`, `CITA005`, `CITA010`: OK.
-  - Doctor no recibe `doctor_id` ni `doctor_info` en la respuesta transformada: OK.
-- Permisos negativos:
-  - Login invalido: 401.
-  - API dashboard sin sesion: 401.
-  - API Gestion sin sesion: 403.
-  - Secretaria y doctor no acceden a API Gestion: 403.
-  - Secretaria y doctor al abrir Gestion son redirigidos al dashboard, sin recibir `gestion-editor-modal`.
-  - Doctor no puede consultar fecha pasada exacta ni actualizar cita de otro doctor: OK.
-- Gestion:
-  - APIs admin de `clinic`, `comments`, `doctors`, `specialties`, `users`, `services` y `schedules`: OK.
-  - Paginas admin `clinic`, `calendar`, `comment`, `doctors`, `services`, `specialties` y `users`: 200, modal CRUD presente y sin errores PHP visibles.
-- Integridad de datos temporales:
-  - Relaciones validas: 8 especialidades, 8 doctores, 6 servicios, 3 usuarios y 23 horarios.
-  - Doctores referencian especialidades existentes.
-  - Horarios referencian doctores existentes y tienen rangos de hora validos.
-  - Usuario doctor referencia doctor existente.
-  - Existe al menos un administrador activo.
-- Auditoria dinamica:
-  - Sin alias publicos quemados `cardio/neuro/derma/gine/onco`.
-  - Sin rangos fijos `7-13` / `13-22` en paginas publicas revisadas.
-  - Sin nombre fijo `Clinica Estandar` / `Clínica Estándar` en paginas publicas clave revisadas.
-- Limpieza:
-  - `tmp-codex-shots/` era solo artefacto temporal de capturas y perfiles headless.
-  - Se verifico ruta absoluta dentro de `C:\xampp\htdocs\clinica`, se cerraron 22 procesos Chrome headless asociados y se elimino el directorio.
-
-Validacion realizada:
-
-- API publica home:
-  - `/api/public/?resource=home`: `success=true`. Ejemplo de respuesta completa (contrato que consume `public/js/app.js` y las paginas publicas):
-
-```json
-{
-  "success": true,
-  "resource": "home",
-  "data": {
-      "clinic": {
-          "id": 1,
-          "name": "Clinica Estandar",
-          "legal_name": "Clinica Estandar",
-          "logo_label": "Clinica Estandar",
-          "logo_image": "<svg width=\"40\" height=\"40\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" class=\"logo-svg\" aria-hidden=\"true\"><path d=\"M12 5C12 5 9 2 6 2C3 2 2 4 2 6C2 9 5 12 12 19C19 12 22 9 22 6C22 4 21 2 18 2C15 2 12 5 12 5Z\" stroke=\"currentColor\"",
-          "tagline": "Medicina de vanguardia con un enfoque humano y personalizado.",
-          "description": "Centro medico privado con especialistas, tecnologia avanzada y atencion cercana.",
-          "meta_title": "Clinica Estandar | Medicina de Vanguardia y Cuidado Humano",
-          "meta_description": "Clinica Estandar: atencion medica especializada, tecnologia de punta y profesionales comprometidos con su bienestar.",
-          "canonical_url": "https://www.clinicaestandar.com",
-          "hero_title": "Medicina de Vanguardia, Cuidado Humano",
-          "hero_subtitle": "Combinamos alta tecnologia con especialistas comprometidos con su salud y bienestar.",
-          "hero_image": "public/assets/banner.jpg",
-          "hero_mobile_image": "public/assets/banner_mobil.jpg",
-          "about_title": "Su Salud, Nuestra Prioridad",
-          "about_subtitle": "Descubra por que somos la eleccion de confianza para miles de pacientes.",
-          "services_title": "Nuestros Servicios",
-          "services_subtitle": "Ofrecemos una gama completa de servicios medicos para cuidar de usted en cada etapa.",
-          "specialties_title": "Nuestras Especialidades",
-          "specialties_subtitle": "Cobertura medica integral para todas sus necesidades de salud.",
-          "doctors_title": "Conozca a Nuestro Equipo",
-          "doctors_subtitle": "Profesionales que combinan conocimiento, experiencia y vocacion.",
-          "comments_title": "La Voz de Nuestros Pacientes",
-          "comments_subtitle": "Historias reales de quienes han confiado su salud en nuestras manos.",
-          "reservation_title": "Agendar una Cita",
-          "reservation_subtitle": "Siga los pasos para encontrar un horario conveniente para usted.",
-          "reservation_summary_note": "Recibira una confirmacion por correo electronico. Por favor, llegue 15 minutos antes de su cita.",
-          "reservation_success_title": "Cita Agendada",
-          "reservation_success_text": "Su cita ha sido confirmada exitosamente. Recibira un correo electronico con todos los detalles. Gracias por confiar en {clinic}.",
-          "reservation_back_home_label": "Volver al Inicio",
-          "reservation_next_label": "Siguiente",
-          "reservation_confirm_label": "Confirmar Cita",
-          "reservation_previous_label": "Anterior",
-          "address": "Buenavista y Tarqui, Machala, Ecuador",
-          "email": "info@clinicaestandar.com",
-          "phone_display": "(07) 293-3888",
-          "phone_href": "+59372933888",
-          "emergency_phone": "911",
-          "whatsapp_url": "https://wa.me/593999999999",
-          "facebook_url": "https://facebook.com/clinicaestandar",
-          "instagram_url": "https://instagram.com/clinicaestandar",
-          "stats": [
-              {
-                  "label": "Pacientes Atendidos",
-                  "value": 50000,
-                  "suffix": "+"
-              },
-              {
-                  "label": "Anos de Experiencia",
-                  "value": 25,
-                  "suffix": "+"
-              },
-              {
-                  "label": "Especialistas Certificados",
-                  "value": 100,
-                  "suffix": "+"
-              },
-              {
-                  "label": "Tasa de Satisfaccion",
-                  "value": 98,
-                  "suffix": "%"
-              }
-          ],
-          "about_cards": [
-              {
-                  "title": "Tecnologia de Punta",
-                  "text": "Equipos de ultima generacion para diagnosticos precisos y tratamientos efectivos.",
-                  "icon": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\" ry=\"2\"></rect><line x1=\"8\" y1=\"21\" x2=\"16\" y2=\"21\"></line><line x1=\"12\" y1=\"17\" x2=\"12\" y2=\"21\"></line>"
-              },
-              {
-                  "title": "Especialistas de Elite",
-                  "text": "Un equipo medico de renombre, con amplia experiencia y reconocimiento internacional.",
-                  "icon": "<path d=\"M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2\"></path><circle cx=\"9\" cy=\"7\" r=\"4\"></circle><path d=\"M23 21v-2a4 4 0 0 0-3-3.87\"></path><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"></path>"
-              },
-              {
-                  "title": "Atencion Humana",
-                  "text": "Cuidado calido y personalizado, porque detras de cada paciente hay una historia.",
-                  "icon": "<path d=\"M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z\"></path>"
-              }
-          ],
-          "created_at": "2026-08-05 20:02:23",
-          "updated_at": "2026-08-05 20:02:23"
-      },
-      "about_cards": [
-          {
-              "title": "Tecnologia de Punta",
-              "text": "Equipos de ultima generacion para diagnosticos precisos y tratamientos efectivos.",
-              "icon": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\" ry=\"2\"></rect><line x1=\"8\" y1=\"21\" x2=\"16\" y2=\"21\"></line><line x1=\"12\" y1=\"17\" x2=\"12\" y2=\"21\"></line>"
-          },
-          {
-              "title": "Especialistas de Elite",
-              "text": "Un equipo medico de renombre, con amplia experiencia y reconocimiento internacional.",
-              "icon": "<path d=\"M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2\"></path><circle cx=\"9\" cy=\"7\" r=\"4\"></circle><path d=\"M23 21v-2a4 4 0 0 0-3-3.87\"></path><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"></path>"
-          },
-          {
-              "title": "Atencion Humana",
-              "text": "Cuidado calido y personalizado, porque detras de cada paciente hay una historia.",
-              "icon": "<path d=\"M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z\"></path>"
-          }
-      ],
-      "stats": [
-          {
-              "label": "Pacientes Atendidos",
-              "value": 50000,
-              "suffix": "+"
-          },
-          {
-              "label": "Anos de Experiencia",
-              "value": 25,
-              "suffix": "+"
-          },
-          {
-              "label": "Especialistas Certificados",
-              "value": 100,
-              "suffix": "+"
-          },
-          {
-              "label": "Tasa de Satisfaccion",
-              "value": 98,
-              "suffix": "%"
-          }
-      ],
-      "services": [
-          {
-              "id": "centro-quirurgico",
-              "titulo": "Centro Quirurgico",
-              "descripcion": "Quirofanos inteligentes equipados para procedimientos de alta complejidad.",
-              "icono": "<path d=\"M14.5 2.5a2.5 2.5 0 0 0-5 0V6H8a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-1.5V2.5z\"></path><path d=\"M9 14h6\"></path><path d=\"M12 11v6\"></path>"
-          },
-          {
-              "id": "consulta-externa",
-              "titulo": "Consulta Externa",
-              "descripcion": "Acceso a especialistas de todas las areas para diagnostico y seguimiento.",
-              "icono": "<path d=\"M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2\"></path><circle cx=\"9\" cy=\"7\" r=\"4\"></circle><path d=\"M23 21v-2a4 4 0 0 0-3-3.87\"></path><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"></path>"
-          },
-          {
-              "id": "emergencias-24-7",
-              "titulo": "Emergencias 24/7",
-              "descripcion": "Atencion inmediata y especializada para urgencias medicas a cualquier hora.",
-              "icono": "<polygon points=\"13 2 3 14 12 14 11 22 21 10 12 10 13 2\"></polygon>"
-          },
-          {
-              "id": "hospitalizacion",
-              "titulo": "Hospitalizacion",
-              "descripcion": "Habitaciones comodas y monitoreo constante para una recuperacion segura.",
-              "icono": "<path d=\"M2 22h20\"></path><path d=\"M4 14v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2\"></path><path d=\"M4 14h16\"></path><path d=\"M12 4v6\"></path><path d=\"M10 6h4\"></path>"
-          },
-          {
-              "id": "imagen",
-              "titulo": "Diagnostico por Imagen",
-              "descripcion": "Resonancia, tomografia y radiologia digital de ultima generacion.",
-              "icono": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\" ry=\"2\"></rect><line x1=\"8\" y1=\"21\" x2=\"16\" y2=\"21\"></line><line x1=\"12\" y1=\"17\" x2=\"12\" y2=\"21\"></line>"
-          },
-          {
-              "id": "laboratorio",
-              "titulo": "Laboratorio Clinico",
-              "descripcion": "Analisis precisos y resultados rapidos para un diagnostico confiable.",
-              "icono": "<path d=\"M10 2v6l-5 9a3 3 0 0 0 2.6 4.5h8.8A3 3 0 0 0 19 17l-5-9V2\"></path><path d=\"M8 2h8\"></path><path d=\"M7 14h10\"></path>"
-          }
-      ],
-      "specialties": [
-          {
-              "id": "cardiologia",
-              "titulo": "Cardiologia",
-              "descripcion": "Cuidado integral de su corazon con tecnologia avanzada para diagnostico y tratamiento.",
-              "resumen": "Cuidado integral de su corazon con tecnologia avanzada.",
-              "icono": "<path d=\"M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z\"></path>"
-          },
-          {
-              "id": "neurologia",
-              "titulo": "Neurologia",
-              "descripcion": "Diagnostico y tratamiento de enfermedades del sistema nervioso central y periferico.",
-              "resumen": "Diagnostico y tratamiento de enfermedades del sistema nervioso.",
-              "icono": "<polyline points=\"22 12 18 12 15 21 9 3 6 12 2 12\"></polyline>"
-          },
-          {
-              "id": "oncologia",
-              "titulo": "Oncologia",
-              "descripcion": "Tratamientos de vanguardia y apoyo continuo en la lucha integral contra el cancer.",
-              "resumen": "Tratamientos de vanguardia y apoyo continuo contra el cancer.",
-              "icono": "<path d=\"M12 2a2 2 0 0 0-2 2v2H8a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2h2a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2V4a2 2 0 0 0-2-2h-2z\"></path>"
-          },
-          {
-              "id": "pediatria",
-              "titulo": "Pediatria",
-              "descripcion": "Cuidamos la salud de los mas pequenos con dedicacion, carino y un enfoque preventivo.",
-              "resumen": "Cuidado infantil con dedicacion, prevencion y carino.",
-              "icono": "<path d=\"M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2\"></path><circle cx=\"9\" cy=\"7\" r=\"4\"></circle><path d=\"M23 21v-2a4 4 0 0 0-3-3.87\"></path><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"></path>"
-          }
-      ],
-      "doctors": [
-          {
-              "id": "doc1",
-              "nombre": "Dr. Alejandro Vargas",
-              "especialidad": "Cardiologia Cardiologia Intervencionista",
-              "experiencia": "15+ anos de experiencia",
-              "foto": "public/assets/doctor_avatar.jpg"
-          },
-          {
-              "id": "doc3",
-              "nombre": "Dr. Mateo Herrera",
-              "especialidad": "Neurologia Neurofisiologia Clinica",
-              "experiencia": "18+ anos de experiencia",
-              "foto": "public/assets/doctor_avatar.jpg"
-          },
-          {
-              "id": "doc2",
-              "nombre": "Dra. Sofia Castillo",
-              "especialidad": "Pediatria Neonatologia",
-              "experiencia": "12+ anos de experiencia",
-              "foto": "public/assets/doctora_avatar.png"
-          },
-          {
-              "id": "doc4",
-              "nombre": "Dra. Valentina Morales",
-              "especialidad": "Dermatologia Dermatologia Cosmetica",
-              "experiencia": "10+ anos de experiencia",
-              "foto": "public/assets/doctora_avatar.png"
-          }
-      ],
-      "comments": [
-          {
-              "texto": "El nivel de profesionalismo y la calidad humana del equipo son excepcionales. Me senti seguro y bien atendido durante todo mi procedimiento.",
-              "autor": "Carlos Rodriguez",
-              "detalle": "Paciente de Cardiologia",
-              "valoracion": 5,
-              "avatar": "public/assets/avatar.png"
-          },
-          {
-              "texto": "Llevar a mi hijo recien nacido fue la mejor decision. La paciencia y el conocimiento nos dieron mucha tranquilidad.",
-              "autor": "Ana Sofia Paredes",
-              "detalle": "Madre de paciente de Pediatria",
-              "valoracion": 5,
-              "avatar": "public/assets/avatar.png"
-          },
-          {
-              "texto": "Despues de anos buscando una solucion para mi problema de piel, recibi un diagnostico preciso y un tratamiento efectivo.",
-              "autor": "Javier Mendoza",
-              "detalle": "Paciente de Dermatologia",
-              "valoracion": 5,
-              "avatar": "public/assets/avatar.png"
-          },
-          {
-              "texto": "La tecnologia para diagnosticos por imagen es de otro nivel. Obtuve resultados rapidos y con una claridad impresionante.",
-              "autor": "Lucia Fernandez",
-              "detalle": "Paciente de Diagnostico por Imagen",
-              "valoracion": 5,
-              "avatar": "public/assets/avatar.png"
-          }
-      ]
-  }
-}
-```
-
-  - `/clinica/`: 200, contiene `data-home-api` y no imprime tarjetas `.service-card` estaticas en el HTML inicial.
-  - Chrome headless valido el hero hidratado desde la API; las capturas temporales fueron eliminadas junto con `tmp-codex-shots/`.
-- API paginada admin:
-  - `date_scope=all&page=1&per_page=6`: 6 citas, total 11, 2 paginas.
-  - `page=2`: 5 citas.
-  - `status=pendiente&search=ana`: total 1.
-- API doctor:
-  - Forzar `date_scope=all&doctor_id=doc1` normaliza a `future` y devuelve solo 4 citas propias.
-- Smoke publico:
-  - `/pages/specialties/`: 200.
-  - `/pages/doctors/`: 200.
-  - `/pages/reservations/?doctor_id=doc3`: 200.
-  - `/pages/reservations/?specialty=Neurologia`: 200, preselecciona `neurologia`, trae `reservationConfig` y `horarios_detallados`.
-  - Auditoria de strings: sin alias `cardio/neuro/derma/gine/onco`, sin generacion de horarios 7-13/13-22 en JS y sin nombre de clinica fijo visible en `pages/specialties`, `pages/doctors` o `pages/reservations`.
-- Smoke Gestion:
-  - `php -l` sin errores en todos los `index.php` de `pages/gestion/` y en `_shared/page.php`.
-  - `node --check` sin errores en todos los JS de `pages/gestion/`.
-  - Login admin por API correcto y carga 200 de `clinic`, `calendar`, `comment`, `doctors`, `services`, `specialties` y `users`.
-  - Todas esas rutas tienen `#gestion-editor-modal` y no imprimen el editor antiguo dentro del workspace.
-- Chrome headless:
-  - Dashboard: acceso a Gestion visible para admin, paginacion 1/2, siguiente pagina y filtro pendientes sin errores de consola.
-  - Reservas: `doc3` trae 5 dias con `horarios_detallados`; al seleccionar fecha se generaron 32 cupos desde reglas detalladas, sin errores de consola.
-  - Chrome headless valido dashboard y reservas; las capturas temporales fueron eliminadas junto con `tmp-codex-shots/`.
-
-## Propuesta de Migración a Backend con Base de Datos
-
-Para evolucionar el prototipo a un sistema de producción, se propone una migración completa de la persistencia de datos (actualmente en `gestion-data.json` y `$_SESSION`) a una base de datos relacional MySQL.
-
-Esta propuesta se divide en dos partes: el **Esquema de la Base de Datos** y la **Arquitectura de Conexión y Acceso a Datos** en el backend PHP.
-
-### 1. Esquema de Base de Datos MySQL Propuesto
-
-El siguiente esquema ha sido diseñado basándose en la auditoría del sistema y los datos gestionados en `gestion-data.json`. Normaliza la información, establece relaciones clave y prepara el sistema para ser más robusto y escalable.
-
-```sql
--- Tabla de configuración global de la clínica
-CREATE TABLE `clinics` (
-  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `name` VARCHAR(255) NOT NULL COMMENT 'Nombre comercial',
-  `legal_name` VARCHAR(255) DEFAULT NULL,
-  `logo_label` VARCHAR(255) DEFAULT NULL COMMENT 'Texto del logo (fallback)',
-  `logo_image` VARCHAR(255) DEFAULT NULL COMMENT 'Ruta a la imagen del logo',
-  `tagline` VARCHAR(255) DEFAULT NULL,
-  `description` TEXT DEFAULT NULL,
-  `meta_title` VARCHAR(255) DEFAULT NULL,
-  `meta_description` TEXT DEFAULT NULL,
-  `canonical_url` VARCHAR(255) DEFAULT NULL,
-  `hero_title` VARCHAR(255) DEFAULT NULL,
-  `hero_subtitle` TEXT DEFAULT NULL,
-  `hero_image` VARCHAR(255) DEFAULT NULL,
-  `hero_mobile_image` VARCHAR(255) DEFAULT NULL,
-  `about_title` VARCHAR(255) DEFAULT NULL,
-  `about_subtitle` TEXT DEFAULT NULL,
-  `services_title` VARCHAR(255) DEFAULT NULL,
-  `services_subtitle` TEXT DEFAULT NULL,
-  `specialties_title` VARCHAR(255) DEFAULT NULL,
-  `specialties_subtitle` TEXT DEFAULT NULL,
-  `doctors_title` VARCHAR(255) DEFAULT NULL,
-  `doctors_subtitle` TEXT DEFAULT NULL,
-  `comments_title` VARCHAR(255) DEFAULT NULL,
-  `comments_subtitle` TEXT DEFAULT NULL,
-  `reservation_title` VARCHAR(255) DEFAULT NULL,
-  `reservation_subtitle` TEXT DEFAULT NULL,
-  `reservation_summary_note` TEXT DEFAULT NULL,
-  `reservation_success_title` VARCHAR(255) DEFAULT NULL,
-  `reservation_success_text` TEXT DEFAULT NULL,
-  `reservation_back_home_label` VARCHAR(100) DEFAULT NULL,
-  `reservation_next_label` VARCHAR(100) DEFAULT NULL,
-  `reservation_confirm_label` VARCHAR(100) DEFAULT NULL,
-  `reservation_previous_label` VARCHAR(100) DEFAULT NULL,
-  `address` VARCHAR(255) DEFAULT NULL,
-  `email` VARCHAR(255) DEFAULT NULL,
-  `phone_display` VARCHAR(50) DEFAULT NULL,
-  `phone_href` VARCHAR(50) DEFAULT NULL,
-  `emergency_phone` VARCHAR(50) DEFAULT NULL,
-  `whatsapp_url` VARCHAR(255) DEFAULT NULL,
-  `facebook_url` VARCHAR(255) DEFAULT NULL,
-  `instagram_url` VARCHAR(255) DEFAULT NULL,
-  `stats` JSON DEFAULT NULL,
-  `about_cards` JSON DEFAULT NULL,
-  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Tabla de especialidades médicas
-CREATE TABLE `specialties` (
-  `id` VARCHAR(50) NOT NULL COMMENT 'ID basado en slug, ej: cardiologia',
-  `name` VARCHAR(255) NOT NULL,
-  `summary` TEXT DEFAULT NULL,
-  `description` TEXT DEFAULT NULL,
-  `icon` TEXT DEFAULT NULL COMMENT 'Puede ser código SVG o una ruta de archivo',
-  `featured` BOOLEAN NOT NULL DEFAULT FALSE,
-  `active` BOOLEAN NOT NULL DEFAULT TRUE,
-  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Tabla de perfiles de doctores
-CREATE TABLE `doctors` (
-  `id` VARCHAR(50) NOT NULL COMMENT 'ID basado en slug, ej: doc-alejandro-vargas',
-  `name` VARCHAR(255) NOT NULL,
-  `photo` VARCHAR(255) DEFAULT NULL,
-  `specialty_id` VARCHAR(50) NOT NULL,
-  `sub_specialty` VARCHAR(255) DEFAULT NULL,
-  `experience_years` INT UNSIGNED DEFAULT 0,
-  `university` VARCHAR(255) DEFAULT NULL,
-  `languages` JSON DEFAULT NULL COMMENT 'Almacena un array de idiomas',
-  `recognitions` JSON DEFAULT NULL COMMENT 'Almacena un array de reconocimientos',
-  `rating` TINYINT UNSIGNED DEFAULT 5,
-  `patients` INT UNSIGNED DEFAULT 0,
-  `featured` BOOLEAN NOT NULL DEFAULT FALSE,
-  `active` BOOLEAN NOT NULL DEFAULT TRUE,
-  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `doctors_specialty_id_foreign` (`specialty_id`),
-  CONSTRAINT `doctors_specialty_id_foreign` FOREIGN KEY (`specialty_id`) REFERENCES `specialties` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Tabla de usuarios del sistema (panel de gestión, dashboard)
-CREATE TABLE `users` (
-  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `username` VARCHAR(50) NOT NULL UNIQUE,
-  `password` VARCHAR(255) NOT NULL COMMENT 'Almacenará el hash de la contraseña',
-  `name` VARCHAR(255) NOT NULL,
-  `role` ENUM('ADMINISTRATOR', 'SECRETARIA', 'DOCTOR') NOT NULL,
-  `doctor_id` VARCHAR(50) DEFAULT NULL COMMENT 'FK a doctors.id si el rol es DOCTOR',
-  `active` BOOLEAN NOT NULL DEFAULT TRUE,
-  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `users_doctor_id_foreign` (`doctor_id`),
-  CONSTRAINT `users_doctor_id_foreign` FOREIGN KEY (`doctor_id`) REFERENCES `doctors`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
--- Tabla de servicios de la clínica
-CREATE TABLE `services` (
-  `id` VARCHAR(50) NOT NULL,
-  `title` VARCHAR(255) NOT NULL,
-  `description` TEXT DEFAULT NULL,
-  `icon` TEXT DEFAULT NULL,
-  `featured` BOOLEAN NOT NULL DEFAULT FALSE,
-  `active` BOOLEAN NOT NULL DEFAULT TRUE,
-  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Tabla de testimonios (comentarios) de pacientes
-CREATE TABLE `testimonials` (
-  `id` VARCHAR(50) NOT NULL,
-  `author` VARCHAR(255) NOT NULL,
-  `detail` VARCHAR(255) DEFAULT NULL,
-  `text` TEXT NOT NULL,
-  `rating` TINYINT UNSIGNED NOT NULL,
-  `avatar` VARCHAR(255) DEFAULT NULL,
-  `featured` BOOLEAN NOT NULL DEFAULT FALSE,
-  `active` BOOLEAN NOT NULL DEFAULT TRUE,
-  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Tabla de horarios y disponibilidad de los doctores
-CREATE TABLE `doctor_schedules` (
-  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `doctor_id` VARCHAR(50) NOT NULL,
-  `date` DATE DEFAULT NULL COMMENT 'Si es NULL, es una regla semanal recurrente',
-  `weekday` TINYINT UNSIGNED NOT NULL COMMENT '1 (Lunes) a 7 (Domingo)',
-  `start_time` TIME NOT NULL,
-  `end_time` TIME NOT NULL,
-  `slot_minutes` INT UNSIGNED NOT NULL DEFAULT 15,
-  `active` BOOLEAN NOT NULL DEFAULT TRUE,
-  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `doctor_schedules_doctor_id_foreign` (`doctor_id`),
-  KEY `idx_schedule_lookup` (`doctor_id`, `weekday`, `start_time`),
-  KEY `idx_schedule_date_lookup` (`doctor_id`, `date`),
-  CONSTRAINT `doctor_schedules_doctor_id_foreign` FOREIGN KEY (`doctor_id`) REFERENCES `doctors` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Tabla de pacientes
-CREATE TABLE `patients` (
-  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `name` VARCHAR(255) NOT NULL,
-  `email` VARCHAR(255) NOT NULL UNIQUE,
-  `phone` VARCHAR(50) DEFAULT NULL,
-  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Tabla de citas
-CREATE TABLE `appointments` (
-  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `patient_id` INT UNSIGNED NOT NULL,
-  `doctor_id` VARCHAR(50) NOT NULL,
-  `specialty_id` VARCHAR(50) NOT NULL,
-  `date` DATE NOT NULL,
-  `time` TIME NOT NULL,
-  `status` ENUM('pendiente', 'atendida', 'no-presentado', 'rechazada') NOT NULL DEFAULT 'pendiente',
-  `notes` TEXT DEFAULT NULL COMMENT 'Notas del paciente al agendar',
-  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_appointment_slot` (`doctor_id`, `date`, `time`),
-  KEY `appointments_patient_id_foreign` (`patient_id`),
-  KEY `appointments_specialty_id_foreign` (`specialty_id`),
-  KEY `idx_appointment_lookup` (`date`, `time`),
-  KEY `idx_appointment_status` (`status`, `date`),
-  CONSTRAINT `appointments_patient_id_foreign` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `appointments_doctor_id_foreign` FOREIGN KEY (`doctor_id`) REFERENCES `doctors` (`id`) ON DELETE RESTRICT,
-  CONSTRAINT `appointments_specialty_id_foreign` FOREIGN KEY (`specialty_id`) REFERENCES `specialties` (`id`) ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Tabla de logs de auditoría
-CREATE TABLE `audit_logs` (
-  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `user_id` INT UNSIGNED DEFAULT NULL,
-  `action` VARCHAR(100) NOT NULL,
-  `resource_type` VARCHAR(50) DEFAULT NULL,
-  `resource_id` VARCHAR(50) DEFAULT NULL,
-  `details` JSON DEFAULT NULL,
-  `ip_address` VARCHAR(45) DEFAULT NULL,
-  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `audit_logs_user_id_foreign` (`user_id`),
-  KEY `idx_audit_resource` (`resource_type`, `resource_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-```
-
-### 2. Arquitectura de Backend Propuesta
-
-La estrategia consiste en crear una capa de abstracción para la base de datos y refactorizar las funciones existentes para que la utilicen, manteniendo los contratos de las APIs intactos para no afectar al frontend.
-
-#### 2.1. Conexión Centralizada a la Base de Datos (PDO)
-
-Se propone crear un nuevo archivo `api/db.php` que gestionará la conexión a la base de datos de forma centralizada y segura.
-
-**`api/db.php` (Propuesta)**
-```php
-<?php
-
-function clinica_db_credentials(): array
-{
-    // En un entorno de producción, estos datos deben provenir de variables de entorno (.env)
-    // y no estar hardcodeados.
-    return [
-        'host' => 'localhost',
-        'dbname' => 'clinica_base',
-        'user' => 'root',
-        'password' => '',
-        'charset' => 'utf8mb4',
-    ];
-}
-
-function clinica_get_db(): PDO
-{
-    static $pdo = null;
-
-    if ($pdo === null) {
-        $credentials = clinica_db_credentials();
-        $dsn = "mysql:host={$credentials['host']};dbname={$credentials['dbname']};charset={$credentials['charset']}";
-        $options = [
-            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES   => false,
-        ];
-        try {
-            $pdo = new PDO($dsn, $credentials['user'], $credentials['password'], $options);
-        } catch (\PDOException $e) {
-            // En un entorno de producción, esto debería registrar el error y mostrar una página genérica.
-            throw new \PDOException($e->getMessage(), (int)$e->getCode());
-        }
-    }
-
-    return $pdo;
-}
-```
-
-#### 2.2. Refactorización de la Capa de Datos (`api/data.php`)
-
-El archivo `api/data.php` dejará de leer y escribir en el archivo JSON. En su lugar, incluirá `api/db.php` y utilizará la función `clinica_get_db()` para realizar consultas SQL.
-
-**Ejemplo de Refactorización:**
-
-*Función Actual (JSON):*
-```php
-function clinica_get_clinic_settings(): array
-{
-  $clinic = clinica_get_database_resource('clinic');
-  $default = clinica_default_database()['clinic'];
-  return is_array($clinic) ? array_replace_recursive($default, $clinic) : $default;
-}
-```
-
-*Función Propuesta (MySQL con PDO):*
-```php
-function clinica_get_clinic_settings(): array
-{
-    $pdo = clinica_get_db();
-    $stmt = $pdo->query("SELECT * FROM clinics ORDER BY id ASC LIMIT 1");
-    $clinic = $stmt->fetch();
-
-    if (!$clinic) {
-        // Si la tabla está vacía, se puede devolver la configuración por defecto
-        // o lanzar un error, dependiendo de la política de la aplicación.
-        return clinica_default_database()['clinic'];
-    }
-    return $clinic;
-}
-```
-
-Este patrón se aplicaría a todas las funciones de lectura (`clinica_get_specialties`, `clinica_get_doctors`, etc.) y de escritura (`clinica_write_database` sería reemplazada por funciones específicas como `clinica_save_specialty`, `clinica_update_clinic`, etc., que ejecutarían sentencias `INSERT` y `UPDATE`).
-
-## Iteracion 2026-08-05
-
-### Auditoria de Funcionalidad y Errores (2026-08-05)
-
-Se realizo una auditoria integral del sistema, identificando los siguientes puntos que requieren atencion prioritaria:
-
-- **Vulnerabilidad Critica - Contrasenas en Texto Plano:** El sistema almacena y compara contrasenas sin ningun tipo de hash.
-- **Vulnerabilidad Critica - Ausencia de Proteccion CSRF:** Los endpoints que modifican datos (`POST`, `DELETE`) no utilizan tokens anti-CSRF.
-- **Bug de Logica - Visualizacion del Logo:** El header y footer muestran la imagen del logo y el texto del logo (`logo_label`) al mismo tiempo, en lugar de usar el texto como fallback.
-- **Bug de Codificacion - Etiqueta de Turno:** La funcion `clinica_schedule_shift_label` devuelve `MaÃ±ana` en lugar de `Mañana`.
-- **Deuda Tecnica - Duplicacion de Codigo:** La logica de renderizado del logo esta duplicada en `header.php` y `footer.php`. La funcion `debounce` en `reservations.js` deberia ser una utilidad compartida.
-- **Mejora de UX - Alerta en Reservas:** El formulario de reservas utiliza `alert()` para notificar errores, lo cual interrumpe la experiencia de usuario.
-- **Problema de Rendimiento - Imagenes sin Optimizar:** El archivo `public/assets/doctora_avatar.png` tiene un tamano excesivo (~791 KB).
-
-Estos hallazgos se han integrado en el checklist de tareas pendientes.
-
-### Cambios Aplicados en esta Iteracion
-
-Cambios aplicados:
-
-- Sesion:
-  - Se agrego expiracion absoluta de 8 horas mediante `CLINICA_SESSION_TTL_SECONDS = 28800`.
-  - `clinica_current_user()` centraliza la lectura de usuario autenticado y destruye sesiones sin `auth_started_at` o vencidas.
-  - `clinica_start_authenticated_session()` registra hora de inicio, regenera ID y fija expiracion de cookie.
-  - Login, dashboard, gestion y APIs protegidas usan el helper central en vez de leer `$_SESSION['user']` directamente.
-- Imagenes en Gestion:
-  - `api/gestion/index.php` acepta `multipart/form-data` con `action=upload`.
-  - `pages/gestion/gestion.js` renderiza campos `image` con preview, campo de ruta y selector de archivo.
-  - `pages/gestion/clinic/clinic.js`: `hero_image` y `hero_mobile_image` permiten subir imagenes.
-  - `pages/gestion/doctors/doctors.js`: `photo` permite subir imagen del doctor/doctora.
-  - `pages/gestion/specialties/specialties.js`: `icon` ahora es de tipo `image`, permitiendo subir SVG/PNG o pegar codigo.
-  - `pages/gestion/services/services.js`: `icon` ahora es de tipo `image`, permitiendo subir SVG/PNG o pegar codigo.
-  - `api/gestion/index.php` ahora soporta subida de `image/svg+xml` y los nuevos `targets` para `clinic.logo_image`, `specialties.icon` y `services.icon`.
-  - `gestion.js` ahora previsualiza correctamente tanto URLs de imagen como codigo SVG (completo o fragmentos como `<path>`).
-  - `header.php` y `footer.php` ahora renderizan el logo dinamicamente desde la configuracion de la clinica.
-  - `pages/gestion/comment/comment.js`: `avatar` permite subir avatar de resena.
-  - Las imagenes se guardan bajo `public/assets/clinic/`, `public/assets/doctors/` o `public/assets/comments/` segun recurso.
-- Horarios:
-  - `schedules` acepta `date` opcional para bloques puntuales en fechas futuras.
-  - Si `date` esta vacio, el bloque conserva comportamiento semanal recurrente.
-  - Gestion de Horarios renderiza varias semanas futuras con controles de semana inicial y cantidad de semanas.
-  - Las fechas pasadas del tablero no permiten crear nuevos bloques puntuales.
-  - Se elimino el selector de fecha (`input[type=date]`) y el selector de cantidad de semanas del calendario, reemplazandolos por una navegacion de "Semana Anterior" / "Hoy" / "Semana Siguiente" para un control mas preciso.
-  - Se mejoro el diseno de la navegacion de semanas para que se muestre horizontalmente y en una barra de herramientas dedicada.
-  - Reservas combina reglas puntuales por fecha con reglas semanales recurrentes al generar cupos.
-
-## Iteracion 2026-08-06
-
-### Cambios Aplicados en esta Iteracion
-
-- **Refactorizacion y Correccion de Bugs:**
-  - Se corrigio el bug de visualizacion del logo en `header.php` y `footer.php`. La logica ahora muestra la imagen o el texto, pero no ambos.
-  - Se centralizo la logica de renderizado del logo en una nueva funcion `clinica_render_logo_element()` en `api/data.php`, eliminando codigo duplicado.
-  - Se corrigio el error de codificacion que mostraba `MaÃ±ana` en lugar de `Mañana`.
-  - Se reemplazo el `alert()` en el formulario de reservas por un mensaje de error integrado en la UI para una mejor experiencia de usuario.
-  - Se centralizo la funcion de utilidad `debounce` en un nuevo archivo `public/js/utils.js` para eliminar la duplicacion de codigo en `reservations.js` y `doctors.js`.
-
-### Auditoria Post-Correcciones
-
-Se realizo una nueva auditoria completa del sistema. No se han detectado nuevos bugs criticos. Los problemas de seguridad pendientes (contrasenas en texto plano y ausencia de CSRF) siguen identificados y su solucion esta planificada para la migracion a un backend con base de datos. El sistema se considera estable en su estado actual de prototipo avanzado.
-
-Validacion realizada:
-
-- Servidor local usado: `http://127.0.0.1:8787/clinica/`.
-- `php -l` en todos los `.php`: OK.
-- `node --check` en todos los `.js`: OK.
-- `api/storage/gestion-data.json` parsea como JSON: OK.
-- Login admin por API: OK; `expires_at` queda a 28800 segundos.
-- Helper de expiracion con `auth_started_at` vencido: devuelve sesion expirada.
-- API Gestion:
-  - Crear horario temporal puntual para `doc1` en `2026-08-19`: OK.
-  - Reservas con `?doctor_id=doc1` contiene la regla futura puntual: OK.
-  - Eliminar horario temporal: OK.
-  - Subida multipart de imagen a `doctors.photo`: OK; el archivo temporal fue eliminado.
-- Smoke HTTP autenticado admin:
-  - `/`, `/pages/login/`, `/pages/dashboard/`, `/pages/gestion/calendar/`, `/pages/gestion/doctors/`, `/pages/gestion/clinic/`, `/pages/reservations/?doctor_id=doc3`: OK.
-- Chrome headless con Chrome del sistema:
-  - Gestion Horarios renderiza 4 semanas por defecto y el selector queda en `4`.
-  - Botones `Agregar` de dias pasados quedan deshabilitados.
-  - Primer `Agregar` futuro prellena fecha `2026-08-05` y weekday `3`.
-  - Modal doctores tiene 1 input de imagen (`photo`).
-  - Modal resenas tiene 1 input de imagen (`avatar`).
-  - Modal clinica tiene 2 inputs de imagen (`hero_image`, `hero_mobile_image`).
-  - Reservas renderiza calendario (`36` celdas en smoke).
-  - Sin errores de consola.
-
-## Checklist Pendiente
-
-### P0 - Backend y Base de Datos - Arranque
-
-- [ ] Elegir motor inicial de BD para XAMPP, recomendado MySQL/MariaDB.
-- [ ] Definir `.env` o archivo de configuracion fuera de versionado para credenciales de BD, base URL y entorno.
-- [ ] Crear conexion PDO centralizada con charset `utf8mb4`, excepciones habilitadas y helper transaccional.
-- [ ] Crear migraciones versionadas para `clinics`, `services`, `specialties`, `doctors`, `comments`, `users`, `doctor_schedules`, `patients`, `appointments`, `appointment_status_history` y `audit_logs`.
-- [ ] Definir claves foraneas: doctores-especialidades, horarios-doctores, usuarios-doctores, citas-pacientes/doctores/especialidades.
-- [ ] Crear indices iniciales para agenda: `appointments(fecha, hora)`, `appointments(doctor_id, fecha, hora)`, `appointments(status, fecha)`, `doctor_schedules(doctor_id, weekday, start_time)` y `users(username)`.
-- [ ] Crear seed idempotente desde `api/storage/gestion-data.json` para poblar la primera version de la BD.
-- [ ] Sustituir lectura/escritura JSON en `api/data.php` por repositorios/servicios con la misma forma de respuesta actual.
-- [ ] Mantener contratos JSON actuales de `/api/public/`, `/api/dashboard/`, `/api/gestion/` y `/api/general/` para no reescribir el frontend.
-- [ ] Persistir citas creadas desde `pages/reservations/` en BD con validacion de disponibilidad real.
-- [ ] Validar conflictos de horario en servidor: no duplicar doctor-fecha-hora, no reservar fuera de horario, no reservar bloque inactivo y respetar `slot_minutes`.
-- [ ] Migrar autenticacion demo a `password_hash` / `password_verify`.
-- [ ] Agregar CSRF a endpoints autenticados de Gestion y Dashboard.
-- [ ] Crear middleware comun de sesion, permisos y respuestas JSON.
-- [ ] Registrar cambios criticos en `audit_logs`: CRUD Gestion, cambio de estado de cita, login fallido y login exitoso.
-- [ ] Normalizar validaciones backend por recurso: requeridos, email, URL, imagen, rating, rango de hora, rol y doctor asociado.
-- [ ] Definir politica de borrado: hard delete, soft delete o `active=false` por recurso.
-- [ ] Crear backups/exportacion de datos antes de migrar desde JSON a BD.
-- [ ] Preparar pruebas automatizadas minimas para contratos API, permisos por rol, reserva de cita y CRUD de Gestion.
-
-### P0 - Antes de backend real
-
-- [x] Definir permisos por rol: `ADMINISTRATOR` gestiona datos y agenda global; `SECRETARIA` solo agenda global; `DOCTOR` solo agenda propia presente/futura.
-- [ ] **(Vulnerabilidad Crítica)** Sustituir contraseñas en texto plano por `password_hash` / `password_verify`.
-- [ ] **(Vulnerabilidad Crítica)** Agregar proteccion anti-CSRF para todas las acciones autenticadas que modifican estado (`POST`, `DELETE`).
-- [x] Mover datos simulados de paginas publicas clave a una fuente compartida temporal administrable.
-- [x] Definir esquema de base de datos: usuarios, roles, doctores, especialidades, horarios, pacientes, citas y estados.
+## Modulos Y Responsabilidades
+
+- `index.php`: shell de home publica. Carga clinic settings en PHP y luego hidrata contenido desde `/clinica/api/public/?resource=home`.
+- `public/shared/header/`: header fijo, navegacion principal, CTA de reserva y menu movil.
+- `public/shared/footer/`: footer dinamico con datos de clinica, contacto y redes.
+- `pages/specialties/`: catalogo de especialidades con busqueda y enlace a reserva por `?specialty=`.
+- `pages/doctors/`: catalogo de doctores con filtros por nombre, especialidad, idioma y disponibilidad de hoy.
+- `pages/reservations/`: stepper de reserva con preseleccion por `?specialty=`, `?especialidad=` y `?doctor_id=`.
+- `pages/login/`: login standalone con CSRF, feedback visual, recordar usuario y redireccion segura.
+- `pages/dashboard/`: dashboard protegido por rol, KPIs, filtros, busqueda, paginacion y cambio de estado.
+- `pages/gestion/`: CRUD administrativo para clinica, resenas, doctores, especialidades, usuarios, servicios y horarios.
+
+## Backend Y API
+
+### `api/db.php`
+
+- Lee credenciales desde `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`.
+- Mantiene fallback local: `localhost`, `clinica_base`, `root`, password vacio.
+- Usa PDO singleton con `utf8mb4`, excepciones y fetch asociativo.
+
+Estado: funcional, pero configuracion por entorno queda parcial porque no hay loader `.env` y los fallbacks siguen hardcodeados.
+
+### `api/data.php`
+
+Centraliza:
+
+- Inicio de sesion y cookies.
+- CSRF token/cookie y validacion de token.
+- Helpers de roles y permisos.
+- Helpers de agenda y horarios.
+- Transformacion de datos publicos.
+- Lecturas runtime desde BD.
+- Datos seed fallback para `api/seed.php`.
+- Auditoria basica.
+- Proteccion simple contra fuerza bruta en login por sesion.
+
+Observaciones:
+
+- `clinica_current_user()` puede iniciar sesion directamente con `session_start()` si no esta activa; en la mayoria de paginas se llama primero a `clinica_ensure_session_started()`, pero Gestion arranca sesion manualmente antes del helper central.
+- La proteccion de fuerza bruta vive en `$_SESSION`; no es persistente por IP, usuario o base de datos.
+- `api/csrf.php` existe vacio y parece archivo huerfano.
+
+### `api/general/index.php`
+
+Acciones:
+
+- `GET action=session`
+- `POST action=login`
+- `POST action=logout`
+- `POST action=create_appointment`
+
+Estado:
+
+- Login usa `password_verify()`.
+- Login exitoso regenera session ID y registra auditoria.
+- Citas se insertan en `patients` y `appointments`.
+- Valida fecha futura, formato de fecha/hora, email, telefono, relacion doctor-especialidad, horario activo y conflictos.
+- CSRF protege los POST, incluido login aunque el comentario dice "except login".
+
+Gaps:
+
+- No hay recordatorios email/WhatsApp.
+- El autocompletado/perfil de paciente no existe en UI, aunque backend reutiliza paciente por email.
+- La validacion de conflicto con buffer puede fallar si una cita existente larga cubre por completo la ventana calculada del nuevo horario.
+
+### `api/dashboard/index.php`
+
+Funciones:
+
+- Requiere `ADMINISTRATOR`, `SECRETARIA` o `DOCTOR`.
+- GET con filtros por doctor, rango de fecha, fecha exacta, estado, busqueda, pagina y `per_page`.
+- Devuelve `summary`, `pagination`, `appointments`, `doctors`, `filters`, `user`.
+- POST actualiza estado de cita y escribe `appointment_status_history`.
+
+Estado:
+
+- Paginacion server-side implementada.
+- Filtros de estado y busqueda viven en backend.
+- Doctores no pueden consultar citas pasadas ni actualizar citas de otros doctores.
+- Citas cerradas no pueden cambiarse nuevamente.
+- CSRF con token invalido devuelve 403.
+
+Gaps:
+
+- UI no expone flujo real de cancelacion/reprogramacion.
+- Estado `cancelada` existe en backend, pero dashboard no tiene KPI/filtro/copy visual especifico.
+- Motivo de cambio queda como default si la UI no lo solicita.
+
+### `api/gestion/index.php`
+
+Funciones:
+
+- Requiere `ADMINISTRATOR`.
+- GET recursos: `clinic`, `comments`, `doctors`, `specialties`, `users`, `services`, `schedules`.
+- POST JSON: save/delete.
+- DELETE por query `id`.
+- POST multipart: upload de imagen.
+
+Estado:
+
+- CRUD migrado a SQL.
+- Usuarios nuevos se guardan con `password_hash()`.
+- Relaciones requeridas se validan para doctor/especialidad/usuario doctor.
+- Eliminar aplica soft delete en la mayoria de recursos.
+- No permite eliminar el usuario actual ni dejar el sistema sin administradores activos.
+- Upload valida MIME, tamano, `getimagesize()` para raster y bloquea `<script` en SVG.
+
+Gaps:
+
+- `users.js` muestra campo `label`, pero backend no lo persiste.
+- `deleteRecord()` usa `window.confirm()`, no un modal accesible ni consistente con el resto del sistema.
+- El modal de Gestion devuelve foco, pero no tiene focus trap completo.
+- SVG permitido necesita una sanitizacion mas robusta que solo bloquear `<script`.
+- No existe pantalla para consultar `audit_logs`.
+
+### `api/public/index.php`
+
+Entrega informacion publica de home desde BD: clinic, about cards, stats, services, specialties, doctors y comments.
+
+Gap SEO: el contenido principal de home se hidrata por JS. El HTML inicial tiene placeholders, por lo que SEO y no-JS quedan parcialmente cubiertos.
+
+## Base De Datos
+
+Tablas detectadas en la BD local:
+
+- `clinics`: 1 registro
+- `specialties`: 8
+- `doctors`: 8
+- `users`: 4
+- `services`: 6
+- `testimonials`: 4
+- `doctor_schedules`: 23
+- `patients`: 12
+- `appointments`: 12
+- `appointment_status_history`: 1
+- `audit_logs`: 11
+
+### Estado Del Esquema
+
+Resuelto:
+
+- Tablas base existen.
+- Indices principales existen en agenda, usuarios y horarios.
+- `appointments` tiene `slot_minutes`.
+- `appointment_status_history` existe.
+- `audit_logs` existe.
+- `users.username` es unico.
+- Seed idempotente no elimina datos existentes.
+
+Pendiente:
+
+- No hay migraciones versionadas reales.
+- No hay tabla de control de migraciones.
+- No hay claves foraneas declaradas; hay indices con nombres de FK, pero sin constraints reales.
+- No hay backup/export automatizado antes de migraciones.
+
+## Credenciales Y Sesiones
+
+Credencial verificada en BD local:
+
+- `admin` / `password123`: OK
+
+Credenciales del seed/documentacion que no verifican contra la BD actual:
+
+- `secretaria` / `secretaria123`: NO
+- `dr.herrera` / `doctor123`: NO
+- `dr.vargas` / `doctor123`: NO
+
+Impacto:
+
+- El flujo admin se puede validar.
+- Los flujos reales de secretaria/doctor no se pueden validar manualmente con las credenciales documentadas hasta resetear o documentar hashes vigentes.
+
+## Estado De Pendientes
+
+### P0 - Backend Y Base De Datos
+
+| Pendiente | Estado | Evidencia / Nota |
+| --- | --- | --- |
+| Elegir motor BD para XAMPP | Resuelto | MySQL/MariaDB via PDO. |
+| Variables de entorno/configuracion | Parcial | `api/db.php` lee env vars, pero no hay `.env` loader y quedan fallbacks. |
+| PDO centralizado | Parcial | PDO singleton existe; no hay helper transaccional comun. |
+| Migraciones versionadas | Parcial | `api/seed.php` crea/ajusta esquema, pero no versiona migraciones. |
+| Claves foraneas | Pendiente | Esquema actual define indices, no constraints FK. |
+| Indices de agenda y usuarios | Resuelto | Indices y unique username presentes. |
+| Seed idempotente desde JSON | Resuelto | `api/seed.php` inserta sin borrar datos existentes. |
+| Sustituir JSON runtime por BD | Resuelto | Runtime consulta BD; JSON queda para seed/fallback. |
+| Mantener contratos JSON | Resuelto | Frontend consume mismas rutas principales. |
+| Persistir reservas en BD | Resuelto | `create_appointment` inserta paciente/cita. |
+| Validar conflictos de horario | Parcial | Valida reglas, cupos y buffer; hay caso borde con citas largas. |
+| Password hashing | Resuelto | `password_hash` / `password_verify`. |
+| CSRF | Resuelto | Token invalido en dashboard POST devuelve 403. |
+| Middleware comun | Parcial | Helpers centrales existen, pero no middleware formal separado. |
+| Audit logs | Parcial | Se registran eventos clave, sin visor ni politica de retencion. |
+| Validaciones backend | Parcial | Existen validaciones, faltan URL/privacidad/SVG mas robustos. |
+| Politica de borrado | Parcial | Soft delete en Gestion, no politica completa para citas/pacientes. |
+| Backups/exportacion | Pendiente | No implementado. |
+| Pruebas automatizadas | Pendiente | No hay suite automatizada. |
+
+### P0 - Seguridad Antes De Produccion
+
+| Pendiente | Estado | Nota |
+| --- | --- | --- |
+| Permisos por rol | Resuelto | Helpers por rol y endpoints protegidos. |
+| Contrasenas en texto plano | Resuelto | Hashing en seed/gestion/login. |
+| CSRF en acciones autenticadas | Resuelto | Dashboard/Gestion/General protegidos. |
+| Fuente compartida administrable | Resuelto | BD + gestion admin. |
+| Esquema BD completo | Parcial | Tablas existen; FKs reales pendientes. |
 
 ### P1 - Funcionalidad
 
-- [ ] Convertir la cita creada desde reserva en persistencia real cuando exista base de datos.
-- [ ] Agregar cancelacion/reprogramacion de citas si el flujo operativo lo requiere.
-- [ ] Definir si el backend real conservara los mismos rangos de fecha por rol o agregara reglas por sede/turno.
-- [x] **(Bug)** Corregir error de codificacion en la etiqueta de turno (`MaÃ±ana` por `Mañana`) en `api/data.php`.
-- [x] **(Bug)** Implementar logica de fallback para el logo: mostrar imagen si existe; si no, mostrar texto (`logo_label`), pero no ambos.
-- [x] Agregar busqueda y filtros por fecha en dashboard.
-- [x] Agregar paginacion server-side para la lista de citas del dashboard.
-- [x] Mover filtros de estado y busqueda de citas al endpoint del dashboard.
-- [x] Normalizar nombres de doctores/especialidades desde una sola fuente administrable.
-- [x] Generar cupos de reservas desde horarios administrados con hora inicio, hora fin y duracion.
+| Pendiente | Estado | Nota |
+| --- | --- | --- |
+| Cita desde reserva persistida | Resuelto | Inserta en BD. |
+| Cancelacion/reprogramacion | Pendiente | Estado cancelada existe, flujo UI no. |
+| Reglas por sede/turno | Parcial | Hay rol y horario, no sede/turno. |
+| Codificacion `Mañana` | Resuelto | Funcion devuelve `Mañana`. |
+| Fallback logo | Parcial | Helper existe, pero header/footer imprimen label adicional. |
+| Filtros por fecha en dashboard | Resuelto | `date_scope` y `date`. |
+| Paginacion dashboard | Resuelto | `pagination` en API y UI. |
+| Filtros estado/busqueda backend | Resuelto | `status` y `search` en API. |
+| Nombres desde fuente administrable | Resuelto | Public pages leen desde BD. |
+| Cupos desde horarios administrados | Resuelto | `horarios_detallados` y reglas por fecha/dia. |
 
-### P2 - UX, Accesibilidad y Responsive
+### P2 - UX, Accesibilidad Y Responsive
 
-- [x] Validar visualmente gestion y flujos clave con navegador headless en movil y escritorio.
-- [ ] Revisar navegacion por teclado en stepper de reservas, dashboard y menu movil.
-- [x] **(Confirmado)** Reemplazar `alert()` de reservas por un mensaje accesible dentro del formulario es una tarea pendiente de baja prioridad.
-- [ ] Revisar contraste de badges y botones secundarios.
-- [ ] Agregar soporte `prefers-reduced-motion`.
-- [x] Reemplazar tabla del dashboard por tarjetas responsive sin scroll horizontal.
-- [x] Reducir escala visual del dashboard a tamanos normales en textos, tarjetas, botones y modal.
-- [x] Refinar paleta del dashboard para una lectura mas sobria y operativa.
-- [x] Mejorar acceso visual a Gestion para administradores.
+| Pendiente | Estado | Nota |
+| --- | --- | --- |
+| Validacion visual desktop/mobile | Resuelto en auditoria | Capturas headless realizadas. |
+| Navegacion por teclado | Pendiente | Tarjetas del stepper son `div` clicables sin rol/teclado. |
+| Reemplazar `alert()` reservas | Resuelto | Mensaje integrado en UI. |
+| Contraste badges/botones | Parcial | Mejorado, falta medicion WCAG. |
+| `prefers-reduced-motion` | Parcial | CSS global lo incluye; login standalone no. |
+| Dashboard sin tabla horizontal | Resuelto | Usa tarjetas. |
+| Escala visual dashboard | Resuelto | UI compacta. |
+| Paleta dashboard sobria | Resuelto | Paleta operativa. |
+| Acceso visual a Gestion | Resuelto | Link visible para admin. |
 
 ### P2 - Rendimiento/UI
 
-- [x] **(Rendimiento)** Optimizar `public/assets/doctora_avatar.png` (tamano actual ~791.7 KB).
-- [ ] Revisar calidad de `banner.jpg` para hero desktop.
-- [ ] Reducir duplicacion de estilos entre filtros de especialidades, doctores, reservas y dashboard.
-- [x] **(Deuda Tecnica)** Centralizar funciones de utilidad JavaScript (ej. `debounce`) para evitar duplicacion.
-- [x] **(Deuda Tecnica)** Refactorizar la logica de renderizado del logo en PHP para evitar duplicacion entre header y footer.
-- [ ] Decidir si login se integra al design system global o permanece standalone.
-
-## Iteracion 2026-08-07: Migracion a Base de Datos MySQL
-
-Se ha completado la migracion del backend desde un sistema basado en archivos JSON y sesiones a una arquitectura robusta con base de datos MySQL, siguiendo la propuesta documentada.
-
-### Cambios Implementados
-
-- **Capa de Base de Datos:**
-  - Se creo `api/db.php` para gestionar una conexion PDO singleton a la base de datos MySQL.
-  - Se creo un script `api/seed.php` para crear el esquema de tablas y poblarlo con los datos existentes de `gestion-data.json`.
-- **Refactorizacion del Backend:**
-  - Se refactorizo `api/data.php` para que todas las funciones de lectura (`clinica_get_doctors`, `clinica_get_specialties`, etc.) ahora consulten la base de datos en lugar de archivos JSON.
-  - Se refactorizo `api/gestion/index.php` para que las operaciones de guardado y eliminacion (CRUD) se realicen mediante sentencias `INSERT`, `UPDATE` y `DELETE` en la base de datos.
-  - Se refactorizo `api/dashboard/index.php` para que la obtencion y filtrado de citas se realice con consultas SQL, eliminando la dependencia de `$_SESSION`.
-  - Se refactorizo `api/general/index.php` para que el login verifique las credenciales contra la tabla `users` usando `password_verify()` y la creacion de citas inserte registros en las tablas `patients` y `appointments`.
+| Pendiente | Estado | Nota |
+| --- | --- | --- |
+| Optimizar `doctora_avatar.png` | Resuelto | Archivo actual aprox. 65 KB. |
+| Revisar `banner.jpg` | Parcial | Pesa poco, pero visualmente se repite/corta en hero. |
+| Reducir duplicacion de estilos | Pendiente | Filtros y botones tienen variantes por modulo. |
+| Centralizar `debounce` | Parcial | `ClinicaUtils` existe; dashboard tiene debounce local. |
+| Centralizar logo PHP | Parcial | Helper existe; markup final duplica etiqueta textual. |
+| Decidir login dentro/fuera del design system | Pendiente | Standalone y con problemas mobile. |
 
 ### P3 - Pruebas
 
-- [ ] Agregar pruebas automatizadas de smoke para rutas publicas y APIs.
-- [ ] Validar consola limpia con navegador real.
-- [ ] Documentar checklist manual de flujos: reserva, login doctor, login secretaria, cambio de estados y logout.
+| Pendiente | Estado | Nota |
+| --- | --- | --- |
+| Smoke automatizado | Pendiente | Se ejecuto manualmente, no hay suite. |
+| Consola limpia navegador real | Parcial | Capturas Chrome OK; no se capturo consola. |
+| Checklist manual documentado | Resuelto | Incluido en esta documentacion. |
 
-## Directivas de Trabajo Futuras
+## Auditoria UX/UI Y Responsive
 
-- Mantener rutas coherentes con `/clinica/` mientras el proyecto viva en XAMPP.
-- Reutilizar `public/css/style.css`, `public/css/components.css`, header y footer antes de crear estilos nuevos.
-- Mantener la demo funcional aunque el backend siga simulado.
-- No conectar base de datos sin cerrar primero contratos de datos y roles.
-- Verificar siempre: `php -l`, `node --check`, smoke HTTP y ausencia de warnings PHP.
+### Hallazgos Criticos Mobile
+
+1. Home mobile 390x844:
+   - Header corta el CTA `Agendar Cita`.
+   - Hero corta el titulo hacia la derecha.
+   - `overflow-x: hidden` oculta el problema en lugar de resolverlo.
+
+2. Reservas mobile 390x844 con `?doctor_id=doc3`:
+   - Header vuelve a cortar CTA.
+   - Stepper/progress se extiende hacia la derecha y corta el paso 4.
+   - Calendario corta la columna derecha; domingo aparece parcialmente fuera del viewport.
+   - Es un problema alto porque afecta seleccion de fecha/hora.
+
+3. Login mobile 390x844:
+   - Tagline y panel/formulario se cortan a la derecha.
+   - Boton `Ingresar` se extiende fuera del viewport.
+   - `body { overflow: hidden; }` puede impedir scroll con teclado movil o pantallas bajas.
+
+### Hallazgos Desktop
+
+1. Home desktop:
+   - Render correcto y no se detecto pantalla en blanco.
+   - Hero ocupa todo el primer viewport; no deja pista visual de contenido siguiente.
+   - Logo queda como icono sin nombre visible en header cuando hay imagen/SVG.
+
+2. Doctores desktop 1366x900:
+   - Filtro `Todas las especialidades` se trunca.
+   - En tarjetas, textos como experiencia/formacion se cortan en columnas estrechas.
+   - El grid visualmente carga, pero la densidad de informacion necesita ajuste.
+
+### Accesibilidad
+
+Resuelto o positivo:
+
+- Foco visible global existe.
+- Muchos botones tienen `aria-label`.
+- Login tiene `aria-pressed`, `aria-busy` y error con `role=alert`.
+- Dashboard usa `aria-live`, modales con `aria-modal` y focus trap.
+- Gestion devuelve foco al cerrar modal.
+
+Pendiente:
+
+- Tarjetas seleccionables de reservas son `div` con click; deberian ser `button` o tener rol, `tabindex`, Enter/Espacio y `aria-pressed`.
+- Gestion modal no atrapa Tab dentro del dialogo.
+- Gestion usa `window.confirm()` para eliminar.
+- Menu movil no cierra con Escape ni declara estado modal/inert del fondo.
+- Progress stepper de reservas no comunica paso actual a tecnologias asistivas.
+- Hay iconos SVG sin `aria-hidden` en algunos filtros.
+
+### Consistencia Visual
+
+Fortalezas:
+
+- Dashboard y Gestion ya usan lenguaje sobrio, compacto y operativo.
+- Tarjetas del dashboard evitan tabla horizontal.
+- Home, doctores, especialidades y reservas comparten tokens globales.
+
+Inconsistencias:
+
+- Login usa una estetica standalone con radios/paleta/motion distintos.
+- Header/footer imprimen helper de logo mas label textual.
+- Filtros de doctores, especialidades, reservas, dashboard y gestion repiten variantes.
+- Se usan cards muy visuales en publico y UI mas densa en operacion; esta diferencia es razonable, pero conviene formalizarla como design system.
+
+### Mejoras UX Recomendadas
+
+Prioridad alta:
+
+- Corregir overflow real en mobile de header, hero, reservas y login.
+- Convertir tarjetas del stepper de reservas a controles accesibles.
+- Quitar altura fija JS riesgosa del formulario de reserva o robustecerla con ResizeObserver.
+- Permitir scroll en login mobile y revisar teclado virtual.
+- Arreglar credenciales demo para probar roles.
+
+Prioridad media:
+
+- Modal accesible para eliminar en Gestion.
+- Focus trap en Gestion.
+- Exponer campo/motivo para cambio de estado en dashboard.
+- Agregar `cancelada` a KPI/filtros/copy si el estado se mantiene.
+- Unificar filtros y botones entre modulos.
+- Revisar contraste de badges con medicion WCAG.
+
+Prioridad baja:
+
+- Agregar fallback SSR o contenido minimo real en home para SEO/no-JS.
+- Documentar decisiones de login standalone vs design system global.
+- Crear vista de auditoria.
+- Agregar reportes operativos basicos.
+
+## Bugs O Inconsistencias Detectadas
+
+- Credenciales multirol documentadas no coinciden con hashes actuales.
+- `users.js` incluye campo `label`, backend no lo guarda.
+- `clinica_public_booked_slots()` excluye `rechazada`, pero no `cancelada`; la UI publica podria mostrar como ocupado un cupo cancelado.
+- `dashboard.js` tiene funciones locales no usadas (`getStatusCounts`, `buildAppointmentSearchIndex`) y un `debounce` duplicado.
+- `api/csrf.php` esta vacio.
+- `pages/gestion/_shared/page.php` llama `session_start()` antes del helper central.
+- `.form-error-message` esta definido dos veces en CSS global con objetivos distintos, lo que puede afectar mensajes inline.
+- Login mobile corta contenido por layout y `overflow: hidden`.
+- Header CTA se corta en mobile antes del breakpoint de 420 px.
+
+## Validaciones Ejecutadas
+
+### Sintaxis Y Datos
+
+- `php -l` en 24 archivos PHP: OK.
+- `node --check` en 17 archivos JS: OK.
+- Parse de `api/storage/gestion-data.json`: OK.
+- Conexion a BD por `clinica_get_db()`: OK.
+
+### Smoke HTTP
+
+Servidor temporal usado:
+
+- `http://127.0.0.1:8797/clinica/`
+
+Resultados:
+
+- `/`: 200
+- `/pages/login/`: 200
+- `/pages/specialties/`: 200
+- `/pages/doctors/`: 200
+- `/pages/reservations/?specialty=neurologia`: 200
+- `/pages/reservations/?doctor_id=doc3`: 200
+- `/pages/dashboard/` sin sesion: 302
+- Login admin: 200, redirect dashboard
+- Dashboard autenticado admin: 200
+- `api/dashboard/?date_scope=all&per_page=6`: 200 con 12 citas, paginacion 1/2
+- `api/gestion/?resource=clinic` con admin: 200
+- Dashboard POST con CSRF invalido: 403
+
+Nota: durante una prueba se produjo una mutacion accidental de la cita 1 por reutilizacion de header CSRF en `WebRequestSession`. Se revirtio: cita 1 volvio a `pendiente`, `appointment_status_history` volvio a 1 fila y `audit_logs` volvio a 11 filas.
+
+### Capturas Headless
+
+Chrome headless genero capturas:
+
+- Home desktop 1366x900
+- Home mobile 390x844
+- Reservas mobile 390x844
+- Doctores desktop 1366x900
+- Login mobile 390x844
+
+Resultado visual: no hay pantallas en blanco, pero hay cortes responsive en mobile y truncamientos en doctores desktop.
+
+## Checklist Manual Recomendado
+
+Antes de declarar estable una iteracion futura:
+
+1. Ejecutar `php api/seed.php` en BD limpia.
+2. Verificar login admin, secretaria y doctor con credenciales vigentes.
+3. Probar dashboard por rol: filtros de fecha, estado, busqueda, paginacion.
+4. Probar reserva desde home, desde especialidad y desde doctor.
+5. Probar conflicto de cupo reservado.
+6. Probar Gestion: crear/editar/desactivar doctor, especialidad, servicio, usuario y horario.
+7. Probar subida JPG/PNG/WEBP/SVG segura.
+8. Probar mobile 390 px y 430 px en home, login, reservas, dashboard y gestion.
+9. Probar teclado: Tab, Shift+Tab, Enter, Espacio, Escape.
+10. Revisar consola del navegador.
+11. Revisar que `audit_logs` registre acciones sensibles.
+12. Revisar que no existan cambios no deseados en datos despues de pruebas.
+
+## Recomendacion De Orden
+
+1. Corregir responsive mobile critico.
+2. Resetear/documentar credenciales multirol.
+3. Cerrar accesibilidad de reservas y Gestion.
+4. Agregar FK/migraciones versionadas/backups.
+5. Automatizar smoke API y browser.
+6. Completar cancelacion/reprogramacion.
+7. Unificar design system y limpiar duplicaciones.
+
+## Directivas Futuras
+
+- Mantener `/clinica/` mientras el proyecto viva en XAMPP.
+- No cambiar contratos JSON sin revisar consumidores.
+- No usar `overflow-x: hidden` como sustituto de responsive real.
+- Reutilizar helpers existentes antes de crear nuevos.
+- Documentar cualquier cambio de BD junto con impacto y forma de revertir.
+- Validar siempre PHP, JS, smoke HTTP y responsive mobile.
