@@ -17,10 +17,10 @@ $can_see_all = clinica_can_see_all_appointments($user['role']);
 $can_manage = clinica_can_access_management((string) ($user['role'] ?? ''));
 $default_date_scope = $can_see_all ? 'all' : 'future';
 $dashboard_subtitle = match ($user['role']) {
-  'ADMINISTRATOR' => 'Administracion: acceso a gestion y a todas las citas presentes, pasadas y futuras.',
-  'SECRETARIA' => 'Secretaria: agenda completa de todos los doctores en fechas pasadas, presentes y futuras.',
-  'DOCTOR' => 'Doctor: solo sus citas presentes y futuras, protegidas por su perfil medico.',
-  default => 'Panel de citas programadas segun los permisos del rol.',
+  'ADMINISTRATOR' => 'Vista global para coordinar agenda, equipo y operacion clinica.',
+  'SECRETARIA' => 'Agenda global para coordinar doctores, pacientes y estados de cita.',
+  'DOCTOR' => 'Tus citas presentes y proximas, enfocadas en atencion.',
+  default => 'Panel de citas segun los permisos del rol.',
 };
 $name_parts = preg_split('/\s+/', trim($user['name']));
 $display_name = $name_parts[0] ?? $user['name'];
@@ -55,7 +55,7 @@ include __DIR__ . '/../../public/shared/header/header.php';
             </span>
             <span>
               <strong>Gestion</strong>
-              <small>Contenido, horarios y usuarios</small>
+              <small>Equipo, horarios y contenido</small>
             </span>
           </a>
         <?php endif; ?>
@@ -69,7 +69,7 @@ include __DIR__ . '/../../public/shared/header/header.php';
           <div class="kpi-icon-wrapper total">
             <div class="kpi-icon total"></div>
           </div>
-          <div class="kpi-content"><span class="kpi-value">0</span><span class="kpi-label">Citas Totales</span></div>
+          <div class="kpi-content"><span class="kpi-value">0</span><span class="kpi-label">Total</span></div>
         </button>
         <button type="button" class="kpi-card" id="kpi-pending" data-kpi-filter="pendiente" aria-label="Ver citas pendientes" aria-pressed="false">
           <div class="kpi-icon-wrapper pending">
@@ -87,7 +87,7 @@ include __DIR__ . '/../../public/shared/header/header.php';
           <div class="kpi-icon-wrapper absent">
             <div class="kpi-icon absent"></div>
           </div>
-          <div class="kpi-content"><span class="kpi-value">0</span><span class="kpi-label">No Presentado</span></div>
+          <div class="kpi-content"><span class="kpi-value">0</span><span class="kpi-label">Ausencias</span></div>
         </button>
         <button type="button" class="kpi-card" id="kpi-rejected" data-kpi-filter="rechazada" aria-label="Ver citas rechazadas" aria-pressed="false">
           <div class="kpi-icon-wrapper rejected">
@@ -120,7 +120,7 @@ include __DIR__ . '/../../public/shared/header/header.php';
       <div class="appointments-panel-header">
         <div>
           <h2 id="appointments-title">Citas</h2>
-          <p class="panel-subtitle">Agenda operativa con acciones directas de atencion.</p>
+          <p class="panel-subtitle">Revise, filtre y cierre citas sin perder contexto.</p>
         </div>
         <div class="dashboard-tools">
           <?php if ($can_see_all): ?>
@@ -180,7 +180,7 @@ include __DIR__ . '/../../public/shared/header/header.php';
           <span class="filter-count" data-filter-count="atendida">0</span>
         </button>
         <button type="button" class="btn btn-sm btn-filter" data-filter="no-presentado" aria-pressed="false">
-          <span class="filter-label">No Presentado</span>
+          <span class="filter-label">Ausencias</span>
           <span class="filter-count" data-filter-count="no-presentado">0</span>
         </button>
         <button type="button" class="btn btn-sm btn-filter" data-filter="rechazada" aria-pressed="false">

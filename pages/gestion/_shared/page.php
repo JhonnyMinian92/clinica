@@ -22,14 +22,23 @@ $gestion_subtitle = $gestion_subtitle ?? 'Administre la informacion operativa de
 $gestion_resource = $gestion_resource ?? '';
 $gestion_icon = $gestion_icon ?? 'grid';
 $gestion_is_singleton = $gestion_resource === 'clinic';
+$gestion_new_labels = [
+  'comments' => 'Nueva resena',
+  'doctors' => 'Nuevo doctor',
+  'specialties' => 'Nueva especialidad',
+  'users' => 'Nuevo usuario',
+  'services' => 'Nuevo servicio',
+  'schedules' => 'Nuevo horario',
+];
+$gestion_new_label = $gestion_new_labels[$gestion_resource] ?? 'Nuevo registro';
 $gestion_actions = [
-  ['href' => '/clinica/pages/gestion/clinic/', 'label' => 'Clinica', 'resource' => 'clinic'],
-  ['href' => '/clinica/pages/gestion/comment/', 'label' => 'Resenas', 'resource' => 'comments'],
-  ['href' => '/clinica/pages/gestion/doctors/', 'label' => 'Doctores', 'resource' => 'doctors'],
-  ['href' => '/clinica/pages/gestion/specialties/', 'label' => 'Especialidades', 'resource' => 'specialties'],
-  ['href' => '/clinica/pages/gestion/users/', 'label' => 'Usuarios', 'resource' => 'users'],
-  ['href' => '/clinica/pages/gestion/services/', 'label' => 'Servicios', 'resource' => 'services'],
-  ['href' => '/clinica/pages/gestion/calendar/', 'label' => 'Horarios', 'resource' => 'schedules'],
+  ['href' => '/clinica/pages/gestion/clinic/', 'label' => 'Clinica', 'description' => 'Marca y contacto', 'resource' => 'clinic'],
+  ['href' => '/clinica/pages/gestion/calendar/', 'label' => 'Horarios', 'description' => 'Agenda medica', 'resource' => 'schedules'],
+  ['href' => '/clinica/pages/gestion/doctors/', 'label' => 'Doctores', 'description' => 'Perfiles del equipo', 'resource' => 'doctors'],
+  ['href' => '/clinica/pages/gestion/specialties/', 'label' => 'Especialidades', 'description' => 'Catalogo clinico', 'resource' => 'specialties'],
+  ['href' => '/clinica/pages/gestion/services/', 'label' => 'Servicios', 'description' => 'Home y oferta', 'resource' => 'services'],
+  ['href' => '/clinica/pages/gestion/comment/', 'label' => 'Resenas', 'description' => 'Testimonios', 'resource' => 'comments'],
+  ['href' => '/clinica/pages/gestion/users/', 'label' => 'Usuarios', 'description' => 'Roles y accesos', 'resource' => 'users'],
 ];
 
 include __DIR__ . '/../../../public/shared/header/header.php';
@@ -48,8 +57,11 @@ include __DIR__ . '/../../../public/shared/header/header.php';
             <a class="gestion-nav-link <?php echo $action['resource'] === $gestion_resource ? 'is-active' : ''; ?>"
               href="<?php echo htmlspecialchars($action['href']); ?>"
               <?php echo $action['resource'] === $gestion_resource ? 'aria-current="page"' : ''; ?>>
-              <span aria-hidden="true"></span>
-              <?php echo htmlspecialchars($action['label']); ?>
+              <span class="gestion-nav-dot" aria-hidden="true"></span>
+              <span class="gestion-nav-copy">
+                <strong><?php echo htmlspecialchars($action['label']); ?></strong>
+                <small><?php echo htmlspecialchars($action['description']); ?></small>
+              </span>
             </a>
           <?php endforeach; ?>
         </nav>
@@ -75,7 +87,7 @@ include __DIR__ . '/../../../public/shared/header/header.php';
             <?php if ($gestion_is_singleton): ?>
               <button type="button" class="btn btn-primary" id="gestion-singleton-edit-btn">Editar datos</button>
             <?php else: ?>
-              <button type="button" class="btn btn-primary" id="gestion-new-btn">Nuevo</button>
+              <button type="button" class="btn btn-primary" id="gestion-new-btn"><?php echo htmlspecialchars($gestion_new_label); ?></button>
             <?php endif; ?>
           </div>
         </header>
@@ -96,7 +108,7 @@ include __DIR__ . '/../../../public/shared/header/header.php';
               </div>
 
               <div class="gestion-filters">
-                <input type="search" id="gestion-search" class="gestion-search" placeholder="Buscar..." aria-label="Buscar registros">
+                <input type="search" id="gestion-search" class="gestion-search" placeholder="Buscar en <?php echo htmlspecialchars(strtolower($gestion_title)); ?>..." aria-label="Buscar registros" autocomplete="off">
                 <select id="gestion-status-filter" class="gestion-select" aria-label="Filtrar por estado">
                   <option value="all">Todos</option>
                   <option value="active">Activos</option>

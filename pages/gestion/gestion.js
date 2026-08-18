@@ -315,6 +315,7 @@
       dom.scheduleSpecialty.setAttribute('aria-label', 'Filtrar horarios por especialidad');
       const handleSpecialtyFilter = () => {
         populateScheduleDoctorOptions(state, dom);
+        applyScheduleMobileDefaultDoctor(dom);
         renderList(config, state, dom);
       };
       dom.scheduleSpecialty.addEventListener('input', handleSpecialtyFilter);
@@ -327,7 +328,10 @@
       dom.scheduleDoctor.id = 'gestion-schedule-doctor-filter';
       dom.scheduleDoctor.className = 'gestion-select';
       dom.scheduleDoctor.setAttribute('aria-label', 'Filtrar horarios por doctor');
-      const handleDoctorFilter = () => renderList(config, state, dom);
+      const handleDoctorFilter = () => {
+        dom.scheduleDoctor.dataset.userSelected = 'true';
+        renderList(config, state, dom);
+      };
       dom.scheduleDoctor.addEventListener('input', handleDoctorFilter);
       dom.scheduleDoctor.addEventListener('change', handleDoctorFilter);
       dom.filters.appendChild(dom.scheduleDoctor);
@@ -404,6 +408,7 @@
 
     populateScheduleSpecialtyOptions(state, dom);
     populateScheduleDoctorOptions(state, dom);
+    applyScheduleMobileDefaultDoctor(dom);
   }
 
   function populateScheduleSpecialtyOptions(state, dom) {
@@ -428,6 +433,17 @@
       ${doctors.map((doctor) => `<option value="${escapeHtml(doctor.id)}">${escapeHtml(doctor.name)}</option>`).join('')}
     `;
     dom.scheduleDoctor.value = doctors.some((doctor) => doctor.id === current) ? current : '';
+  }
+
+  function applyScheduleMobileDefaultDoctor(dom) {
+    if (!dom.scheduleDoctor || dom.scheduleDoctor.dataset.userSelected === 'true') return;
+    if (!window.matchMedia('(max-width: 720px)').matches) return;
+    if (dom.scheduleDoctor.value !== '') return;
+
+    const firstDoctorOption = Array.from(dom.scheduleDoctor.options).find((option) => option.value !== '');
+    if (firstDoctorOption) {
+      dom.scheduleDoctor.value = firstDoctorOption.value;
+    }
   }
 
   function renderScheduleBoard(config, state, dom, records) {
