@@ -123,8 +123,10 @@ if ($method === 'GET') {
   $pageRecords = $dataStmt->fetchAll();
 
   $appointments = array_map(
-    static fn(array $appointment): array => clinica_transform_appointment($appointment, $user),
-    $pageRecords,
+    static function (array $appointment) use ($user): array {
+      return clinica_transform_appointment($appointment, $user);
+    },
+    $pageRecords
   );
   $nextPending = null;
   foreach ($summaryRecords as $appointment) {

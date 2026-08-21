@@ -6,8 +6,8 @@ clinica_ensure_session_started();
 $user = clinica_current_user();
 
 if (!is_array($user) || !in_array($user['role'] ?? '', clinica_dashboard_roles(), true)) {
-  $redirect = urlencode('/clinica/pages/dashboard/');
-  header("Location: /clinica/pages/login/?redirect={$redirect}");
+  $redirect = urlencode(clinica_url('pages/dashboard/'));
+  header('Location: ' . clinica_url("pages/login/?redirect={$redirect}"));
   exit();
 }
 
@@ -16,12 +16,20 @@ $page_specific_js = 'dashboard.js';
 $can_see_all = clinica_can_see_all_appointments($user['role']);
 $can_manage = clinica_can_access_management((string) ($user['role'] ?? ''));
 $default_date_scope = $can_see_all ? 'all' : 'future';
-$dashboard_subtitle = match ($user['role']) {
-  'ADMINISTRATOR' => 'Vista global para coordinar agenda, equipo y operacion clinica.',
-  'SECRETARIA' => 'Agenda global para coordinar doctores, pacientes y estados de cita.',
-  'DOCTOR' => 'Tus citas presentes y proximas, enfocadas en atencion.',
-  default => 'Panel de citas segun los permisos del rol.',
-};
+switch ($user['role']) {
+  case 'ADMINISTRATOR':
+    $dashboard_subtitle = 'Vista global para coordinar agenda, equipo y operacion clinica.';
+    break;
+  case 'SECRETARIA':
+    $dashboard_subtitle = 'Agenda global para coordinar doctores, pacientes y estados de cita.';
+    break;
+  case 'DOCTOR':
+    $dashboard_subtitle = 'Tus citas presentes y proximas, enfocadas en atencion.';
+    break;
+  default:
+    $dashboard_subtitle = 'Panel de citas segun los permisos del rol.';
+    break;
+}
 $name_parts = preg_split('/\s+/', trim($user['name']));
 $display_name = $name_parts[0] ?? $user['name'];
 $role_label = $user['label'] ?? $user['role'];
@@ -40,7 +48,7 @@ include __DIR__ . '/../../public/shared/header/header.php';
       </div>
       <div class="dashboard-header-actions">
         <?php if ($can_manage): ?>
-          <a href="/clinica/pages/gestion/" class="dashboard-management-link" aria-label="Abrir gestion administrativa">
+          <a href="<?php echo htmlspecialchars(clinica_url('pages/gestion/')); ?>" class="dashboard-management-link" aria-label="Abrir gestion administrativa">
             <span class="management-link-icon" aria-hidden="true">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">

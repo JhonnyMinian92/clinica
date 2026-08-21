@@ -12,6 +12,11 @@
 
   const dom = {};
 
+  function appUrl(path) {
+    const basePath = String(window.CLINICA_BASE_PATH || '').replace(/\/$/, '');
+    return `${basePath}/${String(path || '').replace(/^\/+/, '')}`;
+  }
+
   async function init() {
     refreshDomReferences();
     await hydrateHomeFromApi();
@@ -38,7 +43,7 @@
     const homeRoot = document.querySelector('[data-home-api]');
     if (!homeRoot) return;
 
-    const endpoint = homeRoot.dataset.homeApi || '/clinica/api/public/?resource=home';
+    const endpoint = homeRoot.dataset.homeApi || appUrl('api/public/?resource=home');
 
     try {
       const response = await fetch(endpoint, {

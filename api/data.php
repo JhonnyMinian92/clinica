@@ -21,6 +21,99 @@ function clinica_is_https(): bool
   return false;
 }
 
+function clinica_apply_session_cookie_params(array $params): void
+{
+  if (PHP_VERSION_ID >= 70300) {
+    session_set_cookie_params($params);
+    return;
+  }
+
+  $path = ($params['path'] ?? '/') . '; samesite=' . ($params['samesite'] ?? 'Lax');
+  session_set_cookie_params(
+    (int) ($params['lifetime'] ?? 0),
+    $path,
+    (string) ($params['domain'] ?? ''),
+    (bool) ($params['secure'] ?? false),
+    (bool) ($params['httponly'] ?? true)
+  );
+}
+
+function clinica_set_cookie(string $name, string $value, array $options): void
+{
+  if (PHP_VERSION_ID >= 70300) {
+    setcookie($name, $value, $options);
+    return;
+  }
+
+  $path = ($options['path'] ?? '/') . '; samesite=' . ($options['samesite'] ?? 'Lax');
+  setcookie(
+    $name,
+    $value,
+    (int) ($options['expires'] ?? 0),
+    $path,
+    (string) ($options['domain'] ?? ''),
+    (bool) ($options['secure'] ?? false),
+    (bool) ($options['httponly'] ?? false)
+  );
+}
+
+function clinica_base_path(): string
+{
+  static $basePath = null;
+  if ($basePath !== null) {
+    return $basePath;
+  }
+
+  $configured = trim(clinica_env('APP_BASE_PATH', ''));
+  if ($configured !== '') {
+    $configured = '/' . trim($configured, '/');
+    $basePath = $configured === '/' ? '' : $configured;
+    return $basePath;
+  }
+
+  $scriptName = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? $_SERVER['PHP_SELF'] ?? ''));
+  $basePath = (str_starts_with($scriptName, '/clinica/') || $scriptName === '/clinica') ? '/clinica' : '';
+  return $basePath;
+}
+
+function clinica_url(string $path = ''): string
+{
+  $basePath = clinica_base_path();
+  $path = trim($path);
+
+  if ($path === '' || $path === '/') {
+    return $basePath === '' ? '/' : $basePath . '/';
+  }
+
+  return ($basePath === '' ? '' : $basePath) . '/' . ltrim($path, '/');
+}
+
+function clinica_public_path(string $path): string
+{
+  $path = trim($path);
+  if ($path === '' || preg_match('/^(https?:|data:|mailto:|tel:|#)/i', $path)) {
+    return $path;
+  }
+
+  if (str_starts_with($path, '/clinica/')) {
+    $path = substr($path, strlen('/clinica/'));
+  }
+
+  return clinica_url(ltrim($path, '/'));
+}
+
+function clinica_normalize_clinic_paths(array $clinic): array
+{
+  foreach (['hero_image', 'hero_mobile_image', 'logo_image'] as $field) {
+    $value = trim((string) ($clinic[$field] ?? ''));
+    if ($value !== '' && !str_starts_with($value, '<svg')) {
+      $clinic[$field] = clinica_public_path($value);
+    }
+  }
+
+  return $clinic;
+}
+
 function clinica_ensure_session_started(): void
 {
   if (session_status() === PHP_SESSION_ACTIVE) {
@@ -42,7 +135,7 @@ function clinica_ensure_session_started(): void
   ];
 
   // Apply session cookie params before starting session
-  session_set_cookie_params($params);
+  clinica_apply_session_cookie_params($params);
   session_start();
 
   // Ensure a CSRF token exists and provide it to JS via cookie (not HttpOnly)
@@ -65,7 +158,7 @@ function clinica_set_csrf_cookie(string $token): void
 {
   if (headers_sent()) return;
   $secure = clinica_is_https();
-  setcookie('XSRF-TOKEN', $token, [
+  clinica_set_cookie('XSRF-TOKEN', $token, [
     'expires' => time() + 60 * 60 * 24, // 1 day
     'path' => '/',
     'domain' => '',
@@ -110,88 +203,152 @@ function clinica_is_active_record(array $record): bool
   return (bool) ($record['active'] ?? true);
 }
 
+function clinica_decode_json_array($value): array
+{
+  if (is_array($value)) {
+    return $value;
+  }
+
+  $decoded = json_decode((string) $value, true);
+  return is_array($decoded) ? $decoded : [];
+}
+
+function clinica_seed_clinic_settings(): array
+{
+  $seed = clinica_read_database();
+  return is_array($seed['clinic'] ?? null) ? clinica_normalize_clinic_paths($seed['clinic']) : [];
+}
+
+function clinica_seed_collection(string $key, bool $activeOnly = false): array
+{
+  $seed = clinica_read_database();
+  $items = $seed[$key] ?? [];
+  if (!is_array($items)) {
+    return [];
+  }
+
+  $items = array_values(array_filter($items, 'is_array'));
+  if ($activeOnly) {
+    $items = array_values(array_filter($items, 'clinica_is_active_record'));
+  }
+
+  return $items;
+}
+
+function clinica_normalize_doctor_record(array $doctor): array
+{
+  $doctor['languages'] = clinica_decode_json_array($doctor['languages'] ?? []);
+  $doctor['recognitions'] = clinica_decode_json_array($doctor['recognitions'] ?? []);
+  return $doctor;
+}
+
 function clinica_get_clinic_settings(): array
 {
-  $pdo = clinica_get_db();
-  $stmt = $pdo->query("SELECT * FROM clinics ORDER BY id ASC LIMIT 1");
-  $clinic = $stmt->fetch();
+  try {
+    $pdo = clinica_get_db();
+    $stmt = $pdo->query("SELECT * FROM clinics ORDER BY id ASC LIMIT 1");
+    $clinic = $stmt->fetch();
+  } catch (Throwable $e) {
+    error_log('Clinic settings fallback: ' . $e->getMessage());
+    return clinica_seed_clinic_settings();
+  }
 
   if (!$clinic) {
     // If database has no clinic row yet, fall back to built-in seed clinic so the public site renders
-    $seed = clinica_get_seed_data();
-    return $seed['clinic'] ?? [];
+    return clinica_seed_clinic_settings();
   }
 
   // Decode JSON fields
-  $clinic['stats'] = json_decode($clinic['stats'] ?? '[]', true);
-  $clinic['about_cards'] = json_decode($clinic['about_cards'] ?? '[]', true);
+  $clinic['stats'] = clinica_decode_json_array($clinic['stats'] ?? []);
+  $clinic['about_cards'] = clinica_decode_json_array($clinic['about_cards'] ?? []);
 
-  return $clinic;
+  return clinica_normalize_clinic_paths($clinic);
 }
 
 function clinica_get_specialties(bool $activeOnly = false): array
 {
-  $pdo = clinica_get_db();
-  $sql = "SELECT * FROM specialties WHERE 1=1";
-  if ($activeOnly) {
-    $sql .= " AND active = 1";
+  try {
+    $pdo = clinica_get_db();
+    $sql = "SELECT * FROM specialties WHERE 1=1";
+    if ($activeOnly) {
+      $sql .= " AND active = 1";
+    }
+    $sql .= " ORDER BY name ASC";
+    $stmt = $pdo->query($sql);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+  } catch (Throwable $e) {
+    error_log('Specialties fallback: ' . $e->getMessage());
+    return clinica_seed_collection('specialties', $activeOnly);
   }
-  $sql .= " ORDER BY name ASC";
-  $stmt = $pdo->query($sql);
-  return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 function clinica_get_services(bool $activeOnly = false): array
 {
-  $pdo = clinica_get_db();
-  $sql = "SELECT * FROM services";
-  if ($activeOnly) {
-    $sql .= " WHERE active = 1";
+  try {
+    $pdo = clinica_get_db();
+    $sql = "SELECT * FROM services";
+    if ($activeOnly) {
+      $sql .= " WHERE active = 1";
+    }
+    $stmt = $pdo->query($sql); // No ORDER BY, assuming order is not critical or handled by frontend
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+  } catch (Throwable $e) {
+    error_log('Services fallback: ' . $e->getMessage());
+    return clinica_seed_collection('services', $activeOnly);
   }
-  $stmt = $pdo->query($sql); // No ORDER BY, assuming order is not critical or handled by frontend
-  return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 function clinica_get_comments(bool $activeOnly = false): array
 {
-  $pdo = clinica_get_db();
-  $sql = "SELECT * FROM testimonials"; // Assuming 'comments' are stored in 'testimonials' table
-  if ($activeOnly) {
-    $sql .= " WHERE active = 1";
+  try {
+    $pdo = clinica_get_db();
+    $sql = "SELECT * FROM testimonials"; // Assuming 'comments' are stored in 'testimonials' table
+    if ($activeOnly) {
+      $sql .= " WHERE active = 1";
+    }
+    $stmt = $pdo->query($sql); // No ORDER BY, assuming order is not critical or handled by frontend
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+  } catch (Throwable $e) {
+    error_log('Comments fallback: ' . $e->getMessage());
+    return clinica_seed_collection('comments', $activeOnly);
   }
-  $stmt = $pdo->query($sql); // No ORDER BY, assuming order is not critical or handled by frontend
-  return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 function clinica_get_doctors(bool $activeOnly = false): array
 {
-  $pdo = clinica_get_db();
-  $sql = "SELECT * FROM doctors WHERE 1=1";
-  if ($activeOnly) {
-    $sql .= " AND active = 1";
+  try {
+    $pdo = clinica_get_db();
+    $sql = "SELECT * FROM doctors WHERE 1=1";
+    if ($activeOnly) {
+      $sql .= " AND active = 1";
+    }
+    $sql .= " ORDER BY name ASC";
+    $stmt = $pdo->query($sql);
+    $doctors = $stmt->fetchAll();
+  } catch (Throwable $e) {
+    error_log('Doctors fallback: ' . $e->getMessage());
+    $doctors = clinica_seed_collection('doctors', $activeOnly);
   }
-  $sql .= " ORDER BY name ASC";
-  $stmt = $pdo->query($sql);
-  $doctors = $stmt->fetchAll();
 
   // Decode JSON fields
-  return array_map(function ($doctor) {
-    $doctor['languages'] = json_decode($doctor['languages'] ?? '[]', true);
-    $doctor['recognitions'] = json_decode($doctor['recognitions'] ?? '[]', true);
-    return $doctor;
-  }, $doctors);
+  return array_map('clinica_normalize_doctor_record', $doctors);
 }
 
 function clinica_get_schedules(bool $activeOnly = false): array
 {
-  $pdo = clinica_get_db();
-  $sql = "SELECT * FROM doctor_schedules WHERE 1=1";
-  if ($activeOnly) {
-    $sql .= " AND active = 1";
+  try {
+    $pdo = clinica_get_db();
+    $sql = "SELECT * FROM doctor_schedules WHERE 1=1";
+    if ($activeOnly) {
+      $sql .= " AND active = 1";
+    }
+    $sql .= " ORDER BY doctor_id, date, weekday, start_time";
+    $stmt = $pdo->query($sql);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+  } catch (Throwable $e) {
+    error_log('Schedules fallback: ' . $e->getMessage());
+    return clinica_seed_collection('schedules', $activeOnly);
   }
-  $sql .= " ORDER BY doctor_id, date, weekday, start_time";
-  $stmt = $pdo->query($sql);
-  return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 function clinica_get_all_specialties_map(): array
@@ -214,13 +371,24 @@ function clinica_specialty_name_by_id(string $specialtyId): string
 
 function clinica_find_doctor(string $doctorId): ?array
 {
-  $pdo = clinica_get_db();
-  $stmt = $pdo->prepare("SELECT * FROM doctors WHERE id = ?");
-  $stmt->execute([$doctorId]);
-  $doctor = $stmt->fetch();
+  try {
+    $pdo = clinica_get_db();
+    $stmt = $pdo->prepare("SELECT * FROM doctors WHERE id = ?");
+    $stmt->execute([$doctorId]);
+    $doctor = $stmt->fetch();
+  } catch (Throwable $e) {
+    error_log('Find doctor fallback: ' . $e->getMessage());
+    $doctor = null;
+    foreach (clinica_seed_collection('doctors') as $seedDoctor) {
+      if ((string) ($seedDoctor['id'] ?? '') === $doctorId) {
+        $doctor = $seedDoctor;
+        break;
+      }
+    }
+  }
+
   if ($doctor) {
-    $doctor['languages'] = json_decode($doctor['languages'] ?? '[]', true);
-    $doctor['recognitions'] = json_decode($doctor['recognitions'] ?? '[]', true);
+    $doctor = clinica_normalize_doctor_record($doctor);
   }
   return $doctor ?: null;
 }
@@ -241,10 +409,19 @@ function clinica_schedule_shift_label(string $startTime, string $endTime): strin
 function clinica_schedule_map_for_doctor(string $doctorId): array
 {
   $map = [];
-  $pdo = clinica_get_db();
-  $stmt = $pdo->prepare("SELECT * FROM doctor_schedules WHERE doctor_id = ? AND active = 1 ORDER BY date, weekday, start_time");
-  $stmt->execute([$doctorId]);
-  foreach ($stmt->fetchAll() as $schedule) {
+  try {
+    $pdo = clinica_get_db();
+    $stmt = $pdo->prepare("SELECT * FROM doctor_schedules WHERE doctor_id = ? AND active = 1 ORDER BY date, weekday, start_time");
+    $stmt->execute([$doctorId]);
+    $schedules = $stmt->fetchAll();
+  } catch (Throwable $e) {
+    error_log('Schedule map fallback: ' . $e->getMessage());
+    $schedules = array_values(array_filter(clinica_seed_collection('schedules', true), function (array $schedule) use ($doctorId): bool {
+      return (string) ($schedule['doctor_id'] ?? '') === $doctorId;
+    }));
+  }
+
+  foreach ($schedules as $schedule) {
     $weekday = (string) ((int) ($schedule['weekday'] ?? 0));
     if ($weekday === '0') {
       continue;
@@ -267,10 +444,19 @@ function clinica_schedule_map_for_doctor(string $doctorId): array
 function clinica_schedule_rules_for_doctor(string $doctorId): array
 {
   $rules = [];
-  $pdo = clinica_get_db();
-  $stmt = $pdo->prepare("SELECT * FROM doctor_schedules WHERE doctor_id = ? AND active = 1 ORDER BY date, weekday, start_time");
-  $stmt->execute([$doctorId]);
-  foreach ($stmt->fetchAll() as $schedule) {
+  try {
+    $pdo = clinica_get_db();
+    $stmt = $pdo->prepare("SELECT * FROM doctor_schedules WHERE doctor_id = ? AND active = 1 ORDER BY date, weekday, start_time");
+    $stmt->execute([$doctorId]);
+    $schedules = $stmt->fetchAll();
+  } catch (Throwable $e) {
+    error_log('Schedule rules fallback: ' . $e->getMessage());
+    $schedules = array_values(array_filter(clinica_seed_collection('schedules', true), function (array $schedule) use ($doctorId): bool {
+      return (string) ($schedule['doctor_id'] ?? '') === $doctorId;
+    }));
+  }
+
+  foreach ($schedules as $schedule) {
     $weekday = (string) ((int) ($schedule['weekday'] ?? 0));
     if ($weekday === '0') {
       continue;
@@ -360,16 +546,16 @@ function clinica_get_doctor_photo_url(array $doctor): string
 {
   $photo = trim((string) ($doctor['photo'] ?? ''));
   // Un campo de foto vacío, nulo o con el avatar genérico se considera "sin foto personalizada".
-  if ($photo !== '' && $photo !== '/clinica/public/assets/avatar.png') {
-    return $photo;
+  if ($photo !== '' && $photo !== '/clinica/public/assets/avatar.png' && $photo !== clinica_url('public/assets/avatar.png')) {
+    return clinica_public_path($photo);
   }
 
   $name = trim((string) ($doctor['name'] ?? ''));
   if (str_starts_with($name, 'Dra.')) {
-    return '/clinica/public/assets/doctora_avatar.png';
+    return clinica_url('public/assets/doctora_avatar.png');
   }
 
-  return '/clinica/public/assets/doctor_avatar.jpg';
+  return clinica_url('public/assets/doctor_avatar.jpg');
 }
 
 function clinica_get_display_name($clinic_settings = null): string
@@ -467,44 +653,56 @@ function clinica_public_specialties_for_catalog(bool $featuredOnly = false): arr
   $specialties = clinica_get_specialties(true);
 
   if ($featuredOnly) {
-    $specialties = array_values(array_filter($specialties, static fn(array $item): bool => (bool) ($item['featured'] ?? false)));
+    $specialties = array_values(array_filter($specialties, static function (array $item): bool {
+      return (bool) ($item['featured'] ?? false);
+    }));
   }
 
-  return array_map(static fn(array $specialty): array => [
-    'id' => (string) ($specialty['id'] ?? ''),
-    'titulo' => (string) ($specialty['name'] ?? ''),
-    'descripcion' => (string) ($specialty['description'] ?? $specialty['summary'] ?? ''),
-    'resumen' => (string) ($specialty['summary'] ?? ''),
-    'icono' => (string) ($specialty['icon'] ?? ''),
-  ], $specialties);
+  return array_map(static function (array $specialty): array {
+    return [
+      'id' => (string) ($specialty['id'] ?? ''),
+      'titulo' => (string) ($specialty['name'] ?? ''),
+      'descripcion' => (string) ($specialty['description'] ?? $specialty['summary'] ?? ''),
+      'resumen' => (string) ($specialty['summary'] ?? ''),
+      'icono' => (string) ($specialty['icon'] ?? ''),
+    ];
+  }, $specialties);
 }
 
 function clinica_public_services_for_home(): array
 {
-  return array_map(static fn(array $service): array => [
-    'id' => (string) ($service['id'] ?? ''),
-    'titulo' => (string) ($service['title'] ?? ''),
-    'descripcion' => (string) ($service['description'] ?? ''),
-    'icono' => (string) ($service['icon'] ?? ''),
-  ], clinica_get_services(true));
+  return array_map(static function (array $service): array {
+    return [
+      'id' => (string) ($service['id'] ?? ''),
+      'titulo' => (string) ($service['title'] ?? ''),
+      'descripcion' => (string) ($service['description'] ?? ''),
+      'icono' => (string) ($service['icon'] ?? ''),
+    ];
+  }, clinica_get_services(true));
 }
 
 function clinica_public_comments_for_home(): array
 {
-  $comments = array_values(array_filter(clinica_get_comments(true), static fn(array $item): bool => (bool) ($item['featured'] ?? true)));
+  $comments = array_values(array_filter(clinica_get_comments(true), static function (array $item): bool {
+    return (bool) ($item['featured'] ?? true);
+  }));
 
-  return array_map(static fn(array $comment): array => [
-    'texto' => (string) ($comment['text'] ?? ''),
-    'autor' => (string) ($comment['author'] ?? ''),
-    'detalle' => (string) ($comment['detail'] ?? ''),
-    'valoracion' => max(0, min(5, (int) ($comment['rating'] ?? 0))),
-    'avatar' => (string) ($comment['avatar'] ?? 'public/assets/avatar.png'),
-  ], $comments);
+  return array_map(static function (array $comment): array {
+    return [
+      'texto' => (string) ($comment['text'] ?? ''),
+      'autor' => (string) ($comment['author'] ?? ''),
+      'detalle' => (string) ($comment['detail'] ?? ''),
+      'valoracion' => max(0, min(5, (int) ($comment['rating'] ?? 0))),
+      'avatar' => (string) ($comment['avatar'] ?? 'public/assets/avatar.png'),
+    ];
+  }, $comments);
 }
 
 function clinica_public_doctors_for_home(): array
 {
-  $doctors = array_values(array_filter(clinica_get_doctors(true), static fn(array $doctor): bool => (bool) ($doctor['featured'] ?? false)));
+  $doctors = array_values(array_filter(clinica_get_doctors(true), static function (array $doctor): bool {
+    return (bool) ($doctor['featured'] ?? false);
+  }));
 
   return array_map(static function (array $doctor): array {
     $publicDoctor = clinica_public_doctor($doctor);
@@ -513,16 +711,21 @@ function clinica_public_doctors_for_home(): array
       'nombre' => $publicDoctor['nombre'],
       'especialidad' => trim($publicDoctor['especialidad'] . ' ' . $publicDoctor['subespecialidad']),
       'experiencia' => $publicDoctor['experiencia_anos'] . '+ anos de experiencia',
-      'foto' => ltrim(str_replace('/clinica/', '', $publicDoctor['foto']), '/'),
+      'foto' => $publicDoctor['foto'],
     ];
   }, $doctors);
 }
 
 function clinica_public_booked_slots(): array
 {
-  $pdo = clinica_get_db(); // This function is for public display, not for strict business logic validation.
-  $stmt = $pdo->query("SELECT doctor_id, date, time FROM appointments WHERE status != 'rechazada'");
-  $results = $stmt->fetchAll();
+  try {
+    $pdo = clinica_get_db(); // This function is for public display, not for strict business logic validation.
+    $stmt = $pdo->query("SELECT doctor_id, date, time FROM appointments WHERE status != 'rechazada'");
+    $results = $stmt->fetchAll();
+  } catch (Throwable $e) {
+    error_log('Booked slots fallback: ' . $e->getMessage());
+    return [];
+  }
 
   $booked = [];
   foreach ($results as $row) {
@@ -601,8 +804,8 @@ function clinica_permissions_for_role(string $role): array
 function clinica_default_route_for_role(string $role): string
 {
   return in_array($role, clinica_dashboard_roles(), true)
-    ? '/clinica/pages/dashboard/'
-    : '/clinica/pages/login/';
+    ? clinica_url('pages/dashboard/')
+    : clinica_url('pages/login/');
 }
 
 function clinica_normalize_internal_redirect(?string $redirect): string
@@ -618,7 +821,12 @@ function clinica_normalize_internal_redirect(?string $redirect): string
   }
 
   $path = (string) ($parts['path'] ?? '');
-  if (!str_starts_with($path, '/clinica/')) {
+  $basePath = clinica_base_path();
+  if ($basePath !== '') {
+    if (!str_starts_with($path, $basePath . '/')) {
+      return '';
+    }
+  } elseif (!str_starts_with($path, '/') || str_starts_with($path, '//')) {
     return '';
   }
 
@@ -631,20 +839,26 @@ function clinica_normalize_internal_redirect(?string $redirect): string
 function clinica_role_can_open_redirect(string $redirect, string $role): bool
 {
   $path = (string) (parse_url($redirect, PHP_URL_PATH) ?: '');
+  $basePath = clinica_base_path();
+  $relativePath = $basePath !== '' && str_starts_with($path, $basePath . '/')
+    ? substr($path, strlen($basePath))
+    : $path;
 
   if (!in_array($role, clinica_dashboard_roles(), true)) {
     return false;
   }
 
-  if (str_starts_with($path, '/clinica/pages/gestion/')) {
+  if (str_starts_with($relativePath, '/pages/gestion/')) {
     return clinica_can_access_management($role);
   }
 
-  if (str_starts_with($path, '/clinica/pages/login/') || str_starts_with($path, '/clinica/api/')) {
+  if (str_starts_with($relativePath, '/pages/login/') || str_starts_with($relativePath, '/api/')) {
     return false;
   }
 
-  return str_starts_with($path, '/clinica/');
+  return $basePath === ''
+    ? str_starts_with($path, '/') && !str_starts_with($path, '//')
+    : str_starts_with($path, $basePath . '/');
 }
 
 function clinica_resolve_login_redirect(?string $requestedRedirect, array $user): string
@@ -862,7 +1076,7 @@ function clinica_set_session_cookie_expiration(int $expiresAt): void
     $secure = clinica_is_https();
   }
 
-  setcookie(session_name(), session_id(), [
+  clinica_set_cookie(session_name(), session_id(), [
     'expires' => $expiresAt,
     'path' => $params['path'] ?: '/',
     'domain' => $params['domain'] ?? '',
@@ -881,7 +1095,7 @@ function clinica_destroy_session(): void
 
   if (ini_get('session.use_cookies') && !headers_sent()) {
     $params = session_get_cookie_params();
-    setcookie(session_name(), '', [
+    clinica_set_cookie(session_name(), '', [
       'expires' => time() - 42000,
       'path' => $params['path'] ?: '/',
       'domain' => $params['domain'] ?? '',
@@ -891,7 +1105,7 @@ function clinica_destroy_session(): void
     ]);
 
     // Remove CSRF token cookie as well
-    setcookie('XSRF-TOKEN', '', [
+    clinica_set_cookie('XSRF-TOKEN', '', [
       'expires' => time() - 42000,
       'path' => '/',
       'domain' => '',
@@ -904,7 +1118,7 @@ function clinica_destroy_session(): void
   session_destroy();
 }
 
-function clinica_json(array $payload, int $statusCode = 200): never
+function clinica_json(array $payload, int $statusCode = 200): void
 {
   http_response_code($statusCode);
   echo json_encode($payload, JSON_UNESCAPED_UNICODE);

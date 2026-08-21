@@ -18,7 +18,7 @@ $logo_image_footer = $clinic_footer['logo_image'] ?? '';
   <div class="container">
     <div class="footer-grid">
       <div class="footer-col">
-        <a href="/clinica/" class="logo footer-logo"
+        <a href="<?php echo htmlspecialchars(clinica_url()); ?>" class="logo footer-logo"
           aria-label="Pagina de inicio de <?php echo htmlspecialchars($footer_name); ?>">
           <?php clinica_render_logo_element($clinic_footer); ?>
           <span class="footer-logo-label"><?php echo htmlspecialchars($footer_name); ?></span>
@@ -28,10 +28,10 @@ $logo_image_footer = $clinic_footer['logo_image'] ?? '';
       <div class="footer-col">
         <h4 class="footer-title">Navegacion</h4>
         <ul class="footer-list">
-          <li><a href="/clinica/#about">Nosotros</a></li>
-          <li><a href="/clinica/pages/specialties/">Especialidades</a></li>
-          <li><a href="/clinica/pages/doctors/">Doctores</a></li>
-          <li><a href="/clinica/pages/reservations/">Agendar Cita</a></li>
+          <li><a href="<?php echo htmlspecialchars(clinica_url('#about')); ?>">Nosotros</a></li>
+          <li><a href="<?php echo htmlspecialchars(clinica_url('pages/specialties/')); ?>">Especialidades</a></li>
+          <li><a href="<?php echo htmlspecialchars(clinica_url('pages/doctors/')); ?>">Doctores</a></li>
+          <li><a href="<?php echo htmlspecialchars(clinica_url('pages/reservations/')); ?>">Agendar Cita</a></li>
         </ul>
       </div>
       <div class="footer-col">
@@ -114,10 +114,10 @@ $logo_image_footer = $clinic_footer['logo_image'] ?? '';
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
-<script src="/clinica/public/js/utils.js" defer></script>
-<script src="/clinica/public/js/app.js" defer></script>
-<script src="/clinica/public/shared/header/header.js" defer></script>
-<script src="/clinica/public/shared/footer/footer.js" defer></script>
+<script src="<?php echo htmlspecialchars(clinica_url('public/js/utils.js')); ?>" defer></script>
+<script src="<?php echo htmlspecialchars(clinica_url('public/js/app.js')); ?>" defer></script>
+<script src="<?php echo htmlspecialchars(clinica_url('public/shared/header/header.js')); ?>" defer></script>
+<script src="<?php echo htmlspecialchars(clinica_url('public/shared/footer/footer.js')); ?>" defer></script>
 
 <?php
 if (isset($page_specific_js) && !empty($page_specific_js)) {

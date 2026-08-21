@@ -7,13 +7,13 @@ require_once __DIR__ . '/../../../api/data.php';
 
 $user = clinica_current_user();
 if (!is_array($user) || !in_array($user['role'] ?? '', clinica_dashboard_roles(), true)) {
-  $redirect = urlencode($_SERVER['REQUEST_URI'] ?? '/clinica/pages/gestion/clinic/');
-  header("Location: /clinica/pages/login/?redirect={$redirect}");
+  $redirect = urlencode($_SERVER['REQUEST_URI'] ?? clinica_url('pages/gestion/clinic/'));
+  header('Location: ' . clinica_url("pages/login/?redirect={$redirect}"));
   exit();
 }
 
 if (!clinica_can_access_management((string) ($user['role'] ?? ''))) {
-  header('Location: /clinica/pages/dashboard/');
+  header('Location: ' . clinica_url('pages/dashboard/'));
   exit();
 }
 
@@ -32,13 +32,13 @@ $gestion_new_labels = [
 ];
 $gestion_new_label = $gestion_new_labels[$gestion_resource] ?? 'Nuevo registro';
 $gestion_actions = [
-  ['href' => '/clinica/pages/gestion/clinic/', 'label' => 'Clinica', 'description' => 'Marca y contacto', 'resource' => 'clinic'],
-  ['href' => '/clinica/pages/gestion/calendar/', 'label' => 'Horarios', 'description' => 'Agenda medica', 'resource' => 'schedules'],
-  ['href' => '/clinica/pages/gestion/doctors/', 'label' => 'Doctores', 'description' => 'Perfiles del equipo', 'resource' => 'doctors'],
-  ['href' => '/clinica/pages/gestion/specialties/', 'label' => 'Especialidades', 'description' => 'Catalogo clinico', 'resource' => 'specialties'],
-  ['href' => '/clinica/pages/gestion/services/', 'label' => 'Servicios', 'description' => 'Home y oferta', 'resource' => 'services'],
-  ['href' => '/clinica/pages/gestion/comment/', 'label' => 'Resenas', 'description' => 'Testimonios', 'resource' => 'comments'],
-  ['href' => '/clinica/pages/gestion/users/', 'label' => 'Usuarios', 'description' => 'Roles y accesos', 'resource' => 'users'],
+  ['href' => clinica_url('pages/gestion/clinic/'), 'label' => 'Clinica', 'description' => 'Marca y contacto', 'resource' => 'clinic'],
+  ['href' => clinica_url('pages/gestion/calendar/'), 'label' => 'Horarios', 'description' => 'Agenda medica', 'resource' => 'schedules'],
+  ['href' => clinica_url('pages/gestion/doctors/'), 'label' => 'Doctores', 'description' => 'Perfiles del equipo', 'resource' => 'doctors'],
+  ['href' => clinica_url('pages/gestion/specialties/'), 'label' => 'Especialidades', 'description' => 'Catalogo clinico', 'resource' => 'specialties'],
+  ['href' => clinica_url('pages/gestion/services/'), 'label' => 'Servicios', 'description' => 'Home y oferta', 'resource' => 'services'],
+  ['href' => clinica_url('pages/gestion/comment/'), 'label' => 'Resenas', 'description' => 'Testimonios', 'resource' => 'comments'],
+  ['href' => clinica_url('pages/gestion/users/'), 'label' => 'Usuarios', 'description' => 'Roles y accesos', 'resource' => 'users'],
 ];
 
 include __DIR__ . '/../../../public/shared/header/header.php';
@@ -75,7 +75,7 @@ include __DIR__ . '/../../../public/shared/header/header.php';
             <p><?php echo htmlspecialchars($gestion_subtitle); ?></p>
           </div>
           <div class="gestion-header-actions">
-            <a href="/clinica/pages/dashboard/" class="btn btn-tertiary gestion-return-link" aria-label="Volver al dashboard">
+            <a href="<?php echo htmlspecialchars(clinica_url('pages/dashboard/')); ?>" class="btn btn-tertiary gestion-return-link" aria-label="Volver al dashboard">
               <span class="gestion-return-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" focusable="false">
                   <path d="M19 12H5"></path>
@@ -159,6 +159,6 @@ include __DIR__ . '/../../../public/shared/header/header.php';
 
 <div id="gestion-toast" class="gestion-toast" role="status" aria-live="polite"></div>
 
-<script src="/clinica/pages/gestion/gestion.js" defer></script>
+<script src="<?php echo htmlspecialchars(clinica_url('pages/gestion/gestion.js')); ?>" defer></script>
 
 <?php include __DIR__ . '/../../../public/shared/footer/footer.php'; ?>

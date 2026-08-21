@@ -6,9 +6,14 @@
 (function () {
   'use strict';
 
+  function appUrl(path) {
+    const basePath = String(window.CLINICA_BASE_PATH || '').replace(/\/$/, '');
+    return `${basePath}/${String(path || '').replace(/^\/+/, '')}`;
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
-    const DASHBOARD_API = '/clinica/api/dashboard/';
-    const GENERAL_API = '/clinica/api/general/';
+    const DASHBOARD_API = appUrl('api/dashboard/');
+    const GENERAL_API = appUrl('api/general/');
     const STAFF_ROLES = ['ADMINISTRATOR', 'SECRETARIA'];
     const dashboardShell = document.querySelector('.dashboard-container');
     const DEFAULT_DATE_SCOPE = dashboardShell?.dataset.defaultDateScope || 'today';
@@ -528,7 +533,7 @@
         });
 
         if (response.status === 401) {
-          window.location.href = '/clinica/pages/login/?redirect=/clinica/pages/dashboard/';
+          window.location.href = appUrl(`pages/login/?redirect=${encodeURIComponent(appUrl('pages/dashboard/'))}`);
           return;
         }
 
@@ -594,9 +599,9 @@
           body: JSON.stringify({ action: 'logout' }),
         });
         const result = await response.json().catch(() => ({}));
-        window.location.href = result.redirect || '/clinica/pages/login/';
+        window.location.href = result.redirect || appUrl('pages/login/');
       } catch (error) {
-        window.location.href = '/clinica/pages/login/';
+        window.location.href = appUrl('pages/login/');
       }
     }
 

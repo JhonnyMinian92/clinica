@@ -6,7 +6,12 @@
 (function () {
   'use strict';
 
-  const API_URL = '/clinica/api/gestion/';
+  function appUrl(path) {
+    const basePath = String(window.CLINICA_BASE_PATH || '').replace(/\/$/, '');
+    return `${basePath}/${String(path || '').replace(/^\/+/, '')}`;
+  }
+
+  const API_URL = appUrl('api/gestion/');
 
   function getCsrfToken() {
     const match = document.cookie.match(new RegExp('(^|;)\\s*XSRF-TOKEN\\s*=\\s*([^;]+)'));
@@ -1349,9 +1354,11 @@
   function normalizeAssetUrl(value) {
     const url = String(value || '').trim();
     if (!url) return '';
-    if (/^https?:\/\//i.test(url) || url.startsWith('/') || url.startsWith('data:image/')) return url;
+    if (/^https?:\/\//i.test(url) || url.startsWith('data:image/')) return url;
+    if (url.startsWith('/clinica/')) return appUrl(url.slice('/clinica/'.length));
+    if (url.startsWith('/')) return url;
     if (/^[a-z][a-z0-9+.-]*:/i.test(url)) return '';
-    return `/clinica/${url.replace(/^\.?\//, '')}`;
+    return appUrl(url.replace(/^\.?\//, ''));
   }
 
   function openEditorModal(dom) {

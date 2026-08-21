@@ -251,6 +251,8 @@ const doctorsData = <?php echo json_encode($doctores, JSON_UNESCAPED_UNICODE | J
 const bookedAppointmentsData =
   <?php echo json_encode($citas_reservadas, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 const reservationConfig = <?php echo json_encode([
+    'generalApi' => clinica_url('api/general/'),
+    'homeUrl' => clinica_url(),
     // Use clinic label (preferred for header/footer) then clinic name, fallback to seed label
     'clinicName' => $clinic['logo_label'] ?? $clinic['name'] ?? 'Clinica Estandar',
     'successTitle' => $clinic['reservation_success_title'] ?? 'Cita Agendada',

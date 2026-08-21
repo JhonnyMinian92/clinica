@@ -17,6 +17,17 @@
 (function () {
   'use strict';
 
+  function appUrl(path) {
+    const basePath = String(window.CLINICA_BASE_PATH || '').replace(/\/$/, '');
+    return `${basePath}/${String(path || '').replace(/^\/+/, '')}`;
+  }
+
+  function appPathStarts(pathname, prefix) {
+    const basePath = String(window.CLINICA_BASE_PATH || '').replace(/\/$/, '');
+    const fullPrefix = `${basePath}/${String(prefix || '').replace(/^\/+/, '')}`;
+    return pathname === fullPrefix || pathname.startsWith(`${fullPrefix.replace(/\/$/, '')}/`);
+  }
+
   /**
    * Waits for the DOM to be fully loaded before initializing the script.
    */
@@ -91,7 +102,7 @@
       setButtonState('loading');
 
       try {
-        const response = await fetch('/clinica/api/general/', {
+        const response = await fetch(appUrl('api/general/'), {
           method: 'POST',
           credentials: 'same-origin',
           headers: {
@@ -132,18 +143,18 @@
     }
 
     function getSafeRedirect(apiRedirect) {
-      const requestedRedirect = apiRedirect || '/clinica/pages/dashboard/';
+      const requestedRedirect = apiRedirect || appUrl('pages/dashboard/');
 
       try {
         const target = new URL(requestedRedirect, window.location.origin);
-        if (target.origin === window.location.origin && target.pathname.startsWith('/clinica/')) {
+        if (target.origin === window.location.origin && appPathStarts(target.pathname, '')) {
           return `${target.pathname}${target.search}${target.hash}`;
         }
       } catch (error) {
-        return '/clinica/pages/dashboard/';
+        return appUrl('pages/dashboard/');
       }
 
-      return '/clinica/pages/dashboard/';
+      return appUrl('pages/dashboard/');
     }
 
     function getRequestedRedirect() {

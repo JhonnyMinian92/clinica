@@ -7,6 +7,11 @@
 (function () {
   'use strict';
 
+  function appUrl(path) {
+    const basePath = String(window.CLINICA_BASE_PATH || '').replace(/\/$/, '');
+    return `${basePath}/${String(path || '').replace(/^\/+/, '')}`;
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('reservation-form');
     if (!form) {
@@ -51,8 +56,8 @@
     const summaryEmail = document.getElementById('summary-email');
     const summaryPhone = document.getElementById('summary-phone');
     const totalSteps = formSteps.length;
-    const GENERAL_API = '/clinica/api/general/';
     const config = typeof reservationConfig !== 'undefined' ? reservationConfig : {};
+    const GENERAL_API = config.generalApi || appUrl('api/general/');
 
     // --- State ---
     let currentStep = 0;
@@ -863,7 +868,7 @@
           </div>
           <h2 class="success-title">${escapeHtml(successTitle)}</h2>
           <p class="success-text">${escapeHtml(successText)}</p>
-          <a href="/clinica/" class="btn btn-primary">${escapeHtml(backHomeLabel)}</a>
+          <a href="${escapeAttribute(config.homeUrl || appUrl(''))}" class="btn btn-primary">${escapeHtml(backHomeLabel)}</a>
         </div>`;
       formWrapper.innerHTML = successHTML;
       formWrapper.style.height = 'auto'; // Let the content define the height

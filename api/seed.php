@@ -9,14 +9,20 @@ echo "Inicializando base de datos de Clinica...\n";
 
 try {
   $credentials = clinica_db_credentials();
-  $serverDsn = "mysql:host={$credentials['host']};charset={$credentials['charset']}";
-  $serverPdo = new PDO($serverDsn, $credentials['user'], $credentials['password'], [
-    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-  ]);
+  $port = trim((string) ($credentials['port'] ?? ''));
+  $portSegment = $port !== '' ? ";port={$port}" : '';
+  $serverDsn = "mysql:host={$credentials['host']}{$portSegment};charset={$credentials['charset']}";
+  try {
+    $serverPdo = new PDO($serverDsn, $credentials['user'], $credentials['password'], [
+      PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+      PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    ]);
 
-  $dbName = str_replace('`', '``', $credentials['dbname']);
-  $serverPdo->exec("CREATE DATABASE IF NOT EXISTS `{$dbName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+    $dbName = str_replace('`', '``', $credentials['dbname']);
+    $serverPdo->exec("CREATE DATABASE IF NOT EXISTS `{$dbName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+  } catch (PDOException $prepareException) {
+    echo "No se pudo preparar la base desde este usuario; se usara la base existente {$credentials['dbname']}.\n";
+  }
 
   $pdo = clinica_get_db();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -322,8 +328,12 @@ function clinica_seed_insert_rows_ignore(PDO $pdo, string $table, array $rows): 
 function clinica_seed_insert_assoc(PDO $pdo, string $table, array $row, bool $ignore = false): void
 {
   $columns = array_keys($row);
-  $columnSql = implode(', ', array_map(static fn(string $column): string => "`$column`", $columns));
-  $placeholderSql = implode(', ', array_map(static fn(string $column): string => ":$column", $columns));
+  $columnSql = implode(', ', array_map(static function (string $column): string {
+    return "`$column`";
+  }, $columns));
+  $placeholderSql = implode(', ', array_map(static function (string $column): string {
+    return ":$column";
+  }, $columns));
   $verb = $ignore ? 'INSERT IGNORE' : 'INSERT';
   $stmt = $pdo->prepare("$verb INTO `$table` ($columnSql) VALUES ($placeholderSql)");
   $stmt->execute($row);

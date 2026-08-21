@@ -54,6 +54,7 @@ if ($action === 'login') {
     $stmt->execute([$username]);
     $dbUser = $stmt->fetch(PDO::FETCH_ASSOC);
   } catch (PDOException $e) {
+    error_log('Login DB authentication error: ' . $e->getMessage());
     clinica_json(['success' => false, 'error' => 'Error de base de datos al autenticar.'], 500);
   }
 
@@ -87,7 +88,7 @@ if ($action === 'logout') {
     clinica_json(['success' => false, 'error' => 'Metodo no permitido para esta accion.'], 405);
   }
   clinica_destroy_session();
-  clinica_json(['success' => true, 'redirect' => '/clinica/pages/login/']);
+  clinica_json(['success' => true, 'redirect' => clinica_url('pages/login/')]);
 }
 
 if ($action === 'create_appointment') {

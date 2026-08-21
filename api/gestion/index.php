@@ -27,16 +27,7 @@ if ($resource === '') {
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 if ($method === 'GET') {
-  $data = match ($resource) {
-    'clinic' => clinica_get_clinic_settings(),
-    'comments' => clinica_get_comments(),
-    'doctors' => clinica_get_doctors(),
-    'specialties' => clinica_get_specialties(),
-    'users' => clinica_get_all_users_for_gestion(),
-    'services' => clinica_get_services(),
-    'schedules' => clinica_get_schedules(),
-    default => [],
-  };
+  $data = clinica_gestion_read_resource($resource);
 
   clinica_json([
     'success' => true,
@@ -92,7 +83,7 @@ function clinica_gestion_resource_key(string $resource): string
 
 function clinica_get_table_for_resource(string $resource): string
 {
-  return match ($resource) {
+  $tables = [
     'clinic' => 'clinics',
     'comments' => 'testimonials',
     'doctors' => 'doctors',
@@ -100,8 +91,51 @@ function clinica_get_table_for_resource(string $resource): string
     'users' => 'users',
     'services' => 'services',
     'schedules' => 'doctor_schedules',
-    default => '',
-  };
+  ];
+
+  return $tables[$resource] ?? '';
+}
+
+function clinica_gestion_read_resource(string $resource): array
+{
+  switch ($resource) {
+    case 'clinic':
+      return clinica_get_clinic_settings();
+    case 'comments':
+      return clinica_get_comments();
+    case 'doctors':
+      return clinica_get_doctors();
+    case 'specialties':
+      return clinica_get_specialties();
+    case 'users':
+      return clinica_get_all_users_for_gestion();
+    case 'services':
+      return clinica_get_services();
+    case 'schedules':
+      return clinica_get_schedules();
+    default:
+      return [];
+  }
+}
+
+function clinica_gestion_collection_for_resource(string $resource): array
+{
+  switch ($resource) {
+    case 'comments':
+      return clinica_get_comments();
+    case 'doctors':
+      return clinica_get_doctors();
+    case 'specialties':
+      return clinica_get_specialties();
+    case 'users':
+      return clinica_get_all_users_for_gestion();
+    case 'services':
+      return clinica_get_services();
+    case 'schedules':
+      return clinica_get_schedules();
+    default:
+      return [];
+  }
 }
 
 function clinica_gestion_metadata(): array
@@ -121,15 +155,19 @@ function clinica_gestion_metadata(): array
       ['id' => 6, 'name' => 'Sabado'],
       ['id' => 7, 'name' => 'Domingo'],
     ],
-    'specialties' => array_map(static fn(array $item): array => [
-      'id' => (string) ($item['id'] ?? ''),
-      'name' => (string) ($item['name'] ?? ''),
-    ], clinica_get_specialties()),
-    'doctors' => array_map(static fn(array $item): array => [
-      'id' => (string) ($item['id'] ?? ''),
-      'name' => (string) ($item['name'] ?? ''),
-      'specialty_id' => (string) ($item['specialty_id'] ?? ''),
-    ], clinica_get_doctors()),
+    'specialties' => array_map(static function (array $item): array {
+      return [
+        'id' => (string) ($item['id'] ?? ''),
+        'name' => (string) ($item['name'] ?? ''),
+      ];
+    }, clinica_get_specialties()),
+    'doctors' => array_map(static function (array $item): array {
+      return [
+        'id' => (string) ($item['id'] ?? ''),
+        'name' => (string) ($item['name'] ?? ''),
+        'specialty_id' => (string) ($item['specialty_id'] ?? ''),
+      ];
+    }, clinica_get_doctors()),
   ];
 }
 
@@ -228,7 +266,7 @@ function clinica_gestion_upload_image(string $resource, array $post, array $file
   }
 
   chmod($targetPath, 0664);
-  $url = '/clinica/public/assets/' . $directoryName . '/' . $filename;
+  $url = clinica_url('public/assets/' . $directoryName . '/' . $filename);
 
   clinica_json([
     'success' => true,
@@ -328,8 +366,12 @@ function clinica_gestion_save(string $resource, array $record, array $user): voi
     } else {
       // INSERT
       $columns = array_keys($normalized);
-      $placeholders = array_map(fn($c) => ":$c", $columns);
-      $sql = "INSERT INTO `$table` (" . implode(', ', array_map(fn($c) => "`$c`", $columns)) . ") VALUES (" . implode(', ', $placeholders) . ")";
+      $placeholders = array_map(function ($column) {
+        return ":$column";
+      }, $columns);
+      $sql = "INSERT INTO `$table` (" . implode(', ', array_map(function ($column) {
+        return "`$column`";
+      }, $columns)) . ") VALUES (" . implode(', ', $placeholders) . ")";
       $stmt = $pdo->prepare($sql);
       $stmt->execute($normalized);
       clinica_log_audit_event(clinica_get_user_id_from_session(), "{$resource}_created", "Registro de {$resource} creado", ['id' => $pdo->lastInsertId(), 'data' => $normalized]);
@@ -342,15 +384,7 @@ function clinica_gestion_save(string $resource, array $record, array $user): voi
   }
 
   // Return all records of that resource after modification
-  $all_records = match ($resource) {
-    'comments' => clinica_get_comments(),
-    'doctors' => clinica_get_doctors(),
-    'specialties' => clinica_get_specialties(),
-    'users' => clinica_get_all_users_for_gestion(),
-    'services' => clinica_get_services(),
-    'schedules' => clinica_get_schedules(),
-    default => [],
-  };
+  $all_records = clinica_gestion_collection_for_resource($resource);
 
   clinica_json(['success' => true, 'data' => $all_records, 'metadata' => clinica_gestion_metadata()]);
 }
@@ -395,15 +429,7 @@ function clinica_gestion_delete(string $resource, string $id, array $user): void
     clinica_log_audit_event(clinica_get_user_id_from_session(), "{$resource}_deleted", "Registro de {$resource} eliminado (hard delete)", ['id' => $id]);
   }
 
-  $all_records = match ($resource) {
-    'comments' => clinica_get_comments(),
-    'doctors' => clinica_get_doctors(),
-    'specialties' => clinica_get_specialties(),
-    'users' => clinica_get_all_users_for_gestion(),
-    'services' => clinica_get_services(),
-    'schedules' => clinica_get_schedules(),
-    default => [],
-  };
+  $all_records = clinica_gestion_collection_for_resource($resource);
 
   clinica_json([
     'success' => true,
@@ -480,62 +506,71 @@ function clinica_normalize_clinic_record(array $record): array
 
 function clinica_normalize_collection_record(string $resource, array $record, array $existing = []): array
 {
-  return match ($resource) {
-    'specialties' => [
-      'id' => clinica_record_id($record, $existing, 'name'),
-      'name' => clinica_required_string($record, 'name', 'Nombre requerido.'),
-      'summary' => clinica_string($record, 'summary'),
-      'description' => clinica_string($record, 'description'),
-      'icon' => clinica_string($record, 'icon'),
-      'featured' => clinica_bool($record['featured'] ?? false),
-      'active' => clinica_bool($record['active'] ?? true),
-    ],
-    'services' => [
-      'id' => clinica_record_id($record, $existing, 'title'),
-      'title' => clinica_required_string($record, 'title', 'Titulo requerido.'),
-      'description' => clinica_string($record, 'description'),
-      'icon' => clinica_string($record, 'icon'),
-      'featured' => clinica_bool($record['featured'] ?? true),
-      'active' => clinica_bool($record['active'] ?? true),
-    ],
-    'comments' => [
-      'id' => clinica_record_id($record, $existing, 'author', 'comment'),
-      'author' => clinica_required_string($record, 'author', 'Autor requerido.'),
-      'detail' => clinica_string($record, 'detail'),
-      'text' => clinica_required_string($record, 'text', 'Comentario requerido.'),
-      'rating' => max(1, min(5, (int) ($record['rating'] ?? 5))),
-      'avatar' => clinica_string($record, 'avatar', 'public/assets/avatar.png'),
-      'featured' => clinica_bool($record['featured'] ?? true),
-      'active' => clinica_bool($record['active'] ?? true),
-    ],
-    'doctors' => [
-      'id' => clinica_record_id($record, $existing, 'name', 'doc'),
-      'name' => clinica_required_string($record, 'name', 'Nombre requerido.'),
-      'photo' => clinica_string($record, 'photo', '/clinica/public/assets/avatar.png'),
-      'specialty_id' => clinica_required_relation($record, 'specialty_id', 'specialties', 'Especialidad requerida e invalida.'),
-      'sub_specialty' => clinica_string($record, 'sub_specialty'),
-      'experience_years' => max(0, (int) ($record['experience_years'] ?? 0)),
-      'university' => clinica_string($record, 'university'),
-      'recognitions' => clinica_list($record['recognitions'] ?? []),
-      'languages' => clinica_list($record['languages'] ?? []),
-      'rating' => max(1, min(5, (int) ($record['rating'] ?? 5))),
-      'patients' => max(0, (int) ($record['patients'] ?? 0)),
-      'featured' => clinica_bool($record['featured'] ?? false),
-      'active' => clinica_bool($record['active'] ?? true),
-    ],
-    'users' => clinica_normalize_user_record($record, $existing),
-    'schedules' => [
-      'id' => clinica_record_id($record, $existing, 'doctor_id', 'sch', empty($existing)),
-      'doctor_id' => clinica_required_relation($record, 'doctor_id', 'doctors', 'Doctor requerido o invalido.'),
-      'date' => clinica_optional_future_date($record, 'date'),
-      'weekday' => clinica_schedule_weekday_value($record),
-      'start_time' => clinica_required_time($record, 'start_time', 'Hora de inicio requerida.'),
-      'end_time' => clinica_required_time($record, 'end_time', 'Hora de fin requerida.'),
-      'slot_minutes' => max(5, min(120, (int) ($record['slot_minutes'] ?? 15))),
-      'active' => clinica_bool($record['active'] ?? true),
-    ],
-    default => clinica_json(['success' => false, 'error' => 'Recurso no soportado.'], 404),
-  };
+  switch ($resource) {
+    case 'specialties':
+      return [
+        'id' => clinica_record_id($record, $existing, 'name'),
+        'name' => clinica_required_string($record, 'name', 'Nombre requerido.'),
+        'summary' => clinica_string($record, 'summary'),
+        'description' => clinica_string($record, 'description'),
+        'icon' => clinica_string($record, 'icon'),
+        'featured' => clinica_bool($record['featured'] ?? false),
+        'active' => clinica_bool($record['active'] ?? true),
+      ];
+    case 'services':
+      return [
+        'id' => clinica_record_id($record, $existing, 'title'),
+        'title' => clinica_required_string($record, 'title', 'Titulo requerido.'),
+        'description' => clinica_string($record, 'description'),
+        'icon' => clinica_string($record, 'icon'),
+        'featured' => clinica_bool($record['featured'] ?? true),
+        'active' => clinica_bool($record['active'] ?? true),
+      ];
+    case 'comments':
+      return [
+        'id' => clinica_record_id($record, $existing, 'author', 'comment'),
+        'author' => clinica_required_string($record, 'author', 'Autor requerido.'),
+        'detail' => clinica_string($record, 'detail'),
+        'text' => clinica_required_string($record, 'text', 'Comentario requerido.'),
+        'rating' => max(1, min(5, (int) ($record['rating'] ?? 5))),
+        'avatar' => clinica_string($record, 'avatar', 'public/assets/avatar.png'),
+        'featured' => clinica_bool($record['featured'] ?? true),
+        'active' => clinica_bool($record['active'] ?? true),
+      ];
+    case 'doctors':
+      return [
+        'id' => clinica_record_id($record, $existing, 'name', 'doc'),
+        'name' => clinica_required_string($record, 'name', 'Nombre requerido.'),
+        'photo' => clinica_string($record, 'photo', clinica_url('public/assets/avatar.png')),
+        'specialty_id' => clinica_required_relation($record, 'specialty_id', 'specialties', 'Especialidad requerida e invalida.'),
+        'sub_specialty' => clinica_string($record, 'sub_specialty'),
+        'experience_years' => max(0, (int) ($record['experience_years'] ?? 0)),
+        'university' => clinica_string($record, 'university'),
+        'recognitions' => clinica_list($record['recognitions'] ?? []),
+        'languages' => clinica_list($record['languages'] ?? []),
+        'rating' => max(1, min(5, (int) ($record['rating'] ?? 5))),
+        'patients' => max(0, (int) ($record['patients'] ?? 0)),
+        'featured' => clinica_bool($record['featured'] ?? false),
+        'active' => clinica_bool($record['active'] ?? true),
+      ];
+    case 'users':
+      return clinica_normalize_user_record($record, $existing);
+    case 'schedules':
+      return [
+        'id' => clinica_record_id($record, $existing, 'doctor_id', 'sch', empty($existing)),
+        'doctor_id' => clinica_required_relation($record, 'doctor_id', 'doctors', 'Doctor requerido o invalido.'),
+        'date' => clinica_optional_future_date($record, 'date'),
+        'weekday' => clinica_schedule_weekday_value($record),
+        'start_time' => clinica_required_time($record, 'start_time', 'Hora de inicio requerida.'),
+        'end_time' => clinica_required_time($record, 'end_time', 'Hora de fin requerida.'),
+        'slot_minutes' => max(5, min(120, (int) ($record['slot_minutes'] ?? 15))),
+        'active' => clinica_bool($record['active'] ?? true),
+      ];
+    default:
+      clinica_json(['success' => false, 'error' => 'Recurso no soportado.'], 404);
+  }
+
+  return [];
 }
 
 function clinica_normalize_user_record(array $record, array $existing = []): array
@@ -637,12 +672,12 @@ function clinica_svg_looks_safe(string $content): bool
   return !preg_match('/(<\s*script|<\s*foreignobject|<\s*iframe|<\s*object|<\s*embed|on[a-z]+\s*=|javascript:|data:text\/html)/i', $content);
 }
 
-function clinica_bool(mixed $value): bool
+function clinica_bool($value): bool
 {
   return filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
 }
 
-function clinica_list(mixed $value): array
+function clinica_list($value): array
 {
   if (is_array($value)) {
     $items = $value;
@@ -650,7 +685,11 @@ function clinica_list(mixed $value): array
     $items = explode(',', (string) $value);
   }
 
-  return array_values(array_filter(array_map(static fn(mixed $item): string => trim((string) $item), $items), static fn(string $item): bool => $item !== ''));
+  return array_values(array_filter(array_map(static function ($item): string {
+    return trim((string) $item);
+  }, $items), static function (string $item): bool {
+    return $item !== '';
+  }));
 }
 
 function clinica_required_relation(array $record, string $key, string $resource, string $message): string
