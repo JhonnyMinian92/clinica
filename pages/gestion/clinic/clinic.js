@@ -43,5 +43,8 @@ window.ClinicaGestion.boot({
     { name: 'whatsapp_url', label: 'WhatsApp', type: 'url', placeholder: 'https://wa.me/593999999999' },
     { name: 'facebook_url', label: 'Facebook', type: 'url', placeholder: 'https://facebook.com/clinica' },
     { name: 'instagram_url', label: 'Instagram', type: 'url', placeholder: 'https://instagram.com/clinica' },
+    { name: 'notify_email_enabled', label: 'Confirmaciones y recordatorios por correo', type: 'checkbox', help: 'Activa el envio automatico de correos a los pacientes al agendar y 15 minutos antes de la cita.' },
+    { name: 'notify_whatsapp_enabled', label: 'Confirmaciones y recordatorios por WhatsApp', type: 'checkbox', help: 'Activelo solo cuando exista un proveedor de WhatsApp Business configurado por el equipo tecnico. Mientras este apagado, el sistema no ofrece ni promete este canal a los pacientes.' },
+    { name: 'reminder_minutes_before', label: 'Minutos de anticipacion del recordatorio', type: 'number', min: 5, max: 120, help: 'Tiempo antes de la cita en que se envia el recordatorio automatico (por defecto 15).' },
   ],
 });

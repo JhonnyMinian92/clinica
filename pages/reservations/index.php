@@ -200,19 +200,37 @@ include __DIR__ . '/../../public/shared/header/header.php';
             </div>
             <div class="form-group">
               <input type="email" id="patient-email" name="patient-email" required placeholder=" ">
-              <label for="patient-email">Correo Electronico</label>
-              <div class="form-error-message">Por favor, ingrese un correo valido.</div>
+              <label for="patient-email">Correo Electronico <span class="required-mark" aria-hidden="true">*</span></label>
+              <div class="form-error-message">Por favor, ingrese un correo valido. Es obligatorio para enviarle la confirmacion.</div>
             </div>
             <div class="form-group">
               <input type="tel" id="patient-phone" name="patient-phone" required placeholder=" " inputmode="numeric"
                 pattern="[0-9]{7,15}" title="Ingrese solo numeros (de 7 a 15 digitos).">
-              <label for="patient-phone">Telefono (solo numeros)</label>
-              <div class="form-error-message">Debe ser un numero valido de 7 a 15 digitos.</div>
+              <label for="patient-phone">Telefono (solo numeros) <span class="required-mark" aria-hidden="true">*</span></label>
+              <div class="form-error-message">Debe ser un numero valido de 7 a 15 digitos. Es obligatorio para que la clinica pueda contactarlo.</div>
             </div>
             <div class="form-group">
               <textarea id="patient-notes" name="patient-notes" rows="3" placeholder=" "></textarea>
               <label for="patient-notes">Notas adicionales (opcional)</label>
             </div>
+          </div>
+
+          <div class="notification-preferences">
+            <p class="notification-preferences-title">Como desea recibir la confirmacion y el recordatorio de su cita</p>
+            <label class="checkbox-field">
+              <input type="checkbox" id="notify-email-optin" name="notify-email-optin" checked>
+              <span>Correo electronico</span>
+            </label>
+            <label class="checkbox-field <?php echo ($clinic['notify_whatsapp_enabled'] ?? false) ? '' : 'is-unavailable'; ?>">
+              <input type="checkbox" id="notify-whatsapp-optin" name="notify-whatsapp-optin"
+                <?php echo ($clinic['notify_whatsapp_enabled'] ?? false) ? '' : 'disabled'; ?>>
+              <span>
+                WhatsApp
+                <?php if (!($clinic['notify_whatsapp_enabled'] ?? false)): ?>
+                  <em class="form-hint">(canal aun no disponible)</em>
+                <?php endif; ?>
+              </span>
+            </label>
           </div>
         </div>
 
@@ -251,6 +269,8 @@ const doctorsData = <?php echo json_encode($doctores, JSON_UNESCAPED_UNICODE | J
 const bookedAppointmentsData =
   <?php echo json_encode($citas_reservadas, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 const reservationConfig = <?php echo json_encode([
+    'generalApi' => clinica_url('api/general/'),
+    'homeUrl' => clinica_url(),
     // Use clinic label (preferred for header/footer) then clinic name, fallback to seed label
     'clinicName' => $clinic['logo_label'] ?? $clinic['name'] ?? 'Clinica Estandar',
     'successTitle' => $clinic['reservation_success_title'] ?? 'Cita Agendada',
@@ -259,6 +279,7 @@ const reservationConfig = <?php echo json_encode([
     'nextLabel' => $clinic['reservation_next_label'] ?? 'Siguiente',
     'confirmLabel' => $clinic['reservation_confirm_label'] ?? 'Confirmar Cita',
     'previousLabel' => $clinic['reservation_previous_label'] ?? 'Anterior',
+    'notifyWhatsappAvailable' => (bool) ($clinic['notify_whatsapp_enabled'] ?? false),
   ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 </script>
 

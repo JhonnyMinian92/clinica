@@ -18,7 +18,7 @@ if (is_array($user) && in_array($user['role'] ?? '', clinica_dashboard_roles(), 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <title>Ingreso | Clínica Estándar</title>
-  <link rel="icon" href="/clinica/favicon.ico" type="image/x-icon" />
+  <link rel="icon" href="<?php echo htmlspecialchars(clinica_url('favicon.ico')); ?>" type="image/x-icon" />
   <meta name="description"
     content="Acceso seguro al portal de pacientes y personal de Clínica Estándar. Tecnología y cuidado a su servicio." />
 
@@ -27,6 +27,9 @@ if (is_array($user) && in_array($user['role'] ?? '', clinica_dashboard_roles(), 
 
   <!-- Links to our assets -->
   <link rel="stylesheet" href="login.css" />
+  <script>
+    window.CLINICA_BASE_PATH = <?php echo json_encode(clinica_base_path()); ?>;
+  </script>
   <script src="login.js" defer></script>
 
   <!-- Theme color for browser UI -->

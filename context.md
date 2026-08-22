@@ -73,11 +73,12 @@ clinica/
 
 ### `api/db.php`
 
-- Lee credenciales desde `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`.
-- Mantiene fallback local: `localhost`, `clinica_base`, `root`, password vacio.
+- Lee credenciales desde `.env`/variables de entorno, `api/db.local.php` y defaults de hosting.
+- Defaults actuales: `sql206.infinityfree.com`, puerto `3306`, base `if0_42682038_clinical`, usuario `if0_42682038`.
+- La contrasena real debe ir en `DB_PASS`/`.env` o `api/db.local.php`; no se versiona. Existen plantillas `.env.example` y `api/db.local.example.php`.
 - Usa PDO singleton con `utf8mb4`, excepciones y fetch asociativo.
 
-Estado: funcional, pero configuracion por entorno queda parcial porque no hay loader `.env` y los fallbacks siguen hardcodeados.
+Estado: funcional para hosting, con loader `.env`, puerto configurable y plantillas `.env.example` / `api/db.local.example.php`.
 
 ### `api/data.php`
 
@@ -231,7 +232,7 @@ Nota: las claves demo de secretaria y doctores fueron restauradas en la BD local
 | Pendiente | Estado | Evidencia / Nota |
 | --- | --- | --- |
 | Elegir motor BD para XAMPP | Resuelto | MySQL/MariaDB via PDO. |
-| Variables de entorno/configuracion | Parcial | `api/db.php` lee env vars, pero no hay `.env` loader y quedan fallbacks. |
+| Variables de entorno/configuracion | Resuelto | `api/db.php` soporta `.env`, variables de entorno, `api/db.local.php`, puerto y defaults del hosting. |
 | PDO centralizado | Parcial | PDO singleton existe; no hay helper transaccional comun. |
 | Migraciones versionadas | Parcial | `api/seed.php` crea/ajusta esquema, pero no versiona migraciones. |
 | Claves foraneas | Pendiente | Esquema actual define indices, no constraints FK. |

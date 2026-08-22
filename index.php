@@ -9,7 +9,7 @@ $page_canonical = $clinic['canonical_url'] ?? null;
 include __DIR__ . '/public/shared/header/header.php';
 ?>
 
-<main id="main-content" data-home-api="/clinica/api/public/?resource=home">
+<main id="main-content" data-home-api="<?php echo htmlspecialchars(clinica_url('api/public/?resource=home')); ?>">
   <section id="hero" class="hero lazy-bg skeleton skeleton-dark">
     <div class="hero-overlay"></div>
     <div class="container">

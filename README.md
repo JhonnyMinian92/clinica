@@ -12,7 +12,7 @@ Estado de la auditoria solicitada:
 
 - Codigo de aplicacion: no modificado.
 - Documentacion actualizada: `context.md` y `README.md`.
-- Validacion local: PHP lint OK, JS syntax OK, JSON de seed OK, conexion DB OK.
+- Validacion local: PHP lint OK, JS syntax OK y JSON de seed OK; la conexion real al hosting requiere configurar `DB_PASS`.
 - Smoke HTTP: rutas publicas OK, dashboard sin sesion redirige, login admin OK, dashboard API OK, Gestion API OK.
 - Hallazgo mas importante de frontend: en mobile se corta contenido en home, reservas y login por overflow horizontal oculto.
 
@@ -33,7 +33,7 @@ Estado de la auditoria solicitada:
 - Reservas: `/clinica/pages/reservations/`
 - Login: `/clinica/pages/login/`
 - Dashboard: `/clinica/pages/dashboard/`
-- Gestion admin: `/clinica/pages/gestion/clinic/`
+- Gestion admin: `/clinica/pages/gestion/`
 
 ## APIs
 
@@ -45,18 +45,23 @@ Estado de la auditoria solicitada:
 
 ## Base De Datos
 
-La configuracion se lee desde variables de entorno, con fallback local:
+La configuracion de produccion apunta por defecto al hosting InfinityFree visible en el panel:
 
-- `DB_HOST`, fallback `localhost`
-- `DB_NAME`, fallback `clinica_base`
-- `DB_USER`, fallback `root`
-- `DB_PASS`, fallback vacio
+- `DB_HOST`: `sql206.infinityfree.com`
+- `DB_PORT`: `3306`
+- `DB_NAME`: `if0_42682038_clinical`
+- `DB_USER`: `if0_42682038`
+- `DB_PASS`: se debe configurar con la contrasena real del panel.
+
+`api/db.php` carga credenciales en este orden: variables de entorno o `.env`, luego `api/db.local.php`, y finalmente los defaults del hosting. Para no exponer secretos, `.env` y `api/db.local.php` estan ignorados por git; use `.env.example` o `api/db.local.example.php` como plantilla.
 
 Para inicializar:
 
 ```powershell
 php api/seed.php
 ```
+
+En InfinityFree la base ya existe; si el usuario MySQL no tiene permiso para `CREATE DATABASE`, el seeder continua usando `if0_42682038_clinical`.
 
 Tablas detectadas en la auditoria: `clinics`, `specialties`, `doctors`, `users`, `services`, `testimonials`, `doctor_schedules`, `patients`, `appointments`, `appointment_status_history` y `audit_logs`.
 
@@ -86,7 +91,7 @@ Resueltos o mayormente resueltos:
 
 Parciales:
 
-- Configuracion por entorno: hay variables de entorno, pero no `.env` loader y quedan fallbacks hardcodeados.
+- Configuracion por entorno: `api/db.php` soporta `.env`, variables de entorno y `api/db.local.php` ignorado por git.
 - Migraciones: existen `CREATE IF NOT EXISTS` y ajustes idempotentes en `seed.php`, no migraciones versionadas.
 - Reglas de agenda: valida futuro, especialidad, horario y conflictos, pero el buffer tiene casos borde con citas largas.
 - Soft delete: existe en recursos de gestion, no como politica completa para citas/pacientes.
@@ -118,7 +123,7 @@ Resultados:
 - PHP lint: OK en 24 archivos.
 - Node syntax: OK en 17 archivos.
 - JSON `gestion-data.json`: OK.
-- Conexion DB: OK.
+- Conexion DB: configurada para InfinityFree; prueba real pendiente de `DB_PASS`.
 - Smoke rutas publicas: OK.
 - CSRF con token invalido: 403 esperado.
 

@@ -7,6 +7,11 @@
 (function () {
   'use strict';
 
+  function appUrl(path) {
+    const basePath = String(window.CLINICA_BASE_PATH || '').replace(/\/$/, '');
+    return `${basePath}/${String(path || '').replace(/^\/+/, '')}`;
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('reservation-form');
     if (!form) {
@@ -43,6 +48,8 @@
     const nextMonthBtn = document.getElementById('next-month-btn');
 
     const patientPhoneInput = document.getElementById('patient-phone');
+    const notifyEmailInput = document.getElementById('notify-email-optin');
+    const notifyWhatsappInput = document.getElementById('notify-whatsapp-optin');
     const summarySpecialty = document.getElementById('summary-specialty');
     const summaryDoctor = document.getElementById('summary-doctor');
     const summaryDate = document.getElementById('summary-date');
@@ -51,8 +58,8 @@
     const summaryEmail = document.getElementById('summary-email');
     const summaryPhone = document.getElementById('summary-phone');
     const totalSteps = formSteps.length;
-    const GENERAL_API = '/clinica/api/general/';
     const config = typeof reservationConfig !== 'undefined' ? reservationConfig : {};
+    const GENERAL_API = config.generalApi || appUrl('api/general/');
 
     // --- State ---
     let currentStep = 0;
@@ -68,6 +75,8 @@
       patientEmail: '',
       patientPhone: '',
       patientNotes: '',
+      emailOptIn: true,
+      whatsappOptIn: false,
     };
     const calendarState = {
       today: new Date(),
@@ -818,6 +827,8 @@
             patientEmail: selection.patientEmail,
             patientPhone: selection.patientPhone,
             patientNotes: selection.patientNotes,
+            emailOptIn: selection.emailOptIn,
+            whatsappOptIn: selection.whatsappOptIn,
           }),
         });
 
@@ -851,7 +862,10 @@
       const formWrapper = document.querySelector('.reservation-form-wrapper');
       const clinicName = getConfigText('clinicName', 'la clinica');
       const successTitle = getConfigText('successTitle', 'Cita Agendada');
-      const successText = getConfigText('successText', 'Su cita ha sido confirmada exitosamente. Recibira un correo electronico con todos los detalles. Gracias por confiar en {clinic}.').replaceAll('{clinic}', clinicName);
+      let successText = getConfigText('successText', 'Su cita ha sido confirmada exitosamente. Recibira un correo electronico con todos los detalles. Gracias por confiar en {clinic}.').replaceAll('{clinic}', clinicName);
+      if (config.notifyWhatsappAvailable && selection.whatsappOptIn) {
+        successText += ' Tambien recibira un recordatorio por WhatsApp.';
+      }
       const backHomeLabel = getConfigText('backHomeLabel', 'Volver al Inicio');
       const successHTML = `
         <div class="success-message-container">
@@ -863,7 +877,7 @@
           </div>
           <h2 class="success-title">${escapeHtml(successTitle)}</h2>
           <p class="success-text">${escapeHtml(successText)}</p>
-          <a href="/clinica/" class="btn btn-primary">${escapeHtml(backHomeLabel)}</a>
+          <a href="${escapeAttribute(config.homeUrl || appUrl(''))}" class="btn btn-primary">${escapeHtml(backHomeLabel)}</a>
         </div>`;
       formWrapper.innerHTML = successHTML;
       formWrapper.style.height = 'auto'; // Let the content define the height
@@ -901,6 +915,12 @@
     patientEmailInput.addEventListener('input', handlePatientDataInput);
     patientPhoneInput.addEventListener('input', handlePatientDataInput);
     patientNotesInput.addEventListener('input', handlePatientDataInput);
+    notifyEmailInput?.addEventListener('change', () => {
+      selection.emailOptIn = notifyEmailInput.checked;
+    });
+    notifyWhatsappInput?.addEventListener('change', () => {
+      selection.whatsappOptIn = notifyWhatsappInput.checked;
+    });
     updateScheduleSummary();
 
     // --- Initialization ---

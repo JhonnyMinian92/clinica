@@ -47,7 +47,7 @@ include __DIR__ . '/../../public/shared/header/header.php';
             </div>
             <h3 class="specialty-title"><?php echo htmlspecialchars($especialidad['titulo']); ?></h3>
             <p class="specialty-text"><?php echo htmlspecialchars($especialidad['descripcion']); ?></p>
-            <a href="/clinica/pages/reservations/?specialty=<?php echo urlencode($especialidad['id']); ?>"
+            <a href="<?php echo htmlspecialchars(clinica_url('pages/reservations/?specialty=' . urlencode($especialidad['id']))); ?>"
               class="btn btn-primary btn-sm">Agendar Cita</a>
           </div>
         <?php endforeach; ?>

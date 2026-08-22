@@ -6,9 +6,14 @@
 (function () {
   'use strict';
 
+  function appUrl(path) {
+    const basePath = String(window.CLINICA_BASE_PATH || '').replace(/\/$/, '');
+    return `${basePath}/${String(path || '').replace(/^\/+/, '')}`;
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
-    const DASHBOARD_API = '/clinica/api/dashboard/';
-    const GENERAL_API = '/clinica/api/general/';
+    const DASHBOARD_API = appUrl('api/dashboard/');
+    const GENERAL_API = appUrl('api/general/');
     const STAFF_ROLES = ['ADMINISTRATOR', 'SECRETARIA'];
     const dashboardShell = document.querySelector('.dashboard-container');
     const DEFAULT_DATE_SCOPE = dashboardShell?.dataset.defaultDateScope || 'today';
@@ -91,6 +96,18 @@
       },
     };
 
+    const notificationChannelLabels = {
+      email: 'Email',
+      whatsapp: 'WhatsApp',
+    };
+
+    const notificationStateLabels = {
+      sent: 'Enviado',
+      failed: 'Fallo',
+      skipped: 'Simulado',
+      pendiente: 'Pendiente',
+    };
+
     const filterEmptyCopy = {
       all: {
         title: 'No hay citas para mostrar.',
@@ -114,10 +131,22 @@
       },
     };
 
+    const AUTO_REFRESH_INTERVAL_MS = 60000;
+
     function init() {
       activateDateScope(DEFAULT_DATE_SCOPE);
       attachEventListeners();
       fetchDashboardData();
+      // Keeps the list fresh AND, as a side effect, gives the reminder sweep
+      // (triggered server-side on every dashboard fetch) a steady heartbeat
+      // so the "15 minutes before" notification fires automatically while
+      // the dashboard stays open, without depending on an OS-level cron.
+      setInterval(() => {
+        const modalOpen = dom.modal?.getAttribute('aria-hidden') === 'false';
+        if (!modalOpen) {
+          fetchDashboardData();
+        }
+      }, AUTO_REFRESH_INTERVAL_MS);
     }
 
     function attachEventListeners() {
@@ -269,9 +298,13 @@
       const status = appointment.estado || 'pendiente';
       const patient = appointment.nombre_paciente || 'Paciente sin nombre';
       const doctorName = appointment.doctor_info?.nombre || '';
+      const phone = appointment.telefono_paciente || '';
+      const email = appointment.email_paciente || '';
       const details = [
         adminView && doctorName ? renderDetail('Doctor', doctorName) : '',
         appointment.especialidad ? renderDetail('Especialidad', appointment.especialidad) : '',
+        phone ? renderContactDetail('Telefono', phone, `tel:${phone}`) : renderDetail('Telefono', 'No registrado'),
+        email ? renderContactDetail('Correo', email, `mailto:${email}`) : renderDetail('Correo', 'No registrado'),
       ].join('');
 
       return `
@@ -295,10 +328,46 @@
 
           ${details ? `<div class="appointment-details">${details}</div>` : ''}
 
+          <div class="appointment-notifications" aria-label="Estado de comunicacion con el paciente">
+            ${renderNotificationBadges(appointment.notifications, appointment.id)}
+          </div>
+
           <div class="appointment-actions" aria-label="Acciones para ${escapeHtml(patient)}">
             ${getActionsHtml(appointment)}
           </div>
         </article>
+      `;
+    }
+
+    function renderNotificationBadges(notifications, appointmentId) {
+      if (!notifications) return '';
+
+      return ['email', 'whatsapp']
+        .map((channel) => {
+          const pills = ['confirmation', 'reminder']
+            .map((type) => renderNotificationPill(channel, type, notifications[channel]?.[type], appointmentId))
+            .join('');
+          return `
+            <span class="notification-channel-group">
+              <span class="notification-channel-label">${escapeHtml(notificationChannelLabels[channel])}</span>
+              ${pills}
+            </span>
+          `;
+        })
+        .join('');
+    }
+
+    function renderNotificationPill(channel, type, status, appointmentId) {
+      const state = status || 'pendiente';
+      const typeLabel = type === 'reminder' ? 'Recordatorio' : 'Confirmacion';
+      const stateLabel = notificationStateLabels[state] || state;
+      const canResend = state !== 'pendiente' || type === 'confirmation';
+
+      return `
+        <span class="notif-pill notif-${escapeHtml(state)}" title="${escapeHtml(typeLabel)}: ${escapeHtml(stateLabel)}">
+          <span class="notif-pill-label">${escapeHtml(typeLabel)}: ${escapeHtml(stateLabel)}</span>
+          ${canResend ? `<button type="button" class="notif-resend-btn" data-appointment-id="${escapeHtml(appointmentId)}" data-channel="${channel}" data-type="${type}" aria-label="Reenviar ${escapeHtml(typeLabel.toLowerCase())} por ${escapeHtml(notificationChannelLabels[channel])}">Reenviar</button>` : ''}
+        </span>
       `;
     }
 
@@ -307,6 +376,15 @@
         <div class="appointment-detail">
           <span>${escapeHtml(label)}</span>
           <strong>${escapeHtml(value)}</strong>
+        </div>
+      `;
+    }
+
+    function renderContactDetail(label, value, href) {
+      return `
+        <div class="appointment-detail">
+          <span>${escapeHtml(label)}</span>
+          <strong><a class="appointment-contact-link" href="${escapeHtml(href)}">${escapeHtml(value)}</a></strong>
         </div>
       `;
     }
@@ -433,6 +511,12 @@
     }
 
     function handleActionClick(event) {
+      const resendBtn = event.target.closest('.notif-resend-btn');
+      if (resendBtn) {
+        handleResendClick(resendBtn);
+        return;
+      }
+
       const actionButton = event.target.closest('[data-action]');
       if (!actionButton || actionButton.disabled) return;
 
@@ -481,6 +565,40 @@
       });
     }
 
+    function getCsrfTokenFromCookie() {
+      const match = document.cookie.match(new RegExp('(^|;)\\s*XSRF-TOKEN\\s*=\\s*([^;]+)'));
+      return match ? decodeURIComponent(match.pop()) : '';
+    }
+
+    async function handleResendClick(button) {
+      const { appointmentId, channel, type } = button.dataset;
+      button.disabled = true;
+
+      try {
+        const response = await fetch(DASHBOARD_API, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-CSRF-Token': getCsrfTokenFromCookie(),
+          },
+          body: JSON.stringify({ action: 'resend_notification', appointmentId, channel, type }),
+        });
+
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'No se pudo reenviar la notificacion.');
+        }
+
+        showToast(result.message || 'Notificacion reenviada.', 'success');
+        await fetchDashboardData();
+      } catch (error) {
+        showToast(error.message || 'No se pudo reenviar la notificacion.', 'error');
+        button.disabled = false;
+      }
+    }
+
     async function updateAppointmentStatus(card, appointmentId, newStatus, successText) {
       const actionsArea = card?.querySelector('.appointment-actions');
       const originalActionsHTML = actionsArea?.innerHTML || '';
@@ -497,7 +615,7 @@
           headers: {
             'Content-Type': 'application/json',
             Accept: 'application/json',
-            'X-CSRF-Token': (function(){ const match = document.cookie.match(new RegExp('(^|;)\\s*' + 'XSRF-TOKEN' + '\\s*=\\s*([^;]+)')); return match ? decodeURIComponent(match.pop()) : ''; })(),
+            'X-CSRF-Token': getCsrfTokenFromCookie(),
           },
           body: JSON.stringify({ appointmentId, newStatus, reason: getStatusReason(newStatus) }),
         });
@@ -528,7 +646,7 @@
         });
 
         if (response.status === 401) {
-          window.location.href = '/clinica/pages/login/?redirect=/clinica/pages/dashboard/';
+          window.location.href = appUrl(`pages/login/?redirect=${encodeURIComponent(appUrl('pages/dashboard/'))}`);
           return;
         }
 
@@ -589,14 +707,14 @@
           headers: {
             'Content-Type': 'application/json',
             Accept: 'application/json',
-            'X-CSRF-Token': (function(){ const match = document.cookie.match(new RegExp('(^|;)\\s*' + 'XSRF-TOKEN' + '\\s*=\\s*([^;]+)')); return match ? decodeURIComponent(match.pop()) : ''; })(),
+            'X-CSRF-Token': getCsrfTokenFromCookie(),
           },
           body: JSON.stringify({ action: 'logout' }),
         });
         const result = await response.json().catch(() => ({}));
-        window.location.href = result.redirect || '/clinica/pages/login/';
+        window.location.href = result.redirect || appUrl('pages/login/');
       } catch (error) {
-        window.location.href = '/clinica/pages/login/';
+        window.location.href = appUrl('pages/login/');
       }
     }
 

@@ -792,6 +792,59 @@ body {
   opacity: 1;
 }
 
+.required-mark {
+  color: var(--color-primary);
+}
+
+.notification-preferences {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing-unit) * 1.25);
+  padding: calc(var(--spacing-unit) * 2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-soft);
+  background-color: var(--color-background-light);
+}
+
+.notification-preferences-title {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-small);
+  font-weight: 600;
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--spacing-unit) * 1);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+}
+
+.checkbox-field input[type='checkbox'] {
+  margin-top: 3px;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.checkbox-field.is-unavailable {
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+.checkbox-field input[type='checkbox']:disabled {
+  cursor: not-allowed;
+}
+
+.checkbox-field .form-hint {
+  display: block;
+  font-size: var(--font-size-small);
+  font-style: normal;
+  color: var(--color-text-secondary);
+}
+
 /* --- Tarjeta de Resumen --- */
 .summary-card {
   background-color: var(--color-background-light);

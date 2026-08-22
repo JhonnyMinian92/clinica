@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../data.php';
+require_once __DIR__ . '/../notifications/service.php';
 
 // Ensure session started and CSRF cookie available
 clinica_ensure_session_started();
@@ -21,6 +22,11 @@ if (!is_array($user) || !in_array($user['role'] ?? '', clinica_dashboard_roles()
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $canSeeAllAppointments = clinica_can_see_all_appointments((string) ($user['role'] ?? ''));
+
+// Best-effort automatic reminder trigger: runs on every dashboard load/poll
+// so the "15 minutes before" reminder fires without depending on an OS-level
+// cron being configured. See clinica_maybe_run_reminder_sweep() docblock.
+clinica_maybe_run_reminder_sweep();
 
 if ($method === 'GET') {
   $doctorId = isset($_GET['doctor_id']) ? trim((string) $_GET['doctor_id']) : null;
@@ -122,9 +128,14 @@ if ($method === 'GET') {
   $dataStmt->execute(array_merge($params, [':limit' => $perPage, ':offset' => $offset]));
   $pageRecords = $dataStmt->fetchAll();
 
+  $notificationStatuses = clinica_notification_status_for_appointments(array_column($pageRecords, 'id'));
   $appointments = array_map(
-    static fn(array $appointment): array => clinica_transform_appointment($appointment, $user),
-    $pageRecords,
+    static function (array $appointment) use ($user, $notificationStatuses): array {
+      $transformed = clinica_transform_appointment($appointment, $user);
+      $transformed['notifications'] = $notificationStatuses[(int) $appointment['id']] ?? clinica_notification_status_empty();
+      return $transformed;
+    },
+    $pageRecords
   );
   $nextPending = null;
   foreach ($summaryRecords as $appointment) {
@@ -165,6 +176,29 @@ if ($method === 'GET') {
 
 if ($method === 'POST') {
   $payload = clinica_request_json();
+
+  if ((string) ($payload['action'] ?? '') === 'resend_notification') {
+    $appointmentId = (int) ($payload['appointmentId'] ?? 0);
+    $channel = trim((string) ($payload['channel'] ?? ''));
+    $type = trim((string) ($payload['type'] ?? ''));
+
+    $pdo = clinica_get_db();
+    $stmt = $pdo->prepare("SELECT doctor_id FROM appointments WHERE id = ?");
+    $stmt->execute([$appointmentId]);
+    $targetAppointment = $stmt->fetch();
+
+    if (!$targetAppointment) {
+      clinica_json(['success' => false, 'error' => 'Cita no encontrada.'], 404);
+    }
+
+    if (!$canSeeAllAppointments && $targetAppointment['doctor_id'] !== $user['id']) {
+      clinica_json(['success' => false, 'error' => 'No puede reenviar notificaciones de esta cita.'], 403);
+    }
+
+    $result = clinica_notify_resend($appointmentId, $channel, $type, clinica_get_user_id_from_session());
+    clinica_json($result, $result['success'] ? 200 : 422);
+  }
+
   $appointmentId = trim((string) ($payload['appointmentId'] ?? ''));
   $newStatus = trim((string) ($payload['newStatus'] ?? ''));
 

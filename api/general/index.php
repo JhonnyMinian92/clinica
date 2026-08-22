@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../data.php';
+require_once __DIR__ . '/../notifications/service.php';
 
 // Ensure session and CSRF cookie are set up correctly before handling requests
 clinica_ensure_session_started();
@@ -54,6 +55,7 @@ if ($action === 'login') {
     $stmt->execute([$username]);
     $dbUser = $stmt->fetch(PDO::FETCH_ASSOC);
   } catch (PDOException $e) {
+    error_log('Login DB authentication error: ' . $e->getMessage());
     clinica_json(['success' => false, 'error' => 'Error de base de datos al autenticar.'], 500);
   }
 
@@ -87,7 +89,7 @@ if ($action === 'logout') {
     clinica_json(['success' => false, 'error' => 'Metodo no permitido para esta accion.'], 405);
   }
   clinica_destroy_session();
-  clinica_json(['success' => true, 'redirect' => '/clinica/pages/login/']);
+  clinica_json(['success' => true, 'redirect' => clinica_url('pages/login/')]);
 }
 
 if ($action === 'create_appointment') {
@@ -103,6 +105,8 @@ if ($action === 'create_appointment') {
   $patientEmail = trim((string) ($payload['patientEmail'] ?? ''));
   $patientPhone = trim((string) ($payload['patientPhone'] ?? ''));
   $patientNotes = trim((string) ($payload['patientNotes'] ?? ''));
+  $emailOptIn = array_key_exists('emailOptIn', $payload) ? (bool) $payload['emailOptIn'] : true;
+  $whatsappOptIn = array_key_exists('whatsappOptIn', $payload) ? (bool) $payload['whatsappOptIn'] : false;
 
   if (empty($specialtyId) || empty($doctorId) || empty($date) || empty($time) || empty($patientName) || empty($patientEmail) || empty($patientPhone)) {
     clinica_log_audit_event(clinica_get_user_id_from_session(), 'appointment_creation_failed', 'Faltan datos requeridos', [
@@ -168,12 +172,12 @@ if ($action === 'create_appointment') {
     $patientId = $stmt->fetchColumn();
 
     if (!$patientId) {
-      $stmt = $pdo->prepare("INSERT INTO patients (name, email, phone) VALUES (?, ?, ?)");
-      $stmt->execute([$patientName, $patientEmail, $patientPhone]);
+      $stmt = $pdo->prepare("INSERT INTO patients (name, email, phone, email_opt_in, whatsapp_opt_in) VALUES (?, ?, ?, ?, ?)");
+      $stmt->execute([$patientName, $patientEmail, $patientPhone, $emailOptIn, $whatsappOptIn]);
       $patientId = $pdo->lastInsertId();
     } else {
-      $stmt = $pdo->prepare("UPDATE patients SET name = ?, phone = ? WHERE id = ?");
-      $stmt->execute([$patientName, $patientPhone, $patientId]);
+      $stmt = $pdo->prepare("UPDATE patients SET name = ?, phone = ?, email_opt_in = ?, whatsapp_opt_in = ? WHERE id = ?");
+      $stmt->execute([$patientName, $patientPhone, $emailOptIn, $whatsappOptIn, $patientId]);
     }
 
     // 5. Validar que no haya doble reserva (incluyendo buffer time)
@@ -197,7 +201,15 @@ if ($action === 'create_appointment') {
     $stmt->execute([$patientId, $doctorId, $specialtyId, $date, $time . ':00', $slotMinutes, $patientNotes]);
 
     $pdo->commit();
-    clinica_log_audit_event(clinica_get_user_id_from_session(), 'appointment_created', 'Cita agendada exitosamente', ['appointment_id' => $pdo->lastInsertId(), 'patient_id' => $patientId, 'doctorId' => $doctorId, 'date' => $date, 'time' => $time]);
+    $newAppointmentId = (int) $pdo->lastInsertId();
+
+    try {
+      clinica_notify_appointment_created($newAppointmentId);
+    } catch (Throwable $e) {
+      error_log('Notification dispatch failed: ' . $e->getMessage());
+    }
+
+    clinica_log_audit_event(clinica_get_user_id_from_session(), 'appointment_created', 'Cita agendada exitosamente', ['appointment_id' => $newAppointmentId, 'patient_id' => $patientId, 'doctorId' => $doctorId, 'date' => $date, 'time' => $time]);
     clinica_json(['success' => true, 'message' => 'Cita creada exitosamente.']);
   } catch (PDOException $e) {
     if (isset($pdo) && $pdo->inTransaction()) {

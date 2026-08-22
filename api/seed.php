@@ -9,14 +9,20 @@ echo "Inicializando base de datos de Clinica...\n";
 
 try {
   $credentials = clinica_db_credentials();
-  $serverDsn = "mysql:host={$credentials['host']};charset={$credentials['charset']}";
-  $serverPdo = new PDO($serverDsn, $credentials['user'], $credentials['password'], [
-    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-  ]);
+  $port = trim((string) ($credentials['port'] ?? ''));
+  $portSegment = $port !== '' ? ";port={$port}" : '';
+  $serverDsn = "mysql:host={$credentials['host']}{$portSegment};charset={$credentials['charset']}";
+  try {
+    $serverPdo = new PDO($serverDsn, $credentials['user'], $credentials['password'], [
+      PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+      PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    ]);
 
-  $dbName = str_replace('`', '``', $credentials['dbname']);
-  $serverPdo->exec("CREATE DATABASE IF NOT EXISTS `{$dbName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+    $dbName = str_replace('`', '``', $credentials['dbname']);
+    $serverPdo->exec("CREATE DATABASE IF NOT EXISTS `{$dbName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+  } catch (PDOException $prepareException) {
+    echo "No se pudo preparar la base desde este usuario; se usara la base existente {$credentials['dbname']}.\n";
+  }
 
   $pdo = clinica_get_db();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -243,6 +249,31 @@ function clinica_seed_apply_migrations(PDO $pdo): void
   if (($stmt->fetchColumn() ?: '') !== 'varchar') {
     $pdo->exec("ALTER TABLE doctor_schedules MODIFY id VARCHAR(50) NOT NULL");
   }
+
+  // Comunicacion con pacientes: opt-in por canal y ajustes de la clinica.
+  clinica_seed_add_column($pdo, 'patients', 'email_opt_in', "ALTER TABLE patients ADD COLUMN email_opt_in BOOLEAN NOT NULL DEFAULT TRUE AFTER active");
+  clinica_seed_add_column($pdo, 'patients', 'whatsapp_opt_in', "ALTER TABLE patients ADD COLUMN whatsapp_opt_in BOOLEAN NOT NULL DEFAULT TRUE AFTER email_opt_in");
+
+  clinica_seed_add_column($pdo, 'clinics', 'notify_email_enabled', "ALTER TABLE clinics ADD COLUMN notify_email_enabled BOOLEAN NOT NULL DEFAULT TRUE AFTER whatsapp_url");
+  clinica_seed_add_column($pdo, 'clinics', 'notify_whatsapp_enabled', "ALTER TABLE clinics ADD COLUMN notify_whatsapp_enabled BOOLEAN NOT NULL DEFAULT FALSE AFTER notify_email_enabled");
+  clinica_seed_add_column($pdo, 'clinics', 'reminder_minutes_before', "ALTER TABLE clinics ADD COLUMN reminder_minutes_before INT UNSIGNED NOT NULL DEFAULT 15 AFTER notify_whatsapp_enabled");
+
+  $pdo->exec("
+    CREATE TABLE IF NOT EXISTS notification_log (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      appointment_id INT UNSIGNED NOT NULL,
+      channel ENUM('email','whatsapp') NOT NULL,
+      type ENUM('confirmation','reminder') NOT NULL,
+      status ENUM('sent','failed','skipped') NOT NULL,
+      provider VARCHAR(50) DEFAULT NULL,
+      recipient VARCHAR(255) DEFAULT NULL,
+      error_message TEXT DEFAULT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      KEY idx_notification_appointment (appointment_id),
+      KEY idx_notification_lookup (appointment_id, channel, type, status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  ");
 }
 
 function clinica_seed_add_column(PDO $pdo, string $table, string $column, string $sql): void
@@ -322,8 +353,12 @@ function clinica_seed_insert_rows_ignore(PDO $pdo, string $table, array $rows): 
 function clinica_seed_insert_assoc(PDO $pdo, string $table, array $row, bool $ignore = false): void
 {
   $columns = array_keys($row);
-  $columnSql = implode(', ', array_map(static fn(string $column): string => "`$column`", $columns));
-  $placeholderSql = implode(', ', array_map(static fn(string $column): string => ":$column", $columns));
+  $columnSql = implode(', ', array_map(static function (string $column): string {
+    return "`$column`";
+  }, $columns));
+  $placeholderSql = implode(', ', array_map(static function (string $column): string {
+    return ":$column";
+  }, $columns));
   $verb = $ignore ? 'INSERT IGNORE' : 'INSERT';
   $stmt = $pdo->prepare("$verb INTO `$table` ($columnSql) VALUES ($placeholderSql)");
   $stmt->execute($row);
