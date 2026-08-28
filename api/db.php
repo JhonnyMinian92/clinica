@@ -21,27 +21,6 @@ if (!function_exists('str_contains')) {
  * 1. Environment variables or values loaded from /.env
  * 2. Optional untracked api/db.local.php file
  * 3. Hosting defaults from InfinityFree
-if (!function_exists('str_starts_with')) {
-  function str_starts_with(string $haystack, string $needle): bool
-  {
-    return $needle === '' || strpos($haystack, $needle) === 0;
-  }
-}
-
-if (!function_exists('str_contains')) {
-  function str_contains(string $haystack, string $needle): bool
-  {
-    return $needle === '' || strpos($haystack, $needle) !== false;
-  }
-}
-
-/**
- * Returns database credentials for the deployed hosting.
- *
- * Priority:
- * 1. Environment variables or values loaded from /.env
- * 2. Optional untracked api/db.local.php file
- * 3. Hosting defaults from InfinityFree
  */
 function clinica_db_credentials(): array
 {
