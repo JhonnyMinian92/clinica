@@ -99,7 +99,11 @@ function clinica_bootstrap_timezone(): void
     return;
   }
 
-  $credentials = clinica_db_credentials();
+  // Load configuration and timezone without opening a database connection.
+  // Database errors must remain catchable by the application layer instead of
+  // causing a fatal error while db.php itself is being included.
+  $environmentFile = clinica_environment_file();
+  clinica_load_env_file($environmentFile);
   date_default_timezone_set(clinica_env('APP_TIMEZONE', 'America/Guayaquil'));
   $done = true;
 }
