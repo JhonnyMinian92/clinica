@@ -32,15 +32,30 @@ $doctorId = $canSeeAllAppointments ? $doctorId : (string) $user['id'];
 $pdo = clinica_get_db();
 $doctorsForSelect = $canSeeAllAppointments ? clinica_get_all_doctors_for_select() : [];
 
+/**
+ * Prevent spreadsheet formula injection when a report is opened in Excel,
+ * LibreOffice or another spreadsheet application. Patient/doctor names are
+ * data, not formulas, even when they begin with =, +, -, or @.
+ */
+function clinica_reportes_csv_cell($value): string
+{
+  $value = (string) ($value ?? '');
+  if ($value !== '' && in_array($value[0], ['=', '+', '-', '@'], true)) {
+    return "'" . $value;
+  }
+  return $value;
+}
+
 function clinica_reportes_stream_csv(string $filename, array $headers, array $rows): void
 {
+  $safeFilename = preg_replace('/[^A-Za-z0-9._-]/', '_', $filename) ?: 'reporte.csv';
   header('Content-Type: text/csv; charset=utf-8');
-  header('Content-Disposition: attachment; filename="' . $filename . '"');
+  header('Content-Disposition: attachment; filename="' . $safeFilename . '"');
   $out = fopen('php://output', 'w');
-  fwrite($out, "\xEF\xBB\xBF"); // BOM para que Excel detecte UTF-8 correctamente
-  fputcsv($out, $headers);
+  fwrite($out, "\xEF\xBB\xBF");
+  fputcsv($out, array_map('clinica_reportes_csv_cell', $headers));
   foreach ($rows as $row) {
-    fputcsv($out, $row);
+    fputcsv($out, array_map('clinica_reportes_csv_cell', $row));
   }
   fclose($out);
   exit();
@@ -119,9 +134,6 @@ if ($report === 'by_status_detail') {
   }
   $whereSql = implode(' AND ', $where);
 
-  // Cada cita solo puede tener, a lo sumo, una transicion hacia un estado
-  // final (una vez cerrada no se puede volver a cambiar), por lo que este
-  // LEFT JOIN nunca duplica filas.
   $baseSql = "SELECT a.id, a.date AS fecha, a.time AS hora, d.name AS doctor_nombre, p.name AS paciente,
                      h.changed_at AS fecha_cambio
               FROM appointments a
