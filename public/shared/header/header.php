@@ -13,7 +13,6 @@ $home_url = clinica_url();
 ?>
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -22,20 +21,15 @@ $home_url = clinica_url();
   <?php if ($page_canonical !== ''): ?>
     <link rel="canonical" href="<?php echo htmlspecialchars($page_canonical); ?>">
   <?php endif; ?>
-
   <link rel="icon" href="<?php echo htmlspecialchars(clinica_url('favicon.ico')); ?>" type="image/x-icon">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
   <link rel="stylesheet" href="<?php echo htmlspecialchars(clinica_versioned_url('public/css/style.css')); ?>">
   <link rel="stylesheet" href="<?php echo htmlspecialchars(clinica_versioned_url('public/shared/header/header.css')); ?>">
   <link rel="stylesheet" href="<?php echo htmlspecialchars(clinica_versioned_url('public/shared/footer/footer.css')); ?>">
   <link rel="stylesheet" href="<?php echo htmlspecialchars(clinica_versioned_url('public/css/components.css')); ?>">
-  <script>
-    window.CLINICA_BASE_PATH = <?php echo json_encode(clinica_base_path()); ?>;
-  </script>
-
+  <script>window.CLINICA_BASE_PATH = <?php echo json_encode(clinica_base_path()); ?>;</script>
   <?php
   if (isset($page_specific_css) && !empty($page_specific_css)) {
     $css_path = dirname($_SERVER['PHP_SELF']) . '/' . $page_specific_css;
@@ -48,7 +42,6 @@ $home_url = clinica_url();
   }
   ?>
 </head>
-
 <body>
   <header class="main-header" id="main-header">
     <div class="container header-container">
@@ -62,14 +55,16 @@ $home_url = clinica_url();
           <li><a href="<?php echo htmlspecialchars(clinica_url('#services')); ?>" class="nav-link">Servicios</a></li>
           <li><a href="<?php echo htmlspecialchars(clinica_url('#doctors')); ?>" class="nav-link">Doctores</a></li>
           <li><a href="<?php echo htmlspecialchars(clinica_url('#about')); ?>" class="nav-link">Nosotros</a></li>
-          <li><a href="<?php echo htmlspecialchars(clinica_url('pages/my-appointment/')); ?>" class="nav-link">Mi Cita</a></li>
+          <li><a href="<?php echo htmlspecialchars(clinica_url('pages/my-appointment/')); ?>" class="nav-link nav-link-appointment"><span class="nav-link-icon" aria-hidden="true">✓</span> Mi cita</a></li>
         </ul>
       </nav>
       <div class="header-actions">
-        <a href="<?php echo htmlspecialchars(clinica_url('pages/my-appointment/')); ?>" class="btn btn-secondary">Consultar Cita</a>
-        <a href="<?php echo htmlspecialchars(clinica_url('pages/reservations/')); ?>" class="btn btn-primary">Agendar Cita</a>
-        <button class="mobile-nav-toggle" id="mobile-nav-toggle" aria-controls="main-nav" aria-expanded="false"
-          aria-label="Abrir menu de navegacion">
+        <a href="<?php echo htmlspecialchars(clinica_url('pages/my-appointment/')); ?>" class="header-appointment-link" aria-label="Consultar y gestionar mi cita">
+          <span class="header-appointment-icon" aria-hidden="true">✓</span>
+          <span class="header-appointment-text"><small>¿Ya tienes una cita?</small><strong>Consultar mi cita</strong></span>
+        </a>
+        <a href="<?php echo htmlspecialchars(clinica_url('pages/reservations/')); ?>" class="btn btn-primary header-book-button">Agendar cita</a>
+        <button class="mobile-nav-toggle" id="mobile-nav-toggle" aria-controls="main-nav" aria-expanded="false" aria-label="Abrir menu de navegacion">
           <span class="hamburger-line"></span><span class="hamburger-line"></span><span class="hamburger-line"></span>
         </button>
       </div>
