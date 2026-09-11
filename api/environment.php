@@ -3,17 +3,16 @@
 /**
  * Single environment selector for Clinica.
  *
- * The application can be deployed from the same Git repository to both
- * XAMPP/local and InfinityFree/demo without editing this file per deployment.
+ * The same repository can run in XAMPP/local and InfinityFree/demo without
+ * editing this file for each deployment.
  *
- * Available files:
+ * Environment files:
  * - /.env.local       -> XAMPP / phpMyAdmin
  * - /.env.development -> InfinityFree demo
- * - /.env.production  -> production (manual/explicit selection only)
+ * - /.env.production  -> production (explicit selection only)
  *
- * Set this to 'auto' for normal deployments. The runtime selects local when
- * executed from localhost/loopback and development when executed through a
- * public HTTP host. Production is never selected automatically.
+ * In automatic mode, a local loopback request uses .env.local and any
+ * non-loopback web request uses .env.development. CLI remains local.
  */
 const CLINICA_ENV_FILE = 'auto';
 
@@ -28,24 +27,36 @@ function clinica_environment_file(): string
   $selected = CLINICA_ENV_FILE;
 
   if ($selected === 'auto') {
-    $host = '';
+    $hosts = [];
 
-    if (isset($_SERVER['HTTP_HOST'])) {
-      $host = strtolower(trim((string) $_SERVER['HTTP_HOST']));
-      $host = preg_replace('/:\\d+$/', '', $host) ?: $host;
+    foreach (['HTTP_HOST', 'SERVER_NAME', 'SERVER_ADDR'] as $serverKey) {
+      if (isset($_SERVER[$serverKey])) {
+        $value = strtolower(trim((string) $_SERVER[$serverKey]));
+        $value = preg_replace('/:\\d+$/', '', $value) ?: $value;
+        if ($value !== '') {
+          $hosts[] = $value;
+        }
+      }
     }
 
     $isCli = PHP_SAPI === 'cli';
-    $isLocalHost = in_array($host, [
-      '',
+    $localHosts = [
       'localhost',
       '127.0.0.1',
       '::1',
-    ], true);
+    ];
 
-    // CLI is treated as local unless an explicit environment is selected.
-    // This avoids selecting demo credentials from a local terminal.
-    $selected = ($isCli || $isLocalHost)
+    $isLocalRequest = false;
+    foreach ($hosts as $host) {
+      if (in_array($host, $localHosts, true)) {
+        $isLocalRequest = true;
+        break;
+      }
+    }
+
+    // A public HTTP request is development/demo. Only an explicit loopback
+    // request or CLI execution selects the local XAMPP environment.
+    $selected = ($isCli || $isLocalRequest)
       ? '.env.local'
       : '.env.development';
   }
