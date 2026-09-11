@@ -5,14 +5,6 @@ require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/whatsapp.php';
 require_once __DIR__ . '/templates.php';
 
-/**
- * Orchestrates patient notifications (confirmation on booking, reminder before
- * the appointment, manual resend from the dashboard). Every entry point here
- * is safe to call from a request that must not fail because of a notification
- * problem: failures are logged to notification_log and to error_log, never
- * thrown back to the caller.
- */
-
 const CLINICA_NOTIFICATION_RETRY_COOLDOWN_MINUTES = 10;
 const CLINICA_REMINDER_SWEEP_LOCK_TIMEOUT_SECONDS = 0;
 
@@ -34,32 +26,20 @@ function clinica_notification_appointment_data(PDO $pdo, int $appointmentId): ?a
   return $row ?: null;
 }
 
-/**
- * Prevents a failed provider from being hammered once per dashboard poll.
- * A successful notification remains permanently idempotent for its channel/type.
- */
+/** Prevents a failed provider from being hammered once per dashboard poll. */
 function clinica_notification_should_skip_retry(PDO $pdo, int $appointmentId, string $channel, string $type): bool
 {
   $stmt = $pdo->prepare("\n    SELECT status, created_at\n    FROM notification_log\n    WHERE appointment_id = ? AND channel = ? AND type = ?\n    ORDER BY created_at DESC, id DESC\n    LIMIT 1\n  ");
   $stmt->execute([$appointmentId, $channel, $type]);
   $last = $stmt->fetch();
 
-  if (!$last) {
-    return false;
-  }
-
-  if ((string) ($last['status'] ?? '') === 'sent') {
-    return true;
-  }
-
-  if ((string) ($last['status'] ?? '') !== 'failed') {
-    return false;
-  }
+  if (!$last) return false;
+  if ((string) ($last['status'] ?? '') === 'sent') return true;
+  if ((string) ($last['status'] ?? '') !== 'failed') return false;
 
   try {
     $lastAttempt = new DateTimeImmutable((string) $last['created_at']);
-    $retryAfter = $lastAttempt->modify('+' . CLINICA_NOTIFICATION_RETRY_COOLDOWN_MINUTES . ' minutes');
-    return new DateTimeImmutable('now') < $retryAfter;
+    return new DateTimeImmutable('now') < $lastAttempt->modify('+' . CLINICA_NOTIFICATION_RETRY_COOLDOWN_MINUTES . ' minutes');
   } catch (Throwable $e) {
     return false;
   }
@@ -75,29 +55,18 @@ function clinica_log_notification(PDO $pdo, int $appointmentId, string $channel,
   }
 }
 
-/**
- * @return array{status: string, provider: ?string, error: ?string}
- */
 function clinica_notification_send_channel(string $channel, string $type, array $ctx, string $recipient): array
 {
   if ($channel === 'email') {
     $content = $type === 'reminder' ? clinica_email_reminder_content($ctx) : clinica_email_confirmation_content($ctx);
     $result = clinica_mail_send($recipient, $ctx['patient_name'], $content['subject'], $content['html']);
-    return [
-      'status' => $result['success'] ? 'sent' : 'failed',
-      'provider' => 'smtp',
-      'error' => $result['error'],
-    ];
+    return ['status' => $result['success'] ? 'sent' : 'failed', 'provider' => 'smtp', 'error' => $result['error']];
   }
 
   if ($channel === 'whatsapp') {
     $message = $type === 'reminder' ? clinica_whatsapp_reminder_text($ctx) : clinica_whatsapp_confirmation_text($ctx);
     $result = clinica_whatsapp_send($recipient, $message, $type, $ctx);
-    return [
-      'status' => $result['status'],
-      'provider' => $result['provider'],
-      'error' => $result['error'],
-    ];
+    return ['status' => $result['status'], 'provider' => $result['provider'], 'error' => $result['error']];
   }
 
   return ['status' => 'failed', 'provider' => null, 'error' => 'Canal de notificacion desconocido.'];
@@ -106,10 +75,14 @@ function clinica_notification_send_channel(string $channel, string $type, array 
 function clinica_notification_channel_config(string $channel, array $appointment, array $clinic): array
 {
   if ($channel === 'email') {
+    // Even if an old demo row has notify_email_enabled=1, do not attempt SMTP
+    // until a sender address is configured. This prevents 8-second connection
+    // attempts during every booking on demo hosting.
+    $smtpConfigured = trim(clinica_env('SMTP_HOST', '')) !== ''
+      && trim(clinica_env('MAIL_FROM_EMAIL', '')) !== '';
+
     return [
-      // Notifications remain opt-in at clinic level. This avoids SMTP timeouts
-      // on demo deployments where no provider is configured yet.
-      'enabled' => (bool) ($clinic['notify_email_enabled'] ?? false),
+      'enabled' => (bool) ($clinic['notify_email_enabled'] ?? false) && $smtpConfigured,
       'opt_in' => (bool) ($appointment['email_opt_in'] ?? true),
       'recipient' => (string) ($appointment['patient_email'] ?? ''),
     ];
@@ -129,33 +102,20 @@ function clinica_dispatch_notification(PDO $pdo, array $appointment, array $clin
 
   foreach (['email', 'whatsapp'] as $channel) {
     $config = clinica_notification_channel_config($channel, $appointment, $clinic);
-
-    if (!$config['enabled'] || !$config['opt_in'] || trim($config['recipient']) === '') {
-      continue;
-    }
-
-    if ($checkIdempotency && clinica_notification_should_skip_retry($pdo, $appointmentId, $channel, $type)) {
-      continue;
-    }
+    if (!$config['enabled'] || !$config['opt_in'] || trim($config['recipient']) === '') continue;
+    if ($checkIdempotency && clinica_notification_should_skip_retry($pdo, $appointmentId, $channel, $type)) continue;
 
     $result = clinica_notification_send_channel($channel, $type, $ctx, $config['recipient']);
     clinica_log_notification($pdo, $appointmentId, $channel, $type, $result['status'], $result['provider'], $config['recipient'], $result['error']);
   }
 }
 
-/**
- * Called right after an appointment is created. Notification delivery is only
- * attempted when the clinic explicitly enables a channel. The demo therefore
- * never blocks a booking waiting for an unconfigured SMTP/WhatsApp provider.
- */
 function clinica_notify_appointment_created(int $appointmentId): void
 {
   try {
     $pdo = clinica_get_db();
     $appointment = clinica_notification_appointment_data($pdo, $appointmentId);
-    if ($appointment === null) {
-      return;
-    }
+    if ($appointment === null) return;
 
     $clinic = clinica_get_clinic_settings();
     clinica_dispatch_notification($pdo, $appointment, $clinic, 'confirmation', false);
@@ -164,18 +124,12 @@ function clinica_notify_appointment_created(int $appointmentId): void
   }
 }
 
-/**
- * Called by the reminders cron or dashboard safety-net. Skips appointments
- * that are no longer pending and uses per-channel idempotency/cooldown.
- */
 function clinica_notify_appointment_reminder(int $appointmentId): void
 {
   try {
     $pdo = clinica_get_db();
     $appointment = clinica_notification_appointment_data($pdo, $appointmentId);
-    if ($appointment === null || (string) ($appointment['status'] ?? '') !== 'pendiente') {
-      return;
-    }
+    if ($appointment === null || (string) ($appointment['status'] ?? '') !== 'pendiente') return;
 
     $clinic = clinica_get_clinic_settings();
     clinica_dispatch_notification($pdo, $appointment, $clinic, 'reminder', true);
@@ -185,11 +139,9 @@ function clinica_notify_appointment_reminder(int $appointmentId): void
 }
 
 /**
- * Finds pending appointments whose start time falls within the clinic's
- * reminder window. The query keeps the date column sargable so MySQL can use
- * the appointment date/time indexes instead of applying TIMESTAMP() to every
- * row. A short advisory lock prevents simultaneous dashboard polls from
- * running the same sweep concurrently.
+ * Reminder sweep with a non-blocking advisory lock and a sargable date/time
+ * predicate. This prevents duplicate concurrent sweeps and avoids scanning
+ * TIMESTAMP(date,time) over every appointment row.
  */
 function clinica_run_reminder_sweep(): int
 {
@@ -201,13 +153,10 @@ function clinica_run_reminder_sweep(): int
     $lockStmt = $pdo->prepare('SELECT GET_LOCK(?, ?)');
     $lockStmt->execute([$lockName, CLINICA_REMINDER_SWEEP_LOCK_TIMEOUT_SECONDS]);
     $lockAcquired = (bool) $lockStmt->fetchColumn();
-    if (!$lockAcquired) {
-      return 0;
-    }
+    if (!$lockAcquired) return 0;
 
     $clinic = clinica_get_clinic_settings();
     $leadMinutes = max(1, min(1440, (int) ($clinic['reminder_minutes_before'] ?? 15)));
-
     $windowStart = new DateTimeImmutable('now');
     $windowEnd = $windowStart->modify("+{$leadMinutes} minutes");
     $startDate = $windowStart->format('Y-m-d');
@@ -224,10 +173,7 @@ function clinica_run_reminder_sweep(): int
     ]);
     $appointmentIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-    foreach ($appointmentIds as $appointmentId) {
-      clinica_notify_appointment_reminder((int) $appointmentId);
-    }
-
+    foreach ($appointmentIds as $appointmentId) clinica_notify_appointment_reminder((int) $appointmentId);
     return count($appointmentIds);
   } catch (Throwable $e) {
     error_log('clinica_run_reminder_sweep failed: ' . $e->getMessage());
@@ -244,11 +190,6 @@ function clinica_run_reminder_sweep(): int
   }
 }
 
-/**
- * Best-effort trigger from the dashboard. InfinityFree free hosting does not
- * provide cron jobs, so this is deliberately lightweight and concurrency-safe.
- * A paid production host can use api/cron/reminders.php instead.
- */
 function clinica_maybe_run_reminder_sweep(): void
 {
   try {
@@ -258,11 +199,6 @@ function clinica_maybe_run_reminder_sweep(): void
   }
 }
 
-/**
- * Manual resend triggered from the dashboard. Unlike automatic paths, this is
- * an explicit override, but it still respects clinic-level enablement and the
- * patient's channel opt-in.
- */
 function clinica_notify_resend(int $appointmentId, string $channel, string $type, ?int $actingUserId): array
 {
   if (!in_array($channel, ['email', 'whatsapp'], true) || !in_array($type, ['confirmation', 'reminder'], true)) {
@@ -271,29 +207,17 @@ function clinica_notify_resend(int $appointmentId, string $channel, string $type
 
   $pdo = clinica_get_db();
   $appointment = clinica_notification_appointment_data($pdo, $appointmentId);
-  if ($appointment === null) {
-    return ['success' => false, 'error' => 'Cita no encontrada.'];
-  }
+  if ($appointment === null) return ['success' => false, 'error' => 'Cita no encontrada.'];
 
   $clinic = clinica_get_clinic_settings();
   $config = clinica_notification_channel_config($channel, $appointment, $clinic);
-
-  if (!$config['enabled']) {
-    return ['success' => false, 'error' => 'Este canal no esta habilitado para la clinica.'];
-  }
-
-  if (!$config['opt_in']) {
-    return ['success' => false, 'error' => 'El paciente no ha aceptado este canal.'];
-  }
-
-  if (trim($config['recipient']) === '') {
-    return ['success' => false, 'error' => 'El paciente no tiene un dato de contacto valido para este canal.'];
-  }
+  if (!$config['enabled']) return ['success' => false, 'error' => 'Este canal no esta habilitado para la clinica.'];
+  if (!$config['opt_in']) return ['success' => false, 'error' => 'El paciente no ha aceptado este canal.'];
+  if (trim($config['recipient']) === '') return ['success' => false, 'error' => 'El paciente no tiene un dato de contacto valido para este canal.'];
 
   $ctx = clinica_notification_context($appointment, $clinic);
   $result = clinica_notification_send_channel($channel, $type, $ctx, $config['recipient']);
   clinica_log_notification($pdo, $appointmentId, $channel, $type, $result['status'], $result['provider'], $config['recipient'], $result['error']);
-
   clinica_log_audit_event($actingUserId, 'notification_resent', 'Notificacion reenviada manualmente', [
     'appointment_id' => $appointmentId,
     'channel' => $channel,
@@ -301,14 +225,8 @@ function clinica_notify_resend(int $appointmentId, string $channel, string $type
     'status' => $result['status'],
   ], 'appointment', (string) $appointmentId);
 
-  if ($result['status'] === 'sent') {
-    return ['success' => true];
-  }
-
-  if ($result['status'] === 'skipped') {
-    return ['success' => true, 'message' => 'Canal en modo simulado (mock): no se realizo un envio real.'];
-  }
-
+  if ($result['status'] === 'sent') return ['success' => true];
+  if ($result['status'] === 'skipped') return ['success' => true, 'message' => 'Canal en modo simulado (mock): no se realizo un envio real.'];
   return ['success' => false, 'error' => $result['error'] ?? 'No se pudo reenviar la notificacion.'];
 }
 
@@ -320,15 +238,10 @@ function clinica_notification_status_empty(): array
   ];
 }
 
-/**
- * Batched status lookup for the dashboard list (avoids N+1 queries).
- */
 function clinica_notification_status_for_appointments(array $appointmentIds): array
 {
   $appointmentIds = array_values(array_unique(array_map('intval', $appointmentIds)));
-  if (count($appointmentIds) === 0) {
-    return [];
-  }
+  if (count($appointmentIds) === 0) return [];
 
   $pdo = clinica_get_db();
   $placeholders = implode(',', array_fill(0, count($appointmentIds), '?'));
@@ -338,20 +251,15 @@ function clinica_notification_status_for_appointments(array $appointmentIds): ar
   $result = [];
   foreach ($stmt->fetchAll() as $row) {
     $id = (int) $row['appointment_id'];
-    if (!isset($result[$id])) {
-      $result[$id] = clinica_notification_status_empty();
-    }
+    if (!isset($result[$id])) $result[$id] = clinica_notification_status_empty();
     if (isset($result[$id][$row['channel']][$row['type']]) && $result[$id][$row['channel']][$row['type']] === null) {
       $result[$id][$row['channel']][$row['type']] = $row['status'];
     }
   }
 
   foreach ($appointmentIds as $id) {
-    if (!isset($result[$id])) {
-      $result[$id] = clinica_notification_status_empty();
-    }
+    if (!isset($result[$id])) $result[$id] = clinica_notification_status_empty();
   }
-
   return $result;
 }
 
