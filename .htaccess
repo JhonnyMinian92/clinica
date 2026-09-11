@@ -1,0 +1,16 @@
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Never expose local configuration, internal documentation or repository data.
+  RewriteRule ^(?:\.env|\.gitignore)$ - [F,L,NC]
+  RewriteRule ^(?:context\.md|pendiente\.md)$ - [F,L,NC]
+  RewriteRule ^api/db\.local(?:\.php|\.example\.php)$ - [F,L,NC]
+  RewriteRule ^api/storage(?:/|$) - [F,L,NC]
+  RewriteRule ^database(?:/|$) - [F,L,NC]
+</IfModule>
+
+<FilesMatch "^(?:\.env|\.gitignore|.*\.local\.php)$">
+  Require all denied
+</FilesMatch>
