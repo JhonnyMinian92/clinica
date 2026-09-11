@@ -13,6 +13,9 @@ require_once __DIR__ . '/templates.php';
  * thrown back to the caller.
  */
 
+const CLINICA_NOTIFICATION_RETRY_COOLDOWN_MINUTES = 10;
+const CLINICA_REMINDER_SWEEP_LOCK_TIMEOUT_SECONDS = 0;
+
 function clinica_notification_appointment_data(PDO $pdo, int $appointmentId): ?array
 {
   $stmt = $pdo->prepare("
@@ -31,11 +34,35 @@ function clinica_notification_appointment_data(PDO $pdo, int $appointmentId): ?a
   return $row ?: null;
 }
 
-function clinica_notification_already_sent(PDO $pdo, int $appointmentId, string $channel, string $type): bool
+/**
+ * Prevents a failed provider from being hammered once per dashboard poll.
+ * A successful notification remains permanently idempotent for its channel/type.
+ */
+function clinica_notification_should_skip_retry(PDO $pdo, int $appointmentId, string $channel, string $type): bool
 {
-  $stmt = $pdo->prepare("SELECT 1 FROM notification_log WHERE appointment_id = ? AND channel = ? AND type = ? AND status = 'sent' LIMIT 1");
+  $stmt = $pdo->prepare("\n    SELECT status, created_at\n    FROM notification_log\n    WHERE appointment_id = ? AND channel = ? AND type = ?\n    ORDER BY created_at DESC, id DESC\n    LIMIT 1\n  ");
   $stmt->execute([$appointmentId, $channel, $type]);
-  return (bool) $stmt->fetchColumn();
+  $last = $stmt->fetch();
+
+  if (!$last) {
+    return false;
+  }
+
+  if ((string) ($last['status'] ?? '') === 'sent') {
+    return true;
+  }
+
+  if ((string) ($last['status'] ?? '') !== 'failed') {
+    return false;
+  }
+
+  try {
+    $lastAttempt = new DateTimeImmutable((string) $last['created_at']);
+    $retryAfter = $lastAttempt->modify('+' . CLINICA_NOTIFICATION_RETRY_COOLDOWN_MINUTES . ' minutes');
+    return new DateTimeImmutable('now') < $retryAfter;
+  } catch (Throwable $e) {
+    return false;
+  }
 }
 
 function clinica_log_notification(PDO $pdo, int $appointmentId, string $channel, string $type, string $status, ?string $provider, ?string $recipient, ?string $errorMessage): void
@@ -80,7 +107,9 @@ function clinica_notification_channel_config(string $channel, array $appointment
 {
   if ($channel === 'email') {
     return [
-      'enabled' => (bool) ($clinic['notify_email_enabled'] ?? true),
+      // Notifications remain opt-in at clinic level. This avoids SMTP timeouts
+      // on demo deployments where no provider is configured yet.
+      'enabled' => (bool) ($clinic['notify_email_enabled'] ?? false),
       'opt_in' => (bool) ($appointment['email_opt_in'] ?? true),
       'recipient' => (string) ($appointment['patient_email'] ?? ''),
     ];
@@ -105,7 +134,7 @@ function clinica_dispatch_notification(PDO $pdo, array $appointment, array $clin
       continue;
     }
 
-    if ($checkIdempotency && clinica_notification_already_sent($pdo, $appointmentId, $channel, $type)) {
+    if ($checkIdempotency && clinica_notification_should_skip_retry($pdo, $appointmentId, $channel, $type)) {
       continue;
     }
 
@@ -115,8 +144,9 @@ function clinica_dispatch_notification(PDO $pdo, array $appointment, array $clin
 }
 
 /**
- * Called right after an appointment is created. Must never throw or block
- * the booking response.
+ * Called right after an appointment is created. Notification delivery is only
+ * attempted when the clinic explicitly enables a channel. The demo therefore
+ * never blocks a booking waiting for an unconfigured SMTP/WhatsApp provider.
  */
 function clinica_notify_appointment_created(int $appointmentId): void
 {
@@ -135,9 +165,8 @@ function clinica_notify_appointment_created(int $appointmentId): void
 }
 
 /**
- * Called by the reminders cron. Skips appointments that are no longer
- * pending (cancelled/attended/etc.) and, per channel, appointments that
- * already have a 'sent' reminder logged (idempotency).
+ * Called by the reminders cron or dashboard safety-net. Skips appointments
+ * that are no longer pending and uses per-channel idempotency/cooldown.
  */
 function clinica_notify_appointment_reminder(int $appointmentId): void
 {
@@ -157,50 +186,68 @@ function clinica_notify_appointment_reminder(int $appointmentId): void
 
 /**
  * Finds pending appointments whose start time falls within the clinic's
- * reminder window and sends the reminder for each. Shared by the real cron
- * script (api/cron/reminders.php) and by clinica_maybe_run_reminder_sweep()
- * below, so both paths use identical logic.
- *
- * @return int number of appointments processed (not necessarily all sent -
- *   clinica_notify_appointment_reminder() applies its own idempotency/opt-in checks).
+ * reminder window. The query keeps the date column sargable so MySQL can use
+ * the appointment date/time indexes instead of applying TIMESTAMP() to every
+ * row. A short advisory lock prevents simultaneous dashboard polls from
+ * running the same sweep concurrently.
  */
 function clinica_run_reminder_sweep(): int
 {
   $pdo = clinica_get_db();
-  $clinic = clinica_get_clinic_settings();
-  $leadMinutes = max(1, (int) ($clinic['reminder_minutes_before'] ?? 15));
+  $lockName = 'clinica_reminder_sweep';
+  $lockAcquired = false;
 
-  $windowStart = new DateTimeImmutable('now');
-  $windowEnd = $windowStart->modify("+{$leadMinutes} minutes");
+  try {
+    $lockStmt = $pdo->prepare('SELECT GET_LOCK(?, ?)');
+    $lockStmt->execute([$lockName, CLINICA_REMINDER_SWEEP_LOCK_TIMEOUT_SECONDS]);
+    $lockAcquired = (bool) $lockStmt->fetchColumn();
+    if (!$lockAcquired) {
+      return 0;
+    }
 
-  $stmt = $pdo->prepare("
-    SELECT id FROM appointments
-    WHERE status = 'pendiente'
-      AND TIMESTAMP(date, time) BETWEEN :start AND :end
-  ");
-  $stmt->execute([
-    ':start' => $windowStart->format('Y-m-d H:i:s'),
-    ':end' => $windowEnd->format('Y-m-d H:i:s'),
-  ]);
-  $appointmentIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    $clinic = clinica_get_clinic_settings();
+    $leadMinutes = max(1, min(1440, (int) ($clinic['reminder_minutes_before'] ?? 15)));
 
-  foreach ($appointmentIds as $appointmentId) {
-    clinica_notify_appointment_reminder((int) $appointmentId);
+    $windowStart = new DateTimeImmutable('now');
+    $windowEnd = $windowStart->modify("+{$leadMinutes} minutes");
+    $startDate = $windowStart->format('Y-m-d');
+    $endDate = $windowEnd->format('Y-m-d');
+
+    $stmt = $pdo->prepare("\n      SELECT id\n      FROM appointments\n      WHERE status = 'pendiente'\n        AND (\n          (date = :start_date AND time >= :start_time)\n          OR (date > :start_date_mid AND date < :end_date_mid)\n          OR (date = :end_date AND time <= :end_time)\n        )\n      ORDER BY date, time\n    ");
+    $stmt->execute([
+      ':start_date' => $startDate,
+      ':start_time' => $windowStart->format('H:i:s'),
+      ':start_date_mid' => $startDate,
+      ':end_date_mid' => $endDate,
+      ':end_date' => $endDate,
+      ':end_time' => $windowEnd->format('H:i:s'),
+    ]);
+    $appointmentIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+    foreach ($appointmentIds as $appointmentId) {
+      clinica_notify_appointment_reminder((int) $appointmentId);
+    }
+
+    return count($appointmentIds);
+  } catch (Throwable $e) {
+    error_log('clinica_run_reminder_sweep failed: ' . $e->getMessage());
+    return 0;
+  } finally {
+    if ($lockAcquired) {
+      try {
+        $releaseStmt = $pdo->prepare('SELECT RELEASE_LOCK(?)');
+        $releaseStmt->execute([$lockName]);
+      } catch (Throwable $e) {
+        error_log('Failed to release reminder sweep lock: ' . $e->getMessage());
+      }
+    }
   }
-
-  return count($appointmentIds);
 }
 
 /**
- * Best-effort automatic trigger for the reminder sweep from a normal request
- * path (the dashboard). This means reminders fire without depending on the
- * user having configured an OS-level cron (Windows Task Scheduler / cPanel
- * Cron Jobs) - as long as someone has the dashboard open, it polls often
- * enough to catch every reminder window. A real cron (api/cron/reminders.php)
- * is still recommended for production so reminders fire even if nobody has
- * the dashboard open; this is a safety net, not a replacement.
- *
- * Cheap on the common case (0 matching appointments) and never throws.
+ * Best-effort trigger from the dashboard. InfinityFree free hosting does not
+ * provide cron jobs, so this is deliberately lightweight and concurrency-safe.
+ * A paid production host can use api/cron/reminders.php instead.
  */
 function clinica_maybe_run_reminder_sweep(): void
 {
@@ -212,12 +259,9 @@ function clinica_maybe_run_reminder_sweep(): void
 }
 
 /**
- * Manual resend triggered from the dashboard. Unlike the automatic paths,
- * this intentionally does not check "already sent" (it's an explicit
- * override) but still respects the clinic-wide toggle and the patient's
- * opt-in - staff cannot force a channel the patient declined.
- *
- * @return array{success: bool, error?: string, message?: string}
+ * Manual resend triggered from the dashboard. Unlike automatic paths, this is
+ * an explicit override, but it still respects clinic-level enablement and the
+ * patient's channel opt-in.
  */
 function clinica_notify_resend(int $appointmentId, string $channel, string $type, ?int $actingUserId): array
 {
@@ -278,8 +322,6 @@ function clinica_notification_status_empty(): array
 
 /**
  * Batched status lookup for the dashboard list (avoids N+1 queries).
- *
- * @return array<int, array{email: array{confirmation: ?string, reminder: ?string}, whatsapp: array{confirmation: ?string, reminder: ?string}}>
  */
 function clinica_notification_status_for_appointments(array $appointmentIds): array
 {
@@ -290,12 +332,7 @@ function clinica_notification_status_for_appointments(array $appointmentIds): ar
 
   $pdo = clinica_get_db();
   $placeholders = implode(',', array_fill(0, count($appointmentIds), '?'));
-  $stmt = $pdo->prepare("
-    SELECT appointment_id, channel, type, status
-    FROM notification_log
-    WHERE appointment_id IN ({$placeholders})
-    ORDER BY appointment_id, created_at DESC
-  ");
+  $stmt = $pdo->prepare("\n    SELECT appointment_id, channel, type, status\n    FROM notification_log\n    WHERE appointment_id IN ({$placeholders})\n    ORDER BY appointment_id, created_at DESC, id DESC\n  ");
   $stmt->execute($appointmentIds);
 
   $result = [];
@@ -304,8 +341,7 @@ function clinica_notification_status_for_appointments(array $appointmentIds): ar
     if (!isset($result[$id])) {
       $result[$id] = clinica_notification_status_empty();
     }
-    // ORDER BY created_at DESC means the first row seen per (channel,type) is the latest.
-    if ($result[$id][$row['channel']][$row['type']] === null) {
+    if (isset($result[$id][$row['channel']][$row['type']]) && $result[$id][$row['channel']][$row['type']] === null) {
       $result[$id][$row['channel']][$row['type']] = $row['status'];
     }
   }
