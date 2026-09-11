@@ -15,30 +15,50 @@ if (!function_exists('str_contains')) {
 }
 
 /**
- * Returns database credentials for the deployed hosting.
+ * Environment-aware database configuration.
  *
- * Priority:
- * 1. Environment variables or values loaded from /.env
- * 2. Optional untracked api/db.local.php file
- * 3. Hosting defaults from InfinityFree
+ * Environments supported by the project:
+ * - local: XAMPP/phpMyAdmin, MySQL root user with empty password, database clinica.
+ * - development: InfinityFree demo database.
+ *
+ * APP_ENV is read from /.env. If no .env exists, development is used so the
+ * repository remains directly deployable to the InfinityFree demo environment.
  */
 function clinica_db_credentials(): array
 {
   clinica_load_env_file(__DIR__ . '/../.env');
 
-  $defaults = [
-    'host' => 'sql206.infinityfree.com',
-    'port' => '3306',
-    'dbname' => 'if0_42682038_clinical',
-    'user' => 'if0_42682038',
-    'password' => 'L46SDkSCmP',
-    'charset' => 'utf8mb4',
+  $environment = strtolower(trim(clinica_env('APP_ENV', 'development')));
+  if (!in_array($environment, ['local', 'development'], true)) {
+    $environment = 'development';
+  }
+
+  $environments = [
+    'local' => [
+      'host' => '127.0.0.1',
+      'port' => '3306',
+      'dbname' => 'clinica',
+      'user' => 'root',
+      'password' => '',
+      'charset' => 'utf8mb4',
+    ],
+    'development' => [
+      // InfinityFree demo database. Keep these values here for the demo deployment.
+      'host' => 'sql206.infinityfree.com',
+      'port' => '3306',
+      'dbname' => 'if0_42682038_clinical',
+      'user' => 'if0_42682038',
+      'password' => 'L46SDkSCmP',
+      'charset' => 'utf8mb4',
+    ],
   ];
 
+  $defaults = $environments[$environment];
   $localConfig = clinica_load_local_db_config();
   $credentials = array_merge($defaults, array_intersect_key($localConfig, $defaults));
 
   return [
+    'environment' => $environment,
     'host' => clinica_env('DB_HOST', $credentials['host']),
     'port' => clinica_env('DB_PORT', $credentials['port']),
     'dbname' => clinica_env('DB_NAME', $credentials['dbname']),
@@ -95,10 +115,7 @@ function clinica_env(string $key, string $default = ''): string
 /**
  * Forces a consistent timezone across every entry point (Apache/PHP-FPM
  * requests AND the CLI-run reminders cron), regardless of what php.ini says
- * for each SAPI. This matters because appointment reminders compare
- * appointment date/time against "now" - if the cron's CLI php.ini used a
- * different default timezone than the web SAPI, reminders would fire at the
- * wrong real-world moment relative to the stored appointment time.
+ * for each SAPI.
  */
 function clinica_bootstrap_timezone(): void
 {
