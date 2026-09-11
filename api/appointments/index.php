@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../data.php';
+require_once __DIR__ . '/../adaptive.php';
 require_once __DIR__ . '/../notifications/service.php';
 
 clinica_ensure_session_started();
@@ -70,9 +70,7 @@ function clinica_appointment_unlock(PDO $pdo, array &$locks): void
 }
 function clinica_appointment_fail(PDO $pdo, array &$locks, string $message, int $status, string $auditAction = 'appointment_creation_failed', array $details = []): void
 {
-  if ($pdo->inTransaction()) {
-    $pdo->rollBack();
-  }
+  if ($pdo->inTransaction()) $pdo->rollBack();
   clinica_appointment_unlock($pdo, $locks);
   clinica_log_audit_event(clinica_get_user_id_from_session(), $auditAction, $message, $details);
   clinica_json(['success' => false, 'error' => $message], $status);
@@ -99,10 +97,14 @@ try {
   }
 
   $stage = 'doctor';
-  $stmt = $pdo->prepare('SELECT id FROM doctors WHERE id = ? AND specialty_id = ? AND active = 1 FOR UPDATE');
-  $stmt->execute([$doctorId, $specialtyId]);
-  if (!$stmt->fetch()) {
-    clinica_appointment_fail($pdo, $locks, 'El doctor seleccionado no pertenece a la especialidad indicada o no esta activo.', 422);
+  $stmt = $pdo->prepare('SELECT id, active FROM doctors WHERE id = ? FOR UPDATE');
+  $stmt->execute([$doctorId]);
+  $doctor = $stmt->fetch(PDO::FETCH_ASSOC);
+  if (!$doctor || !(bool) $doctor['active']) {
+    clinica_appointment_fail($pdo, $locks, 'El doctor seleccionado no existe o no esta activo.', 422);
+  }
+  if (!clinica_doctor_has_specialty($pdo, $doctorId, $specialtyId, true)) {
+    clinica_appointment_fail($pdo, $locks, 'El doctor seleccionado no atiende la especialidad indicada.', 422);
   }
 
   $stage = 'schedule';
@@ -139,7 +141,7 @@ try {
       $stmt = $pdo->prepare('UPDATE patients SET name = ?, phone = ?, cedula = ?, email_opt_in = ?, whatsapp_opt_in = ? WHERE id = ?');
       $stmt->execute([$patientName, $patientPhone, $patientCedula, (int) $emailOptIn, (int) $whatsappOptIn, $patientId]);
     } elseif ($patientByEmail) {
-      clinica_appointment_fail($pdo, $locks, 'Este correo ya esta registrado con otro numero de cedula/documento. Verifique sus datos o comuníquese con la clinica.', 409);
+      clinica_appointment_fail($pdo, $locks, 'Este correo ya esta registrado con otro numero de cedula/documento. Verifique sus datos o comuniquese con la clinica.', 409);
     } else {
       $stmt = $pdo->prepare('INSERT INTO patients (name, email, phone, cedula, email_opt_in, whatsapp_opt_in) VALUES (?, ?, ?, ?, ?, ?)');
       $stmt->execute([$patientName, $patientEmail, $patientPhone, $patientCedula, (int) $emailOptIn, (int) $whatsappOptIn]);
@@ -186,7 +188,7 @@ try {
   try { clinica_notify_appointment_created($newAppointmentId); } catch (Throwable $e) { error_log('Notification dispatch failed: ' . $e->getMessage()); }
   clinica_log_audit_event(clinica_get_user_id_from_session(), 'appointment_created', 'Cita agendada exitosamente', [
     'appointment_id' => $newAppointmentId, 'patient_id' => $patientId, 'doctorId' => $doctorId,
-    'date' => $date, 'time' => $appointmentDateTime->format('H:i:s'),
+    'date' => $date, 'time' => $appointmentDateTime->format('H:i:s'), 'specialtyId' => $specialtyId,
   ]);
   clinica_json(['success' => true, 'message' => 'Cita creada exitosamente.', 'appointmentId' => $newAppointmentId]);
 } catch (PDOException $e) {
