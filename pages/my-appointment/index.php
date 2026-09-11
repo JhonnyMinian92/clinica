@@ -2,8 +2,8 @@
 require_once __DIR__ . '/../../api/data.php';
 
 $clinic = clinica_get_clinic_settings();
-$page_title = 'Consultar mi cita | ' . clinica_get_display_name($clinic);
-$page_description = 'Consulte sus citas futuras con su cedula o documento y anule una cita antes de su hora de atencion.';
+$page_title = 'Mis citas | ' . clinica_get_display_name($clinic);
+$page_description = 'Consulte y gestione sus citas futuras de forma rapida y segura.';
 $page_specific_css = 'my-appointment.css';
 $page_specific_js = 'my-appointment.js';
 
@@ -13,21 +13,40 @@ include __DIR__ . '/../../public/shared/header/header.php';
 <main id="main-content">
   <section class="my-appointment-page">
     <div class="my-appointment-container">
-      <div class="my-appointment-intro">
-        <span class="my-appointment-eyebrow">Gestion de citas</span>
-        <h1>Consultar mi cita</h1>
-        <p>Ingrese su cedula o documento para consultar sus citas futuras. Si necesita cambiar de dia, hora o doctor, primero puede anular una cita que aun no haya llegado a su hora de atencion.</p>
+      <div class="my-appointment-hero">
+        <div class="my-appointment-hero-copy">
+          <span class="my-appointment-eyebrow">Portal de citas</span>
+          <h1>Gestiona tu cita sin complicaciones</h1>
+          <p>Consulta tus próximas citas con tu cédula o documento. Si tus planes cambiaron, puedes anular una cita antes de su hora de atención y volver a agendar.</p>
+        </div>
+        <div class="my-appointment-hero-icon" aria-hidden="true">✓</div>
+      </div>
+
+      <div class="appointment-steps" aria-label="Pasos para gestionar una cita">
+        <div class="appointment-step"><span>1</span><strong>Identifícate</strong><small>Ingresa tu documento</small></div>
+        <div class="appointment-step"><span>2</span><strong>Consulta</strong><small>Revisa tus citas futuras</small></div>
+        <div class="appointment-step"><span>3</span><strong>Gestiona</strong><small>Anula o vuelve a agendar</small></div>
       </div>
 
       <div class="appointment-lookup-card">
+        <div class="lookup-card-heading">
+          <div class="lookup-card-icon" aria-hidden="true">⌕</div>
+          <div>
+            <span class="lookup-card-kicker">Acceso seguro</span>
+            <h2>Consulta tus citas</h2>
+            <p>Usaremos tu documento únicamente para localizar tus citas futuras.</p>
+          </div>
+        </div>
         <form id="appointment-lookup-form" novalidate>
           <div class="lookup-field">
-            <label for="lookup-cedula">Cedula / Documento</label>
-            <input id="lookup-cedula" name="cedula" type="text" maxlength="20" autocomplete="off" inputmode="text" pattern="[A-Za-z0-9]{6,20}" required placeholder="Ingrese su cedula o documento">
+            <label for="lookup-cedula">Cédula / Documento</label>
+            <div class="lookup-input-wrap">
+              <input id="lookup-cedula" name="cedula" type="text" maxlength="20" autocomplete="off" inputmode="text" pattern="[A-Za-z0-9]{6,20}" required placeholder="Ej. 0912345678" aria-describedby="lookup-help">
+            </div>
           </div>
-          <button type="submit" id="lookup-submit" class="btn btn-primary">Consultar cita</button>
+          <button type="submit" id="lookup-submit" class="btn btn-primary lookup-submit"><span>Consultar mis citas</span><span aria-hidden="true">→</span></button>
         </form>
-        <p class="lookup-help">Por seguridad, solo mostraremos los datos necesarios para identificar su cita. No mostramos informacion clinica.</p>
+        <p id="lookup-help" class="lookup-help"><span aria-hidden="true">🔒</span> No mostramos información clínica ni datos médicos en esta consulta.</p>
       </div>
 
       <div id="appointment-feedback" class="appointment-feedback" role="status" aria-live="polite" hidden></div>
