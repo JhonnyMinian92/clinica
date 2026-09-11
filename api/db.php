@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/environment.php';
+
 if (!function_exists('str_starts_with')) {
   function str_starts_with(string $haystack, string $needle): bool
   {
@@ -15,65 +17,33 @@ if (!function_exists('str_contains')) {
 }
 
 /**
- * Environment-aware database configuration.
- *
- * Environments supported by the project:
- * - local: XAMPP/phpMyAdmin, MySQL root user with empty password, database clinica.
- * - development: InfinityFree demo database.
- *
- * APP_ENV is read from /.env. If no .env exists, development is used so the
- * repository remains directly deployable to the InfinityFree demo environment.
+ * Loads the environment selected only in api/environment.php.
+ * The application never needs to be edited when switching environments.
  */
 function clinica_db_credentials(): array
 {
-  clinica_load_env_file(__DIR__ . '/../.env');
-
-  $environment = strtolower(trim(clinica_env('APP_ENV', 'development')));
-  if (!in_array($environment, ['local', 'development'], true)) {
-    $environment = 'development';
-  }
-
-  $environments = [
-    'local' => [
-      'host' => '127.0.0.1',
-      'port' => '3306',
-      'dbname' => 'clinica',
-      'user' => 'root',
-      'password' => '',
-      'charset' => 'utf8mb4',
-    ],
-    'development' => [
-      // InfinityFree demo database. Keep these values here for the demo deployment.
-      'host' => 'sql206.infinityfree.com',
-      'port' => '3306',
-      'dbname' => 'if0_42682038_clinical',
-      'user' => 'if0_42682038',
-      'password' => 'L46SDkSCmP',
-      'charset' => 'utf8mb4',
-    ],
-  ];
-
-  $defaults = $environments[$environment];
-  $localConfig = clinica_load_local_db_config();
-  $credentials = array_merge($defaults, array_intersect_key($localConfig, $defaults));
+  clinica_load_env_file(clinica_environment_file());
 
   return [
-    'environment' => $environment,
-    'host' => clinica_env('DB_HOST', $credentials['host']),
-    'port' => clinica_env('DB_PORT', $credentials['port']),
-    'dbname' => clinica_env('DB_NAME', $credentials['dbname']),
-    'user' => clinica_env('DB_USER', $credentials['user']),
-    'password' => clinica_env('DB_PASS', $credentials['password']),
-    'charset' => clinica_env('DB_CHARSET', $credentials['charset']),
+    'environment' => clinica_env('APP_ENV', 'local'),
+    'host' => clinica_env('DB_HOST', '127.0.0.1'),
+    'port' => clinica_env('DB_PORT', '3306'),
+    'dbname' => clinica_env('DB_NAME', 'clinica'),
+    'user' => clinica_env('DB_USER', 'root'),
+    'password' => clinica_env('DB_PASS', ''),
+    'charset' => clinica_env('DB_CHARSET', 'utf8mb4'),
   ];
 }
 
 function clinica_load_env_file(string $path): void
 {
-  static $loaded = false;
-  if ($loaded || !is_file($path) || !is_readable($path)) {
-    $loaded = true;
+  static $loadedPath = null;
+  if ($loadedPath === $path) {
     return;
+  }
+
+  if (!is_file($path) || !is_readable($path)) {
+    throw new RuntimeException('No se encontro el archivo de configuracion del ambiente: ' . basename($path));
   }
 
   foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
@@ -84,38 +54,23 @@ function clinica_load_env_file(string $path): void
 
     [$key, $value] = array_map('trim', explode('=', $line, 2));
     $value = trim($value, "\"'");
-    if ($key !== '' && getenv($key) === false) {
+    if ($key !== '') {
       putenv($key . '=' . $value);
       $_ENV[$key] = $value;
     }
   }
 
-  $loaded = true;
-}
-
-function clinica_load_local_db_config(): array
-{
-  $path = __DIR__ . '/db.local.php';
-  if (!is_file($path)) {
-    return [];
-  }
-
-  $config = require $path;
-  return is_array($config) ? $config : [];
+  $loadedPath = $path;
 }
 
 function clinica_env(string $key, string $default = ''): string
 {
   $value = getenv($key);
-  // Solo "no definida" cae al valor por defecto. Un valor vacio explicito
-  // (p.ej. DB_PASS= para root sin clave en desarrollo local) debe respetarse.
   return $value === false ? $default : (string) $value;
 }
 
 /**
- * Forces a consistent timezone across every entry point (Apache/PHP-FPM
- * requests AND the CLI-run reminders cron), regardless of what php.ini says
- * for each SAPI.
+ * Forces the clinic timezone for web and CLI execution.
  */
 function clinica_bootstrap_timezone(): void
 {
@@ -124,7 +79,7 @@ function clinica_bootstrap_timezone(): void
     return;
   }
 
-  clinica_load_env_file(__DIR__ . '/../.env');
+  clinica_load_env_file(clinica_environment_file());
   date_default_timezone_set(clinica_env('APP_TIMEZONE', 'America/Guayaquil'));
   $done = true;
 }
