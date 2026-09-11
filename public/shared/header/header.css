@@ -146,7 +146,7 @@ body.mobile-nav-open .hamburger-line:nth-child(3) { transform: translateY(-7px) 
 /* CTA persistente para consultar una cita. position: fixed lo mantiene visible durante el scroll. */
 .floating-appointment-link {
   position: fixed;
-  left: 1.25rem;
+  right: 1.25rem;
   bottom: 1.25rem;
   z-index: 1100;
   display: inline-flex;
@@ -228,10 +228,10 @@ body.mobile-nav-open .hamburger-line:nth-child(3) { transform: translateY(-7px) 
 
 @media (max-width: 560px) {
   .floating-appointment-link {
-    left: .75rem;
     right: .75rem;
+    left: auto;
     bottom: .75rem;
-    max-width: none;
+    max-width: calc(100vw - 1.5rem);
     justify-content: flex-start;
     padding: .6rem .85rem .6rem .6rem;
   }
