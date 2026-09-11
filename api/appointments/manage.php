@@ -1,7 +1,6 @@
 <?php
 
 require_once __DIR__ . '/../data.php';
-require_once __DIR__ . '/../notifications/service.php';
 
 clinica_ensure_session_started();
 header('Content-Type: application/json; charset=utf-8');
@@ -31,7 +30,6 @@ function clinica_appointment_manage_lookup(PDO $pdo, string $cedula): array
       a.date,
       a.time,
       a.status,
-      a.notes,
       d.name AS doctor_name,
       s.name AS specialty_name
     FROM appointments a
@@ -113,14 +111,9 @@ if ($action === 'cancel' && $method === 'POST') {
         a.id,
         a.date,
         a.time,
-        a.status,
-        p.cedula,
-        d.name AS doctor_name,
-        s.name AS specialty_name
+        a.status
       FROM appointments a
       INNER JOIN patients p ON p.id = a.patient_id
-      LEFT JOIN doctors d ON d.id = a.doctor_id
-      LEFT JOIN specialties s ON s.id = a.specialty_id
       WHERE a.id = ? AND p.cedula = ?
       FOR UPDATE"
     );
@@ -158,15 +151,8 @@ if ($action === 'cancel' && $method === 'POST') {
 
     $pdo->commit();
 
-    try {
-      clinica_notify_appointment_cancelled($appointmentId);
-    } catch (Throwable $e) {
-      error_log('Appointment cancellation notification failed: ' . $e->getMessage());
-    }
-
     clinica_log_audit_event(null, 'appointment_cancelled_by_patient', 'Cita anulada por el paciente antes de su hora de atencion', [
       'appointment_id' => $appointmentId,
-      'cedula' => $cedula,
       'date' => $appointment['date'],
       'time' => $appointment['time'],
     ]);
