@@ -18,20 +18,43 @@ if (!function_exists('str_contains')) {
 
 /**
  * Loads the environment selected only in api/environment.php.
- * The application never needs to be edited when switching environments.
  */
 function clinica_db_credentials(): array
 {
-  clinica_load_env_file(clinica_environment_file());
+  $environmentFile = clinica_environment_file();
+  clinica_load_env_file($environmentFile);
+
+  $environment = clinica_env('APP_ENV');
+  $host = clinica_env('DB_HOST');
+  $port = clinica_env('DB_PORT');
+  $dbname = clinica_env('DB_NAME');
+  $user = clinica_env('DB_USER');
+  $password = clinica_env('DB_PASS');
+  $charset = clinica_env('DB_CHARSET');
+
+  $required = [
+    'APP_ENV' => $environment,
+    'DB_HOST' => $host,
+    'DB_PORT' => $port,
+    'DB_NAME' => $dbname,
+    'DB_USER' => $user,
+    'DB_CHARSET' => $charset,
+  ];
+
+  foreach ($required as $key => $value) {
+    if ($value === '') {
+      throw new RuntimeException('Falta la configuracion obligatoria ' . $key . ' en ' . basename($environmentFile));
+    }
+  }
 
   return [
-    'environment' => clinica_env('APP_ENV', 'local'),
-    'host' => clinica_env('DB_HOST', '127.0.0.1'),
-    'port' => clinica_env('DB_PORT', '3306'),
-    'dbname' => clinica_env('DB_NAME', 'clinica'),
-    'user' => clinica_env('DB_USER', 'root'),
-    'password' => clinica_env('DB_PASS', ''),
-    'charset' => clinica_env('DB_CHARSET', 'utf8mb4'),
+    'environment' => $environment,
+    'host' => $host,
+    'port' => $port,
+    'dbname' => $dbname,
+    'user' => $user,
+    'password' => $password,
+    'charset' => $charset,
   ];
 }
 
@@ -69,9 +92,6 @@ function clinica_env(string $key, string $default = ''): string
   return $value === false ? $default : (string) $value;
 }
 
-/**
- * Forces the clinic timezone for web and CLI execution.
- */
 function clinica_bootstrap_timezone(): void
 {
   static $done = false;
@@ -79,23 +99,20 @@ function clinica_bootstrap_timezone(): void
     return;
   }
 
-  clinica_load_env_file(clinica_environment_file());
+  $credentials = clinica_db_credentials();
   date_default_timezone_set(clinica_env('APP_TIMEZONE', 'America/Guayaquil'));
   $done = true;
 }
 
 clinica_bootstrap_timezone();
 
-/**
- * Establishes and returns a singleton PDO database connection.
- */
 function clinica_get_db(): PDO
 {
   static $pdo = null;
 
   if ($pdo === null) {
     $credentials = clinica_db_credentials();
-    $port = trim((string) ($credentials['port'] ?? ''));
+    $port = trim((string) $credentials['port']);
     $portSegment = $port !== '' ? ";port={$port}" : '';
     $dsn = "mysql:host={$credentials['host']}{$portSegment};dbname={$credentials['dbname']};charset={$credentials['charset']}";
     $options = [
