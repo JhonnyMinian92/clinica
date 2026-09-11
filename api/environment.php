@@ -11,7 +11,8 @@
  * - /.env.development -> InfinityFree demo
  */
 
-const CLINICA_ENV_FILE = '.env.local';
+//const CLINICA_ENV_FILE = '.env.local';
+const CLINICA_ENV_FILE = '.env.development';
 
 function clinica_environment_file(): string
 {
