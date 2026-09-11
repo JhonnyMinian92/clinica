@@ -1,6 +1,10 @@
 <?php
 require_once __DIR__ . '/../../api/data.php';
 
+// The management API requires the CSRF token issued by the shared session.
+// Start the session here so the XSRF-TOKEN cookie exists before the browser submits the lookup.
+clinica_ensure_session_started();
+
 $clinic = clinica_get_clinic_settings();
 $page_title = 'Mis citas | ' . clinica_get_display_name($clinic);
 $page_description = 'Consulte y gestione sus citas futuras de forma rapida y segura.';
