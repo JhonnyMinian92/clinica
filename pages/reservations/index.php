@@ -199,6 +199,12 @@ include __DIR__ . '/../../public/shared/header/header.php';
               <label for="patient-name">Nombre Completo</label>
             </div>
             <div class="form-group">
+              <input type="text" id="patient-cedula" name="patient-cedula" required placeholder=" " maxlength="20"
+                pattern="[A-Za-z0-9]{6,20}" title="Ingrese su numero de cedula, RUC o pasaporte (6 a 20 caracteres, sin espacios).">
+              <label for="patient-cedula">Cedula / Documento de identidad <span class="required-mark" aria-hidden="true">*</span></label>
+              <div class="form-error-message">Ingrese un numero de documento valido (6 a 20 caracteres). Nos permite identificarlo y mantener su historial medico correctamente.</div>
+            </div>
+            <div class="form-group">
               <input type="email" id="patient-email" name="patient-email" required placeholder=" ">
               <label for="patient-email">Correo Electronico <span class="required-mark" aria-hidden="true">*</span></label>
               <div class="form-error-message">Por favor, ingrese un correo valido. Es obligatorio para enviarle la confirmacion.</div>
@@ -244,6 +250,7 @@ include __DIR__ . '/../../public/shared/header/header.php';
               <li><strong>Fecha:</strong> <span id="summary-date"></span></li>
               <li><strong>Hora:</strong> <span id="summary-time"></span></li>
               <li><strong>Paciente:</strong> <span id="summary-name"></span></li>
+              <li><strong>Cedula/Documento:</strong> <span id="summary-cedula"></span></li>
               <li><strong>Email:</strong> <span id="summary-email"></span></li>
               <li><strong>Telefono:</strong> <span id="summary-phone"></span></li>
             </ul>

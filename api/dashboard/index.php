@@ -28,6 +28,62 @@ $canSeeAllAppointments = clinica_can_see_all_appointments((string) ($user['role'
 // cron being configured. See clinica_maybe_run_reminder_sweep() docblock.
 clinica_maybe_run_reminder_sweep();
 
+if ($method === 'GET' && (string) ($_GET['action'] ?? '') === 'patient_history') {
+  // El patient_id es el identificador estable (vinculado por cedula al
+  // agendar la cita); se acepta email solo como respaldo para enlaces viejos.
+  $patientIdParam = (int) ($_GET['patient_id'] ?? 0);
+  $email = trim((string) ($_GET['email'] ?? ''));
+
+  if ($patientIdParam <= 0 && ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL))) {
+    clinica_json(['success' => false, 'error' => 'Paciente no especificado.'], 422);
+  }
+
+  $pdo = clinica_get_db();
+  if ($patientIdParam > 0) {
+    $stmt = $pdo->prepare("SELECT id, name, email, phone FROM patients WHERE id = ?");
+    $stmt->execute([$patientIdParam]);
+  } else {
+    $stmt = $pdo->prepare("SELECT id, name, email, phone FROM patients WHERE email = ?");
+    $stmt->execute([$email]);
+  }
+  $patient = $stmt->fetch();
+
+  if (!$patient) {
+    clinica_json(['success' => true, 'patient' => null, 'appointments' => []]);
+  }
+
+  $where = ['a.patient_id = :patient_id'];
+  $params = [':patient_id' => $patient['id']];
+
+  // Un doctor solo puede ver, dentro del historial del paciente, las citas
+  // que tuvo con el mismo (no las de otros doctores).
+  if (!$canSeeAllAppointments) {
+    $where[] = 'a.doctor_id = :user_id';
+    $params[':user_id'] = $user['id'];
+  }
+
+  $sql = "SELECT a.id, a.date AS fecha, a.time AS hora, a.status AS estado, a.notes AS motivo_consulta,
+                 s.name AS especialidad, d.name AS doctor_nombre
+          FROM appointments a
+          JOIN doctors d ON a.doctor_id = d.id
+          LEFT JOIN specialties s ON a.specialty_id = s.id
+          WHERE " . implode(' AND ', $where) . '
+          ORDER BY a.date DESC, a.time DESC';
+  $stmt = $pdo->prepare($sql);
+  $stmt->execute($params);
+  $appointments = $stmt->fetchAll();
+
+  clinica_json([
+    'success' => true,
+    'patient' => [
+      'name' => $patient['name'],
+      'email' => $patient['email'],
+      'phone' => $patient['phone'],
+    ],
+    'appointments' => $appointments,
+  ]);
+}
+
 if ($method === 'GET') {
   $doctorId = isset($_GET['doctor_id']) ? trim((string) $_GET['doctor_id']) : null;
   $doctorId = $doctorId !== '' ? $doctorId : null;
@@ -48,7 +104,7 @@ if ($method === 'GET') {
   // Base query
   $baseJoinSql = " FROM appointments a JOIN patients p ON a.patient_id = p.id JOIN doctors d ON a.doctor_id = d.id LEFT JOIN specialties s ON a.specialty_id = s.id";
   $countSql = "SELECT COUNT(a.id)" . $baseJoinSql;
-  $dataSql = "SELECT a.id, a.date AS fecha, a.time AS hora, p.name AS nombre_paciente, p.email AS email_paciente, p.phone AS telefono_paciente, a.notes AS motivo_consulta, a.status AS estado, s.name AS especialidad, a.doctor_id, d.name AS doctor_nombre" . $baseJoinSql;
+  $dataSql = "SELECT a.id, a.date AS fecha, a.time AS hora, a.patient_id, p.name AS nombre_paciente, p.email AS email_paciente, p.phone AS telefono_paciente, a.notes AS motivo_consulta, a.status AS estado, s.name AS especialidad, a.doctor_id, d.name AS doctor_nombre" . $baseJoinSql;
 
   // WHERE clauses
   $where = [];

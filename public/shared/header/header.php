@@ -28,10 +28,10 @@ $home_url = clinica_url();
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="<?php echo htmlspecialchars(clinica_url('public/css/style.css')); ?>">
-  <link rel="stylesheet" href="<?php echo htmlspecialchars(clinica_url('public/shared/header/header.css')); ?>">
-  <link rel="stylesheet" href="<?php echo htmlspecialchars(clinica_url('public/shared/footer/footer.css')); ?>">
-  <link rel="stylesheet" href="<?php echo htmlspecialchars(clinica_url('public/css/components.css')); ?>">
+  <link rel="stylesheet" href="<?php echo htmlspecialchars(clinica_versioned_url('public/css/style.css')); ?>">
+  <link rel="stylesheet" href="<?php echo htmlspecialchars(clinica_versioned_url('public/shared/header/header.css')); ?>">
+  <link rel="stylesheet" href="<?php echo htmlspecialchars(clinica_versioned_url('public/shared/footer/footer.css')); ?>">
+  <link rel="stylesheet" href="<?php echo htmlspecialchars(clinica_versioned_url('public/css/components.css')); ?>">
   <script>
     window.CLINICA_BASE_PATH = <?php echo json_encode(clinica_base_path()); ?>;
   </script>
@@ -39,6 +39,11 @@ $home_url = clinica_url();
   <?php
   if (isset($page_specific_css) && !empty($page_specific_css)) {
     $css_path = dirname($_SERVER['PHP_SELF']) . '/' . $page_specific_css;
+    $css_fs_path = dirname($_SERVER['SCRIPT_FILENAME']) . '/' . $page_specific_css;
+    $css_mtime = is_file($css_fs_path) ? @filemtime($css_fs_path) : false;
+    if ($css_mtime !== false) {
+      $css_path .= '?v=' . $css_mtime;
+    }
     echo '<link rel="stylesheet" href="' . htmlspecialchars($css_path) . '">';
   }
   ?>

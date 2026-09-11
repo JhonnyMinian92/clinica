@@ -114,14 +114,19 @@ $logo_image_footer = $clinic_footer['logo_image'] ?? '';
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
-<script src="<?php echo htmlspecialchars(clinica_url('public/js/utils.js')); ?>" defer></script>
-<script src="<?php echo htmlspecialchars(clinica_url('public/js/app.js')); ?>" defer></script>
-<script src="<?php echo htmlspecialchars(clinica_url('public/shared/header/header.js')); ?>" defer></script>
-<script src="<?php echo htmlspecialchars(clinica_url('public/shared/footer/footer.js')); ?>" defer></script>
+<script src="<?php echo htmlspecialchars(clinica_versioned_url('public/js/utils.js')); ?>" defer></script>
+<script src="<?php echo htmlspecialchars(clinica_versioned_url('public/js/app.js')); ?>" defer></script>
+<script src="<?php echo htmlspecialchars(clinica_versioned_url('public/shared/header/header.js')); ?>" defer></script>
+<script src="<?php echo htmlspecialchars(clinica_versioned_url('public/shared/footer/footer.js')); ?>" defer></script>
 
 <?php
 if (isset($page_specific_js) && !empty($page_specific_js)) {
   $script_path = dirname($_SERVER['PHP_SELF']) . '/' . $page_specific_js;
+  $script_fs_path = dirname($_SERVER['SCRIPT_FILENAME']) . '/' . $page_specific_js;
+  $script_mtime = is_file($script_fs_path) ? @filemtime($script_fs_path) : false;
+  if ($script_mtime !== false) {
+    $script_path .= '?v=' . $script_mtime;
+  }
   echo '<script src="' . htmlspecialchars($script_path) . '" defer></script>';
 }
 ?>

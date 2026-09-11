@@ -58,7 +58,7 @@ function clinica_email_confirmation_content(array $ctx): array
   $html = clinica_email_layout(
     $ctx,
     'Su cita fue agendada',
-    "Hola {$ctx['patient_name']}, confirmamos su cita en <strong>{$ctx['clinic_name']}</strong>."
+    'Hola ' . htmlspecialchars($ctx['patient_name']) . ', confirmamos su cita en <strong>' . htmlspecialchars($ctx['clinic_name']) . '</strong>.'
   );
 
   return ['subject' => $subject, 'html' => $html];
@@ -73,14 +73,22 @@ function clinica_email_reminder_content(array $ctx): array
   $html = clinica_email_layout(
     $ctx,
     'Su cita esta por comenzar',
-    "Hola {$ctx['patient_name']}, le recordamos que su cita en <strong>{$ctx['clinic_name']}</strong> esta por comenzar. Por favor, llegue con anticipacion."
+    'Hola ' . htmlspecialchars($ctx['patient_name']) . ', le recordamos que su cita en <strong>' . htmlspecialchars($ctx['clinic_name']) . '</strong> esta por comenzar. Por favor, llegue con anticipacion.'
   );
 
   return ['subject' => $subject, 'html' => $html];
 }
 
+// $introHtml is pre-built HTML (patient/clinic names already escaped by the
+// callers above); every other $ctx value interpolated here is escaped inline
+// since it comes straight from patient/staff-entered data (patient name,
+// doctor name, specialty) and must never break or inject into the email markup.
 function clinica_email_layout(array $ctx, string $heading, string $introHtml): string
 {
+  $heading = htmlspecialchars($heading);
+  $datetimeLabel = htmlspecialchars($ctx['datetime_label']);
+  $doctorName = htmlspecialchars($ctx['doctor_name']);
+  $specialtyName = htmlspecialchars($ctx['specialty_name']);
   $address = htmlspecialchars($ctx['clinic_address']);
   $phone = htmlspecialchars($ctx['clinic_phone']);
   $addressLine = $address !== '' ? "<p style=\"margin:4px 0;color:#555;\">{$address}</p>" : '';
@@ -93,15 +101,15 @@ function clinica_email_layout(array $ctx, string $heading, string $introHtml): s
     <table style="width:100%;border-collapse:collapse;margin:16px 0;">
       <tr>
         <td style="padding:8px 0;color:#555;">Fecha y hora</td>
-        <td style="padding:8px 0;font-weight:bold;text-align:right;">{$ctx['datetime_label']}</td>
+        <td style="padding:8px 0;font-weight:bold;text-align:right;">{$datetimeLabel}</td>
       </tr>
       <tr>
         <td style="padding:8px 0;color:#555;">Doctor</td>
-        <td style="padding:8px 0;font-weight:bold;text-align:right;">{$ctx['doctor_name']}</td>
+        <td style="padding:8px 0;font-weight:bold;text-align:right;">{$doctorName}</td>
       </tr>
       <tr>
         <td style="padding:8px 0;color:#555;">Especialidad</td>
-        <td style="padding:8px 0;font-weight:bold;text-align:right;">{$ctx['specialty_name']}</td>
+        <td style="padding:8px 0;font-weight:bold;text-align:right;">{$specialtyName}</td>
       </tr>
     </table>
     <p style="color:#555;">Por favor, llegue 15 minutos antes de su cita.</p>

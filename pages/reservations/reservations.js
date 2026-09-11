@@ -39,6 +39,7 @@
     const scheduleDateLabel = document.getElementById('schedule-date-label');
     const scheduleTimeLabel = document.getElementById('schedule-time-label');
     const patientNameInput = document.getElementById('patient-name');
+    const patientCedulaInput = document.getElementById('patient-cedula');
     const patientEmailInput = document.getElementById('patient-email');
     const patientNotesInput = document.getElementById('patient-notes');
     // Calendar elements
@@ -55,6 +56,7 @@
     const summaryDate = document.getElementById('summary-date');
     const summaryTime = document.getElementById('summary-time');
     const summaryName = document.getElementById('summary-name');
+    const summaryCedula = document.getElementById('summary-cedula');
     const summaryEmail = document.getElementById('summary-email');
     const summaryPhone = document.getElementById('summary-phone');
     const totalSteps = formSteps.length;
@@ -72,6 +74,7 @@
       date: null,
       time: null,
       patientName: '',
+      patientCedula: '',
       patientEmail: '',
       patientPhone: '',
       patientNotes: '',
@@ -178,6 +181,11 @@
       return re.test(String(phone).trim());
     }
 
+    function isValidCedula(cedula) {
+      const re = /^[A-Za-z0-9]{6,20}$/;
+      return re.test(String(cedula).trim());
+    }
+
     /**
      * Valida el paso actual y habilita/deshabilita el botón 'Siguiente'.
      */
@@ -194,7 +202,7 @@
           isValid = !!selection.date && !!selection.time;
           break;
         case 3:
-          isValid = selection.patientName.trim() !== '' && isValidEmail(selection.patientEmail) && isValidPhone(selection.patientPhone);
+          isValid = selection.patientName.trim() !== '' && isValidCedula(selection.patientCedula) && isValidEmail(selection.patientEmail) && isValidPhone(selection.patientPhone);
           break;
         case 4:
           isValid = true; // El último paso siempre es válido para confirmar.
@@ -257,7 +265,13 @@
       }
 
       if (currentStep < totalSteps - 1) {
+        const leavingStep = currentStep;
         currentStep++;
+
+        // Dejando el paso de Fecha/Hora hacia adelante: detener el sondeo de disponibilidad.
+        if (leavingStep === 2) {
+          stopSlotPolling();
+        }
 
         // Si hemos avanzado al paso 2 (índice 1), renderizamos los doctores.
         if (currentStep === 1) {
@@ -292,6 +306,7 @@
         }
         // Dejando el Paso 3 (Fecha/Hora) para ir al Paso 2 (Doctor)
         else if (currentStep === 2) {
+          stopSlotPolling();
           selection.date = null;
           selection.time = null;
           timeSlotsGrid.innerHTML = '<div class="no-time-selected"><p>Seleccione una fecha en el calendario para ver los horarios.</p></div>';
@@ -569,10 +584,104 @@
       `;
     }
 
+    function computeFilteredTimesForSelectedDate() {
+      const selectedDateObj = new Date(selection.date + 'T00:00:00');
+      const isoWeekday = String(selectedDateObj.getDay() === 0 ? 7 : selectedDateObj.getDay());
+      const rules = getScheduleRulesForDate(selection.date, isoWeekday);
+      const availableTimes = generateTimesFromRules(rules);
+      let filteredTimes = availableTimes;
+
+      // Si la fecha seleccionada es hoy, filtrar los horarios que ya pasaron
+      if (selectedDateObj.toDateString() === calendarState.today.toDateString()) {
+        const now = new Date();
+        const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        filteredTimes = availableTimes.filter((time) => time > currentTime);
+      }
+
+      return filteredTimes;
+    }
+
+    /**
+     * Reconstruye la grilla de horarios a partir de la lista de horarios ocupados.
+     * Se usa tanto para el render inicial como para los refrescos periodicos
+     * (polling), por lo que puede preservar la seleccion actual si sigue libre.
+     * @param {string[]} bookedSlots
+     * @param {{preserveSelection: boolean}} options
+     * @returns {{availableSlotCount: number, selectedTimeWasCleared: boolean}}
+     */
+    function renderTimeSlotsGrid(bookedSlots, { preserveSelection = false } = {}) {
+      const filteredTimes = computeFilteredTimesForSelectedDate();
+      const availableSlotCount = filteredTimes.filter((time) => !bookedSlots.includes(time)).length;
+      timeSlotWrapper.classList.toggle('has-slots', availableSlotCount > 0);
+      timeSlotWrapper.classList.toggle('has-no-slots', availableSlotCount === 0);
+
+      const previousSelectedTime = preserveSelection ? selection.time : null;
+
+      if (filteredTimes.length === 0) {
+        timeSlotsGrid.innerHTML = `<div class="no-time-selected"><p>No hay horarios disponibles para este turno.</p></div>`;
+      } else {
+        const groupedTimes = filteredTimes.reduce((groups, time) => {
+          const period = getTimePeriod(time);
+          groups[period] = groups[period] || [];
+          groups[period].push(time);
+          return groups;
+        }, {});
+
+        let slotIndex = 0;
+        const timeSlotsHTML = ['morning', 'afternoon', 'evening', 'other']
+          .filter((period) => groupedTimes[period]?.length)
+          .map((period) => {
+            const times = groupedTimes[period];
+            const availableInPeriod = times.filter((time) => !bookedSlots.includes(time)).length;
+            const buttons = times
+              .map((time) => buildTimeSlotButton(time, slotIndex++, bookedSlots.includes(time)))
+              .join('');
+
+            return `
+              <section class="time-period" aria-label="${getTimePeriodLabel(period)}">
+                <div class="time-period-header">
+                  <h4>${getTimePeriodLabel(period)}</h4>
+                  <span>${getSlotCountLabel(availableInPeriod)}</span>
+                </div>
+                <div class="time-period-grid">
+                  ${buttons}
+                </div>
+              </section>
+            `;
+          })
+          .join('');
+        timeSlotsGrid.innerHTML = timeSlotsHTML;
+      }
+
+      const selectedTimeStillFree = !!previousSelectedTime
+        && filteredTimes.includes(previousSelectedTime)
+        && !bookedSlots.includes(previousSelectedTime);
+
+      if (selectedTimeStillFree) {
+        selection.time = previousSelectedTime;
+        const selectedCard = findCardByValue(timeSlotsGrid, previousSelectedTime);
+        if (selectedCard) {
+          selectedCard.classList.add('active');
+          selectedCard.setAttribute('aria-pressed', 'true');
+        }
+      } else {
+        selection.time = null;
+      }
+
+      updateScheduleSummary(getSlotCountLabel(availableSlotCount));
+      validateStep();
+
+      return {
+        availableSlotCount,
+        selectedTimeWasCleared: !!previousSelectedTime && !selectedTimeStillFree,
+      };
+    }
+
     function renderTimeSlots() {
       selection.time = null; // Reset time on new date selection
       validateStep();
       updateScheduleSummary('Buscando');
+      stopSlotPolling();
 
       // Mostrar el estado de carga
       timeSlotWrapper.classList.add('is-loading');
@@ -580,68 +689,73 @@
 
       // Simulación de una llamada a la API para obtener horarios
       setTimeout(() => {
-        // 1. Determinar el turno del doctor para el día seleccionado
-        const selectedDateObj = new Date(selection.date + 'T00:00:00');
-        const isoWeekday = String(selectedDateObj.getDay() === 0 ? 7 : selectedDateObj.getDay());
-        const rules = getScheduleRulesForDate(selection.date, isoWeekday);
-
-        const availableTimes = generateTimesFromRules(rules);
-        let filteredTimes = availableTimes;
-
-        // Si la fecha seleccionada es hoy, filtrar los horarios que ya pasaron
-        if (selectedDateObj.toDateString() === calendarState.today.toDateString()) {
-          const now = new Date();
-          const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-          filteredTimes = availableTimes.filter((time) => time > currentTime);
-        }
-
-        // 3. Obtener las citas ya reservadas para este doctor y fecha
         const bookedSlots = bookedAppointmentsData[selection.doctorId]?.[selection.date] || [];
-        const availableSlotCount = filteredTimes.filter((time) => !bookedSlots.includes(time)).length;
-        timeSlotWrapper.classList.toggle('has-slots', availableSlotCount > 0);
-        timeSlotWrapper.classList.toggle('has-no-slots', availableSlotCount === 0);
-        updateScheduleSummary(getSlotCountLabel(availableSlotCount));
-
-        if (filteredTimes.length === 0) {
-          timeSlotsGrid.innerHTML = `<div class="no-time-selected"><p>No hay horarios disponibles para este turno.</p></div>`;
-        } else {
-          const groupedTimes = filteredTimes.reduce((groups, time) => {
-            const period = getTimePeriod(time);
-            groups[period] = groups[period] || [];
-            groups[period].push(time);
-            return groups;
-          }, {});
-
-          let slotIndex = 0;
-          const timeSlotsHTML = ['morning', 'afternoon', 'evening', 'other']
-            .filter((period) => groupedTimes[period]?.length)
-            .map((period) => {
-              const times = groupedTimes[period];
-              const availableInPeriod = times.filter((time) => !bookedSlots.includes(time)).length;
-              const buttons = times
-                .map((time) => buildTimeSlotButton(time, slotIndex++, bookedSlots.includes(time)))
-                .join('');
-
-              return `
-                <section class="time-period" aria-label="${getTimePeriodLabel(period)}">
-                  <div class="time-period-header">
-                    <h4>${getTimePeriodLabel(period)}</h4>
-                    <span>${getSlotCountLabel(availableInPeriod)}</span>
-                  </div>
-                  <div class="time-period-grid">
-                    ${buttons}
-                  </div>
-                </section>
-              `;
-            })
-            .join('');
-          timeSlotsGrid.innerHTML = timeSlotsHTML;
-        }
+        renderTimeSlotsGrid(bookedSlots, { preserveSelection: false });
 
         // Ocultar el estado de carga y ajustar altura
         timeSlotWrapper.classList.remove('is-loading');
         adjustFormHeight();
+        startSlotPolling();
       }, 600); // Simular retardo de red
+    }
+
+    // --- Disponibilidad en vivo ---
+    // El HTML inicial trae los horarios ocupados al momento de cargar la pagina,
+    // pero eso puede quedar desactualizado si otra persona reserva mientras este
+    // usuario sigue en el formulario. Mientras el paso de "Fecha y Hora" esta
+    // activo, se consulta el servidor periodicamente para reflejar reservas
+    // nuevas sin necesidad de recargar la pagina.
+    const SLOT_POLL_INTERVAL_MS = 6000;
+    let slotPollTimer = null;
+
+    function startSlotPolling() {
+      stopSlotPolling();
+      slotPollTimer = setInterval(refreshBookedSlots, SLOT_POLL_INTERVAL_MS);
+    }
+
+    function stopSlotPolling() {
+      if (slotPollTimer) {
+        clearInterval(slotPollTimer);
+        slotPollTimer = null;
+      }
+    }
+
+    async function refreshBookedSlots() {
+      if (currentStep !== 2 || !selection.doctorId || !selection.date) {
+        stopSlotPolling();
+        return;
+      }
+
+      try {
+        const url = `${GENERAL_API}?action=slot_status&doctorId=${encodeURIComponent(selection.doctorId)}&date=${encodeURIComponent(selection.date)}`;
+        const response = await fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.success || !Array.isArray(result.bookedTimes)) return;
+
+        bookedAppointmentsData[selection.doctorId] = bookedAppointmentsData[selection.doctorId] || {};
+        bookedAppointmentsData[selection.doctorId][selection.date] = result.bookedTimes;
+
+        const hadSelection = !!selection.time;
+        const { selectedTimeWasCleared } = renderTimeSlotsGrid(result.bookedTimes, { preserveSelection: true });
+        if (hadSelection && selectedTimeWasCleared) {
+          showSlotTakenNotice();
+        }
+        adjustFormHeight();
+      } catch (error) {
+        // Fallo de red puntual: se reintenta en el siguiente ciclo de sondeo.
+      }
+    }
+
+    function showSlotTakenNotice(message) {
+      const existing = timeSlotWrapper.querySelector('.slot-taken-notice');
+      if (existing) existing.remove();
+
+      const notice = document.createElement('div');
+      notice.className = 'slot-taken-notice form-submission-error';
+      notice.setAttribute('role', 'alert');
+      notice.textContent = message || 'El horario que había seleccionado acaba de ser reservado por otra persona. Por favor, elija otro horario disponible.';
+      timeSlotWrapper.insertBefore(notice, timeSlotsGrid);
+      setTimeout(() => notice.remove(), 8000);
     }
 
     function generateTimesFromRules(rules) {
@@ -755,6 +869,10 @@
           selection.patientName = value;
           fieldIsValid = value.trim() !== '';
           break;
+        case 'patient-cedula':
+          selection.patientCedula = value;
+          fieldIsValid = isValidCedula(value);
+          break;
         case 'patient-email':
           selection.patientEmail = value;
           fieldIsValid = isValidEmail(value);
@@ -788,6 +906,7 @@
         : 'No seleccionado';
       summaryTime.textContent = selection.time ? `${selection.time} hs.` : 'No seleccionado';
       summaryName.textContent = selection.patientName || 'No ingresado';
+      summaryCedula.textContent = selection.patientCedula || 'No ingresado';
       summaryEmail.textContent = selection.patientEmail || 'No ingresado';
       summaryPhone.textContent = selection.patientPhone || 'No ingresado';
     }
@@ -824,6 +943,7 @@
             date: selection.date,
             time: selection.time,
             patientName: selection.patientName,
+            patientCedula: selection.patientCedula,
             patientEmail: selection.patientEmail,
             patientPhone: selection.patientPhone,
             patientNotes: selection.patientNotes,
@@ -834,15 +954,31 @@
 
         const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.success) {
-          throw new Error(result.error || 'No se pudo crear la cita.');
+          const submissionError = new Error(result.error || 'No se pudo crear la cita.');
+          submissionError.status = response.status;
+          throw submissionError;
         }
 
+        stopSlotPolling();
         showSuccessMessage();
       } catch (error) {
         nextBtn.disabled = false;
         prevBtn.style.visibility = 'visible';
         nextBtn.textContent = getConfigText('confirmLabel', 'Confirmar Cita');
         nextBtn.classList.remove('is-loading');
+
+        // 409 = conflicto de agenda (horario ya tomado, o reglas de citas por
+        // paciente). Se regresa al paso de Fecha/Hora, se refresca la
+        // disponibilidad real y se muestra el motivo devuelto por el servidor.
+        if (error.status === 409) {
+          currentStep = 2;
+          updateFormUI();
+          renderCalendar(calendarState.currentYear, calendarState.currentMonth);
+          await refreshBookedSlots();
+          startSlotPolling();
+          showSlotTakenNotice(error.message);
+          return;
+        }
 
         const errorContainer = document.createElement('div');
         errorContainer.className = 'form-submission-error';
@@ -900,6 +1036,10 @@
       });
     }
 
+    function escapeAttribute(value) {
+      return escapeHtml(value);
+    }
+
     // --- Event Listeners ---
     nextBtn.addEventListener('click', goToNextStep);
     prevBtn.addEventListener('click', goToPrevStep);
@@ -912,6 +1052,7 @@
     nextMonthBtn.addEventListener('click', () => navigateMonth(1));
     timeSlotsGrid.addEventListener('click', handleTimeSelection);
     patientNameInput.addEventListener('input', handlePatientDataInput);
+    patientCedulaInput.addEventListener('input', handlePatientDataInput);
     patientEmailInput.addEventListener('input', handlePatientDataInput);
     patientPhoneInput.addEventListener('input', handlePatientDataInput);
     patientNotesInput.addEventListener('input', handlePatientDataInput);

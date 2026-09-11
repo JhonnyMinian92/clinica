@@ -308,13 +308,15 @@ CREATE TABLE IF NOT EXISTS `patients` (
   `name` varchar(255) NOT NULL,
   `email` varchar(255) NOT NULL,
   `phone` varchar(50) DEFAULT NULL,
+  `cedula` varchar(20) DEFAULT NULL,
   `active` tinyint(1) NOT NULL DEFAULT 1,
   `email_opt_in` tinyint(1) NOT NULL DEFAULT 1,
   `whatsapp_opt_in` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
-  UNIQUE KEY `email` (`email`)
+  UNIQUE KEY `email` (`email`),
+  UNIQUE KEY `uq_patients_cedula` (`cedula`)
 ) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Volcando datos para la tabla clinica_base.patients: ~11 rows (aproximadamente)

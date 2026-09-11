@@ -84,9 +84,7 @@ include __DIR__ . '/../../../public/shared/header/header.php';
               </span>
               <span>Volver al dashboard</span>
             </a>
-            <?php if ($gestion_is_singleton): ?>
-              <button type="button" class="btn btn-primary" id="gestion-singleton-edit-btn">Editar datos</button>
-            <?php else: ?>
+            <?php if (!$gestion_is_singleton): ?>
               <button type="button" class="btn btn-primary" id="gestion-new-btn"><?php echo htmlspecialchars($gestion_new_label); ?></button>
             <?php endif; ?>
           </div>
@@ -125,7 +123,6 @@ include __DIR__ . '/../../../public/shared/header/header.php';
                   <h2 id="gestion-overview-title">Informacion publicada</h2>
                   <p>Datos principales que alimentan el sitio publico.</p>
                 </div>
-                <button type="button" class="btn btn-tertiary btn-sm" id="gestion-overview-edit-btn">Editar</button>
               </div>
               <div id="gestion-overview" class="gestion-overview" aria-live="polite">
                 <div class="gestion-loading">Cargando informacion...</div>

@@ -4,8 +4,9 @@ require_once __DIR__ . '/../db.php';
 
 /**
  * Minimal dependency-free SMTP client (no Composer/PHPMailer available in this project).
- * Supports STARTTLS on port 587 with AUTH LOGIN, which both Gmail and standard cPanel
- * mail servers accept.
+ * Supports both encryption modes offered by Gmail and standard cPanel mail servers:
+ * STARTTLS on port 587 (SMTP_SECURE=tls) and implicit SSL on port 465 (SMTP_SECURE=ssl),
+ * plus AUTH LOGIN for authentication.
  */
 
 function clinica_smtp_config(): array
@@ -51,8 +52,14 @@ function clinica_mail_send(string $toEmail, string $toName, string $subject, str
 
 function clinica_smtp_transaction(array $config, string $toEmail, string $toName, string $subject, string $htmlBody): void
 {
+  // 'ssl' = implicit TLS from the first byte (classic port 465, still the
+  // default/recommended mode on most cPanel mail servers). 'tls' = plaintext
+  // connect then STARTTLS upgrade (port 587). Anything else connects plain.
+  $isImplicitSsl = $config['secure'] === 'ssl';
+  $transport = $isImplicitSsl ? 'ssl' : 'tcp';
+
   $fp = @stream_socket_client(
-    "tcp://{$config['host']}:{$config['port']}",
+    "{$transport}://{$config['host']}:{$config['port']}",
     $errno,
     $errstr,
     8,

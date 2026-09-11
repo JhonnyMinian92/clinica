@@ -8,6 +8,8 @@ const CLINICA_MAX_LOGIN_ATTEMPTS = 5;
 const CLINICA_LOGIN_LOCKOUT_TIME_MINUTES = 15;
 const CLINICA_GESTION_DATA_VERSION = 1;
 const CLINICA_APPOINTMENT_BUFFER_MINUTES = 15;
+const CLINICA_MAX_APPOINTMENTS_PER_PATIENT_PER_DAY = 2;
+const CLINICA_MIN_MINUTES_BETWEEN_PATIENT_APPOINTMENTS = 120;
 const CLINICA_APPOINTMENTS_SEED_VERSION = 1;
 
 /**
@@ -86,6 +88,21 @@ function clinica_url(string $path = ''): string
   }
 
   return ($basePath === '' ? '' : $basePath) . '/' . ltrim($path, '/');
+}
+
+/**
+ * Same as clinica_url(), but appends a ?v=<filemtime> cache-busting query
+ * string so browsers pick up new CSS/JS immediately after a deploy instead
+ * of serving a stale cached copy.
+ */
+function clinica_versioned_url(string $relativePath): string
+{
+  $relativePath = ltrim(trim($relativePath), '/');
+  $fsPath = dirname(__DIR__) . '/' . $relativePath;
+  $url = clinica_url($relativePath);
+  $mtime = is_file($fsPath) ? @filemtime($fsPath) : false;
+
+  return $mtime !== false ? $url . '?v=' . $mtime : $url;
 }
 
 function clinica_public_path(string $path): string
@@ -725,7 +742,7 @@ function clinica_public_booked_slots(): array
 {
   try {
     $pdo = clinica_get_db(); // This function is for public display, not for strict business logic validation.
-    $stmt = $pdo->query("SELECT doctor_id, date, time FROM appointments WHERE status != 'rechazada'");
+    $stmt = $pdo->query("SELECT doctor_id, date, time FROM appointments WHERE status NOT IN ('rechazada', 'cancelada')");
     $results = $stmt->fetchAll();
   } catch (Throwable $e) {
     error_log('Booked slots fallback: ' . $e->getMessage());
@@ -740,6 +757,26 @@ function clinica_public_booked_slots(): array
     $booked[$row['doctor_id']][$row['date']][] = substr($row['time'], 0, 5);
   }
   return $booked;
+}
+
+/**
+ * Lightweight lookup used for polling: returns the currently booked times
+ * (HH:MM) for a single doctor on a single date, so the reservation UI can
+ * refresh availability without a full page reload.
+ */
+function clinica_public_booked_times_for(string $doctorId, string $date): array
+{
+  try {
+    $pdo = clinica_get_db();
+    $stmt = $pdo->prepare("SELECT time FROM appointments WHERE doctor_id = ? AND date = ? AND status NOT IN ('rechazada', 'cancelada')");
+    $stmt->execute([$doctorId, $date]);
+    $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
+  } catch (Throwable $e) {
+    error_log('Booked times lookup fallback: ' . $e->getMessage());
+    return [];
+  }
+
+  return array_values(array_unique(array_map(static fn($time) => substr((string) $time, 0, 5), $rows)));
 }
 
 function clinica_demo_users(): array

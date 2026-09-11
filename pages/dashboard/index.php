@@ -47,6 +47,21 @@ include __DIR__ . '/../../public/shared/header/header.php';
         <p class="dashboard-subtitle"><?php echo htmlspecialchars($dashboard_subtitle); ?></p>
       </div>
       <div class="dashboard-header-actions">
+        <a href="<?php echo htmlspecialchars(clinica_url('pages/reportes/')); ?>" class="dashboard-management-link" aria-label="Abrir reportes">
+          <span class="management-link-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"></path>
+              <path d="M18 17V9"></path>
+              <path d="M13 17V5"></path>
+              <path d="M8 17v-3"></path>
+            </svg>
+          </span>
+          <span>
+            <strong>Reportes</strong>
+            <small>Actividad y estados de citas</small>
+          </span>
+        </a>
         <?php if ($can_manage): ?>
           <a href="<?php echo htmlspecialchars(clinica_url('pages/gestion/')); ?>" class="dashboard-management-link" aria-label="Abrir gestion administrativa">
             <span class="management-link-icon" aria-hidden="true">
@@ -103,6 +118,12 @@ include __DIR__ . '/../../public/shared/header/header.php';
           </div>
           <div class="kpi-content"><span class="kpi-value">0</span><span class="kpi-label">Rechazadas</span></div>
         </button>
+        <button type="button" class="kpi-card" id="kpi-cancelled" data-kpi-filter="cancelada" aria-label="Ver citas canceladas" aria-pressed="false">
+          <div class="kpi-icon-wrapper cancelled">
+            <div class="kpi-icon cancelled"></div>
+          </div>
+          <div class="kpi-content"><span class="kpi-value">0</span><span class="kpi-label">Canceladas</span></div>
+        </button>
       </div>
 
       <div class="agenda-insights" id="agenda-insights" aria-live="polite">
@@ -142,13 +163,13 @@ include __DIR__ . '/../../public/shared/header/header.php';
           <div class="control-field">
             <label class="control-label" for="patient-search-input">Paciente</label>
             <div class="search-group">
-            <span class="search-icon" aria-hidden="true">
+            <!--<span class="search-icon" aria-hidden="true">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
-            </span>
+            </span>-->
             <input type="search" id="patient-search-input" placeholder="Buscar paciente, telefono o doctor..." class="search-input"
               aria-label="Buscar por paciente, telefono, doctor o motivo" autocomplete="off">
             </div>
@@ -195,6 +216,10 @@ include __DIR__ . '/../../public/shared/header/header.php';
           <span class="filter-label">Rechazadas</span>
           <span class="filter-count" data-filter-count="rechazada">0</span>
         </button>
+        <button type="button" class="btn btn-sm btn-filter" data-filter="cancelada" aria-pressed="false">
+          <span class="filter-label">Canceladas</span>
+          <span class="filter-count" data-filter-count="cancelada">0</span>
+        </button>
       </div>
 
       <div id="dashboard-toast" class="dashboard-toast" role="status" aria-live="polite"></div>
@@ -236,6 +261,21 @@ include __DIR__ . '/../../public/shared/header/header.php';
     <div class="modal-actions">
       <button type="button" id="modal-cancel-btn" class="btn btn-tertiary">Cancelar</button>
       <button type="button" id="modal-confirm-btn" class="btn btn-primary">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div id="history-modal" class="modal-overlay" aria-hidden="true" role="dialog" aria-modal="true"
+  aria-labelledby="history-modal-title">
+  <div class="modal-content modal-content-wide" role="document">
+    <button type="button" class="modal-close-btn" id="history-modal-close-btn" aria-label="Cerrar">&times;</button>
+    <h3 id="history-modal-title" class="modal-title">Historial del paciente</h3>
+    <p id="history-modal-subtitle" class="modal-message"></p>
+    <div id="history-modal-body" class="history-modal-body" aria-live="polite">
+      <div class="appointments-loading">
+        <div class="spinner"></div>
+        <span>Cargando historial...</span>
+      </div>
     </div>
   </div>
 </div>

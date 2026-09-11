@@ -184,10 +184,12 @@ function clinica_seed_create_schema(PDO $pdo): void
       name VARCHAR(255) NOT NULL,
       email VARCHAR(255) NOT NULL UNIQUE,
       phone VARCHAR(50) DEFAULT NULL,
+      cedula VARCHAR(20) DEFAULT NULL,
       active BOOLEAN NOT NULL DEFAULT TRUE,
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      PRIMARY KEY (id)
+      PRIMARY KEY (id),
+      UNIQUE KEY uq_patients_cedula (cedula)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
     CREATE TABLE IF NOT EXISTS appointments (
@@ -244,6 +246,14 @@ function clinica_seed_apply_migrations(PDO $pdo): void
   $pdo->exec("ALTER TABLE appointments MODIFY status ENUM('pendiente','atendida','no-presentado','rechazada','cancelada') NOT NULL DEFAULT 'pendiente'");
   clinica_seed_add_column($pdo, 'appointments', 'slot_minutes', "ALTER TABLE appointments ADD COLUMN slot_minutes INT UNSIGNED NOT NULL DEFAULT 15 AFTER time");
   clinica_seed_add_column($pdo, 'patients', 'active', "ALTER TABLE patients ADD COLUMN active BOOLEAN NOT NULL DEFAULT TRUE AFTER phone");
+
+  // Cedula/documento: identificador estable del paciente para vincular todas
+  // sus citas a un unico historial aunque cambie nombre, correo o telefono.
+  clinica_seed_add_column($pdo, 'patients', 'cedula', "ALTER TABLE patients ADD COLUMN cedula VARCHAR(20) DEFAULT NULL AFTER phone");
+  $stmt = $pdo->query("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'patients' AND INDEX_NAME = 'uq_patients_cedula'");
+  if ((int) $stmt->fetchColumn() === 0) {
+    $pdo->exec("ALTER TABLE patients ADD UNIQUE KEY uq_patients_cedula (cedula)");
+  }
 
   $stmt = $pdo->query("SELECT DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'doctor_schedules' AND COLUMN_NAME = 'id'");
   if (($stmt->fetchColumn() ?: '') !== 'varchar') {

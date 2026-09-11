@@ -3,6 +3,14 @@
  * Bandeja clinica de citas.
  */
 
+/* Must win over any class-based `display` rule below (flex/grid classes have
+   higher specificity than the UA default [hidden]{display:none}, so without
+   this, an element with both a display-setting class and the `hidden`
+   attribute stays visible). */
+[hidden] {
+  display: none !important;
+}
+
 :root {
   --dashboard-bg: #f5f7fa;
   --dashboard-surface: #ffffff;
@@ -22,6 +30,8 @@
   --dashboard-absent-soft: #fbefee;
   --dashboard-rejected: #5f6d7c;
   --dashboard-rejected-soft: #f1f4f7;
+  --dashboard-cancelled: #7c4a9e;
+  --dashboard-cancelled-soft: #f5eefa;
   --dashboard-radius: 8px;
   --dashboard-shadow: 0 12px 28px rgba(15, 23, 42, 0.055);
 }
@@ -284,6 +294,11 @@ body {
   background-color: var(--dashboard-rejected-soft);
 }
 
+.kpi-icon-wrapper.cancelled {
+  color: var(--dashboard-cancelled);
+  background-color: var(--dashboard-cancelled-soft);
+}
+
 .kpi-icon {
   width: 16px;
   height: 16px;
@@ -304,7 +319,8 @@ body {
 }
 
 .kpi-icon.absent,
-.kpi-icon.rejected {
+.kpi-icon.rejected,
+.kpi-icon.cancelled {
   clip-path: polygon(20% 5%, 50% 35%, 80% 5%, 95% 20%, 65% 50%, 95% 80%, 80% 95%, 50% 65%, 20% 95%, 5% 80%, 35% 50%, 5% 20%);
 }
 
@@ -715,6 +731,10 @@ body {
 
 .status-card-rechazada {
   border-left-color: var(--dashboard-rejected);
+}
+
+.status-card-cancelada {
+  border-left-color: var(--dashboard-cancelled);
 }
 
 .appointment-card-top {
@@ -1381,6 +1401,84 @@ body {
   color: var(--dashboard-muted);
   font-size: 0.9rem;
   line-height: 1.5;
+}
+
+.modal-content-wide {
+  width: min(100%, 640px);
+  max-height: 84vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.history-modal-body {
+  margin-top: 14px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.history-item {
+  border: 1px solid var(--dashboard-border);
+  border-left: 4px solid var(--dashboard-border-strong);
+  border-radius: var(--dashboard-radius);
+  background-color: var(--dashboard-surface-soft);
+  padding: 12px 14px;
+}
+
+.history-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.history-item-date {
+  color: var(--dashboard-text);
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.history-item-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 8px;
+  color: var(--dashboard-muted);
+  font-size: 0.82rem;
+}
+
+.history-item-details strong {
+  color: var(--dashboard-text);
+  font-weight: 700;
+}
+
+.history-item-notes {
+  margin: 8px 0 0;
+  color: var(--dashboard-muted);
+  font-size: 0.82rem;
+  font-style: italic;
+}
+
+.appointment-history-btn {
+  align-self: flex-start;
+  margin-top: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--dashboard-primary);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .modal-actions {

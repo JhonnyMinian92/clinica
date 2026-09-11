@@ -57,12 +57,17 @@
       modalConfirmBtn: document.getElementById('modal-confirm-btn'),
       modalCancelBtn: document.getElementById('modal-cancel-btn'),
       modalCloseBtn: document.querySelector('#confirmation-modal .modal-close-btn'),
+      historyModal: document.getElementById('history-modal'),
+      historyModalSubtitle: document.getElementById('history-modal-subtitle'),
+      historyModalBody: document.getElementById('history-modal-body'),
+      historyModalCloseBtn: document.getElementById('history-modal-close-btn'),
       kpiValues: {
         total: document.querySelector('#kpi-total .kpi-value'),
         pending: document.querySelector('#kpi-pending .kpi-value'),
         attended: document.querySelector('#kpi-attended .kpi-value'),
         absent: document.querySelector('#kpi-absent .kpi-value'),
         rejected: document.querySelector('#kpi-rejected .kpi-value'),
+        cancelled: document.querySelector('#kpi-cancelled .kpi-value'),
       },
       insights: {
         nextTitle: document.querySelector('[data-insight="next-title"]'),
@@ -79,6 +84,7 @@
       atendida: 'Atendida',
       'no-presentado': 'No se presento',
       rechazada: 'Rechazada',
+      cancelada: 'Cancelada',
     };
 
     const finalStateCopy = {
@@ -93,6 +99,10 @@
       rechazada: {
         title: 'Rechazada',
         description: 'Cita cerrada sin atencion.',
+      },
+      cancelada: {
+        title: 'Cancelada',
+        description: 'Cita cancelada.',
       },
     };
 
@@ -129,12 +139,17 @@
         title: 'No hay citas rechazadas.',
         description: 'No se registran rechazos para este rango.',
       },
+      cancelada: {
+        title: 'No hay citas canceladas.',
+        description: 'No se registran cancelaciones para este rango.',
+      },
     };
 
     const AUTO_REFRESH_INTERVAL_MS = 60000;
 
     function init() {
       activateDateScope(DEFAULT_DATE_SCOPE);
+      setStatusFilter(defaultStatusForScope(DEFAULT_DATE_SCOPE), false);
       attachEventListeners();
       fetchDashboardData();
       // Keeps the list fresh AND, as a side effect, gives the reminder sweep
@@ -186,6 +201,13 @@
         document.addEventListener('keydown', handleModalKeydown);
       }
 
+      if (dom.historyModal) {
+        dom.historyModalCloseBtn?.addEventListener('click', closeHistoryModal);
+        dom.historyModal.addEventListener('click', (event) => {
+          if (event.target === dom.historyModal) closeHistoryModal();
+        });
+      }
+
       eventsReady = true;
     }
 
@@ -197,6 +219,7 @@
       if (dom.kpiValues.attended) dom.kpiValues.attended.textContent = counts.atendida;
       if (dom.kpiValues.absent) dom.kpiValues.absent.textContent = counts['no-presentado'];
       if (dom.kpiValues.rejected) dom.kpiValues.rejected.textContent = counts.rechazada;
+      if (dom.kpiValues.cancelled) dom.kpiValues.cancelled.textContent = counts.cancelada;
     }
 
     function renderFilterCounts(counts) {
@@ -211,7 +234,7 @@
     function renderAgendaInsights(summary) {
       const counts = normalizeCounts(summary?.counts);
       const nextPending = summary?.next_pending || null;
-      const closedCount = counts.atendida + counts['no-presentado'] + counts.rechazada;
+      const closedCount = counts.atendida + counts['no-presentado'] + counts.rechazada + counts.cancelada;
       const resolution = counts.all > 0 ? Math.round((closedCount / counts.all) * 100) : 0;
 
       if (nextPending) {
@@ -300,6 +323,7 @@
       const doctorName = appointment.doctor_info?.nombre || '';
       const phone = appointment.telefono_paciente || '';
       const email = appointment.email_paciente || '';
+      const patientId = appointment.patient_id || '';
       const details = [
         adminView && doctorName ? renderDetail('Doctor', doctorName) : '',
         appointment.especialidad ? renderDetail('Especialidad', appointment.especialidad) : '',
@@ -308,7 +332,7 @@
       ].join('');
 
       return `
-        <article class="appointment-card status-card-${escapeHtml(status)} ${isNext ? 'is-next' : ''}" data-id="${escapeHtml(appointment.id)}" data-status="${escapeHtml(status)}">
+        <article class="appointment-card status-card-${escapeHtml(status)} ${isNext ? 'is-next' : ''}" data-id="${escapeHtml(appointment.id)}" data-status="${escapeHtml(status)}" data-patient-id="${escapeHtml(patientId)}">
           <div class="appointment-card-top">
             <div class="appointment-time-block">
               <span class="appointment-date">${escapeHtml(formatDate(appointment.fecha))}</span>
@@ -324,6 +348,7 @@
             <p class="appointment-label">Paciente</p>
             <h3 class="appointment-patient">${escapeHtml(patient)}</h3>
             <p class="appointment-reason">${escapeHtml(appointment.motivo_consulta || 'Sin motivo registrado')}</p>
+            ${patientId ? `<button type="button" class="appointment-history-btn" data-action="history" data-patient-id="${escapeHtml(patientId)}" data-patient-name="${escapeHtml(patient)}">Ver historial del paciente</button>` : ''}
           </div>
 
           ${details ? `<div class="appointment-details">${details}</div>` : ''}
@@ -473,11 +498,27 @@
       }
     }
 
+    // "Hoy"/"Manana"/"Proximas" solo tienen sentido operativo para citas aun
+    // pendientes (agenda por atender). "Anteriores" mira hacia el pasado, asi
+    // que por defecto interesa ver lo que efectivamente se atendio, no lo que
+    // quedo pendiente sin cerrar. "Todas" es el unico alcance pensado para ver
+    // el historial completo mezclado (pendientes, atendidas, rechazadas,
+    // canceladas). El usuario puede luego elegir manualmente otro estado
+    // (p.ej. "Rechazadas") dentro de ese mismo rango si necesita revisar algo
+    // distinto al valor por defecto.
+    function defaultStatusForScope(scope) {
+      if (scope === 'all') return 'all';
+      if (scope === 'past') return 'atendida';
+      return 'pendiente';
+    }
+
     function handleDateScopeClick(event) {
       const dateButton = event.target.closest('.date-filter-btn');
       if (!dateButton) return;
 
-      activateDateScope(dateButton.dataset.dateScope || DEFAULT_DATE_SCOPE);
+      const scope = dateButton.dataset.dateScope || DEFAULT_DATE_SCOPE;
+      activateDateScope(scope);
+      setStatusFilter(defaultStatusForScope(scope), false);
 
       if (dom.dateInput) dom.dateInput.value = '';
       pagination.page = 1;
@@ -492,6 +533,7 @@
         });
       } else {
         activateDateScope(DEFAULT_DATE_SCOPE);
+        setStatusFilter(defaultStatusForScope(DEFAULT_DATE_SCOPE), false);
       }
 
       pagination.page = 1;
@@ -519,6 +561,11 @@
 
       const actionButton = event.target.closest('[data-action]');
       if (!actionButton || actionButton.disabled) return;
+
+      if (actionButton.dataset.action === 'history') {
+        openHistoryModal(actionButton.dataset.patientId || '', actionButton.dataset.patientName || 'Paciente');
+        return;
+      }
 
       const card = actionButton.closest('.appointment-card');
       const appointmentId = card?.dataset.id;
@@ -778,16 +825,23 @@
     }
 
     function handleModalKeydown(event) {
-      if (!dom.modal || dom.modal.getAttribute('aria-hidden') === 'true') return;
+      const activeModal = [dom.modal, dom.historyModal].find(
+        (modal) => modal && modal.getAttribute('aria-hidden') === 'false',
+      );
+      if (!activeModal) return;
 
       if (event.key === 'Escape') {
-        closeModal();
+        if (activeModal === dom.historyModal) {
+          closeHistoryModal();
+        } else {
+          closeModal();
+        }
         return;
       }
 
       if (event.key !== 'Tab') return;
 
-      const focusable = Array.from(dom.modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')).filter(
+      const focusable = Array.from(activeModal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')).filter(
         (element) => !element.disabled,
       );
 
@@ -805,6 +859,88 @@
       }
     }
 
+    async function openHistoryModal(patientId, patientName) {
+      if (!dom.historyModal || !patientId) return;
+
+      lastFocusedElement = document.activeElement;
+      dom.historyModalSubtitle.textContent = patientName;
+      dom.historyModalBody.innerHTML = `
+        <div class="appointments-loading">
+          <div class="spinner"></div>
+          <span>Cargando historial...</span>
+        </div>
+      `;
+      dom.historyModal.setAttribute('aria-hidden', 'false');
+      dom.historyModalCloseBtn?.focus();
+
+      try {
+        const params = new URLSearchParams({ action: 'patient_history', patient_id: patientId });
+        const response = await fetch(`${DASHBOARD_API}?${params.toString()}`, {
+          credentials: 'same-origin',
+          headers: { Accept: 'application/json' },
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || 'No se pudo cargar el historial.');
+        }
+
+        renderPatientHistory(data.appointments || []);
+      } catch (error) {
+        dom.historyModalBody.innerHTML = `
+          <div class="appointments-empty">
+            <span class="empty-kicker">Error</span>
+            <h3>No se pudo cargar el historial</h3>
+            <p>${escapeHtml(error.message || 'Intente nuevamente.')}</p>
+          </div>
+        `;
+      }
+    }
+
+    function closeHistoryModal() {
+      if (!dom.historyModal) return;
+
+      dom.historyModal.setAttribute('aria-hidden', 'true');
+      if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+        lastFocusedElement.focus();
+      }
+    }
+
+    function renderPatientHistory(appointments) {
+      if (!dom.historyModalBody) return;
+
+      if (appointments.length === 0) {
+        dom.historyModalBody.innerHTML = `
+          <div class="appointments-empty">
+            <span class="empty-kicker">Sin citas</span>
+            <h3>Sin historial registrado</h3>
+            <p>No se encontraron citas previas visibles para este paciente.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const rowsHtml = appointments
+        .map((appointment) => {
+          const status = appointment.estado || 'pendiente';
+          return `
+            <li class="history-item status-card-${escapeHtml(status)}">
+              <div class="history-item-top">
+                <span class="history-item-date">${escapeHtml(formatDate(appointment.fecha))} - ${escapeHtml(formatTime(appointment.hora))}</span>
+                <span class="status-badge status-${escapeHtml(status)}">${escapeHtml(getStatusLabel(status))}</span>
+              </div>
+              <div class="history-item-details">
+                ${appointment.doctor_nombre ? `<span><strong>Doctor:</strong> ${escapeHtml(appointment.doctor_nombre)}</span>` : ''}
+                ${appointment.especialidad ? `<span><strong>Especialidad:</strong> ${escapeHtml(appointment.especialidad)}</span>` : ''}
+              </div>
+              ${appointment.motivo_consulta ? `<p class="history-item-notes">${escapeHtml(appointment.motivo_consulta)}</p>` : ''}
+            </li>
+          `;
+        })
+        .join('');
+
+      dom.historyModalBody.innerHTML = `<ul class="history-list">${rowsHtml}</ul>`;
+    }
+
     function getStatusLabel(status) {
       return statusLabels[status] || status;
     }
@@ -816,6 +952,7 @@
         atendida: Number(counts.atendida || 0),
         'no-presentado': Number(counts['no-presentado'] || 0),
         rechazada: Number(counts.rechazada || 0),
+        cancelada: Number(counts.cancelada || 0),
       };
     }
 

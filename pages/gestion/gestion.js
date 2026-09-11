@@ -38,8 +38,6 @@
       subToolbar: document.querySelector('.gestion-sub-toolbar'),
       filters: document.querySelector('.gestion-filters'),
       newBtn: document.getElementById('gestion-new-btn'),
-      singletonEditBtn: document.getElementById('gestion-singleton-edit-btn'),
-      overviewEditBtn: document.getElementById('gestion-overview-edit-btn'),
       reloadBtn: document.getElementById('gestion-reload-btn'),
       listSummary: document.getElementById('gestion-list-summary'),
       editorTitle: document.getElementById('gestion-editor-title'),
@@ -77,12 +75,6 @@
       renderForm(config, state, dom, getNewRecordSeed(config, dom));
       openEditorModal(dom);
     });
-    const openSingletonEditor = () => {
-      renderForm(config, state, dom, state.records);
-      openEditorModal(dom);
-    };
-    dom.singletonEditBtn?.addEventListener('click', openSingletonEditor);
-    dom.overviewEditBtn?.addEventListener('click', openSingletonEditor);
     dom.list?.addEventListener('click', (event) => handleListAction(event, config, state, dom));
     dom.overview?.addEventListener('click', (event) => handleListAction(event, config, state, dom));
     dom.form?.addEventListener('submit', (event) => handleSubmit(event, config, state, dom));

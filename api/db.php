@@ -87,7 +87,9 @@ function clinica_load_local_db_config(): array
 function clinica_env(string $key, string $default = ''): string
 {
   $value = getenv($key);
-  return $value === false || $value === '' ? $default : (string) $value;
+  // Solo "no definida" cae al valor por defecto. Un valor vacio explicito
+  // (p.ej. DB_PASS= para root sin clave en desarrollo local) debe respetarse.
+  return $value === false ? $default : (string) $value;
 }
 
 /**
