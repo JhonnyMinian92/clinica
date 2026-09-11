@@ -149,6 +149,9 @@ if ($action === 'cancel' && $method === 'POST') {
       clinica_json(['success' => false, 'error' => 'La cita cambio de estado mientras se procesaba la anulacion. Intente nuevamente.'], 409);
     }
 
+    $history = $pdo->prepare("INSERT INTO appointment_status_history (appointment_id, old_status, new_status, changed_by_user_id, reason) VALUES (?, 'pendiente', 'cancelada', NULL, ?)");
+    $history->execute([$appointmentId, 'Anulada por el paciente antes de la hora de atencion.']);
+
     $pdo->commit();
 
     clinica_log_audit_event(null, 'appointment_cancelled_by_patient', 'Cita anulada por el paciente antes de su hora de atencion', [
