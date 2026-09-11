@@ -22,7 +22,10 @@
 
 .reportes-container {
   background: var(--reportes-bg);
-  padding-block: 32px 56px;
+  /* The shared header is fixed. Reserve its full height so the page header
+     and its actions are never rendered underneath the navigation bar. */
+  padding-top: calc(var(--header-height) + 32px);
+  padding-bottom: 56px;
   min-height: 60vh;
 }
 
@@ -285,6 +288,19 @@
 }
 
 @media (max-width: 640px) {
+  .reportes-header {
+    align-items: stretch;
+  }
+
+  .reportes-header-actions,
+  .reportes-back-link {
+    width: 100%;
+  }
+
+  .reportes-back-link {
+    justify-content: center;
+  }
+
   .reportes-filters {
     flex-direction: column;
     align-items: stretch;
