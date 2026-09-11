@@ -16,9 +16,6 @@ if (!function_exists('str_contains')) {
   }
 }
 
-/**
- * Loads the environment selected only in api/environment.php.
- */
 function clinica_db_credentials(): array
 {
   $environmentFile = clinica_environment_file();
@@ -99,11 +96,11 @@ function clinica_bootstrap_timezone(): void
     return;
   }
 
-  // Load configuration and timezone without opening a database connection.
-  // Database errors must remain catchable by the application layer instead of
-  // causing a fatal error while db.php itself is being included.
   $environmentFile = clinica_environment_file();
-  clinica_load_env_file($environmentFile);
+  if (is_file($environmentFile) && is_readable($environmentFile)) {
+    clinica_load_env_file($environmentFile);
+  }
+
   date_default_timezone_set(clinica_env('APP_TIMEZONE', 'America/Guayaquil'));
   $done = true;
 }
