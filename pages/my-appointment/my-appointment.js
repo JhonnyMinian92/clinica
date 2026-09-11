@@ -137,10 +137,19 @@
       setLoading(true);
 
       try {
-        const url = `${config.apiUrl}?action=lookup&cedula=${encodeURIComponent(cedula)}`;
-        const response = await fetch(url, {
+        const body = new URLSearchParams();
+        body.set('action', 'lookup');
+        body.set('cedula', cedula);
+
+        const response = await fetch(config.apiUrl, {
+          method: 'POST',
           credentials: 'same-origin',
-          headers: { Accept: 'application/json' }
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+            Accept: 'application/json',
+            'X-CSRF-Token': getCsrfToken()
+          },
+          body: body.toString()
         });
         const data = await response.json().catch(function () { return {}; });
 
