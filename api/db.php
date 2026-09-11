@@ -86,7 +86,17 @@ function clinica_load_env_file(string $path): void
 function clinica_env(string $key, string $default = ''): string
 {
   $value = getenv($key);
-  return $value === false ? $default : (string) $value;
+  if ($value !== false) {
+    return (string) $value;
+  }
+
+  // Some shared hosts disable getenv()/putenv() while still allowing the
+  // PHP environment array. Use $_ENV as a portable fallback.
+  if (isset($_ENV[$key])) {
+    return (string) $_ENV[$key];
+  }
+
+  return $default;
 }
 
 function clinica_bootstrap_timezone(): void
