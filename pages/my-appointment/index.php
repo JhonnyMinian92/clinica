@@ -60,7 +60,7 @@ include __DIR__ . '/../../public/shared/header/header.php';
 </main>
 
 <script>
-const appointmentManagementConfig = <?php echo json_encode([
+window.appointmentManagementConfig = <?php echo json_encode([
   'apiUrl' => clinica_url('api/appointments/manage.php'),
   'reservationUrl' => clinica_url('pages/reservations/'),
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
