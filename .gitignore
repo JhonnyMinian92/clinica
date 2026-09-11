@@ -1,6 +1,10 @@
-# Ignore environment files
+# Environment files (never commit real credentials)
 .env
+.env.local
+.env.development
 /api/db.local.php
+
+# Environment templates are intentionally tracked
 
 # Ignore vendor directory
 /vendor/
