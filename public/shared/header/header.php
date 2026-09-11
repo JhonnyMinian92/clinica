@@ -10,6 +10,14 @@ $page_canonical = $page_canonical ?? ($clinic_header['canonical_url'] ?? '');
 $clinic_name = clinica_get_display_name($clinic_header);
 $logo_image = $clinic_header['logo_image'] ?? '';
 $home_url = clinica_url();
+
+// El acceso a "Mi cita" se mantiene como un único CTA flotante en las páginas públicas.
+// Nunca se muestra en login ni en ninguna ruta perteneciente al dashboard.
+$clinic_request_path = parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
+$clinic_request_path = str_replace('\\', '/', (string) $clinic_request_path);
+$clinic_is_login = (bool) preg_match('#/pages/login(?:/|$)#i', $clinic_request_path);
+$clinic_is_dashboard = (bool) preg_match('#/pages/dashboard(?:/|$)#i', $clinic_request_path);
+$clinic_show_appointment_floating = !$clinic_is_login && !$clinic_is_dashboard;
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -55,14 +63,9 @@ $home_url = clinica_url();
           <li><a href="<?php echo htmlspecialchars(clinica_url('#services')); ?>" class="nav-link">Servicios</a></li>
           <li><a href="<?php echo htmlspecialchars(clinica_url('#doctors')); ?>" class="nav-link">Doctores</a></li>
           <li><a href="<?php echo htmlspecialchars(clinica_url('#about')); ?>" class="nav-link">Nosotros</a></li>
-          <li><a href="<?php echo htmlspecialchars(clinica_url('pages/my-appointment/')); ?>" class="nav-link nav-link-appointment"><span class="nav-link-icon" aria-hidden="true">✓</span> Mi cita</a></li>
         </ul>
       </nav>
       <div class="header-actions">
-        <a href="<?php echo htmlspecialchars(clinica_url('pages/my-appointment/')); ?>" class="header-appointment-link" aria-label="Consultar y gestionar mi cita">
-          <span class="header-appointment-icon" aria-hidden="true">✓</span>
-          <span class="header-appointment-text"><small>¿Ya tienes una cita?</small><strong>Consultar mi cita</strong></span>
-        </a>
         <a href="<?php echo htmlspecialchars(clinica_url('pages/reservations/')); ?>" class="btn btn-primary header-book-button">Agendar cita</a>
         <button class="mobile-nav-toggle" id="mobile-nav-toggle" aria-controls="main-nav" aria-expanded="false" aria-label="Abrir menu de navegacion">
           <span class="hamburger-line"></span><span class="hamburger-line"></span><span class="hamburger-line"></span>
@@ -70,3 +73,13 @@ $home_url = clinica_url();
       </div>
     </div>
   </header>
+
+  <?php if ($clinic_show_appointment_floating): ?>
+    <a href="<?php echo htmlspecialchars(clinica_url('pages/my-appointment/')); ?>" class="floating-appointment-link" aria-label="Consultar y gestionar mi cita">
+      <span class="floating-appointment-icon" aria-hidden="true">✓</span>
+      <span class="floating-appointment-text">
+        <small>¿Ya tienes una cita?</small>
+        <strong>Consultar mi cita</strong>
+      </span>
+    </a>
+  <?php endif; ?>
