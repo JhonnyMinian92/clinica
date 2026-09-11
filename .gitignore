@@ -1,4 +1,8 @@
+.env
 .env.production
+
+# Legacy/local credential files
+/api/db.local.php
 
 # Ignore vendor directory
 /vendor/
