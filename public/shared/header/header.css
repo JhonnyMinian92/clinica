@@ -8,17 +8,16 @@
   left: 0;
   width: 100%;
   max-width: 100%;
-  overflow: hidden;
+  overflow: visible;
   z-index: 1000;
   height: var(--header-height);
-  background-color: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background-color: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid transparent;
   transition: all var(--transition-duration-medium) var(--ease-out-cubic);
 }
 
-/* Cuando el menú móvil está abierto, el header se vuelve transparente para no interferir */
 body.mobile-nav-open .main-header {
   background-color: transparent;
   backdrop-filter: none;
@@ -47,59 +46,54 @@ body.mobile-nav-open .main-header {
   display: flex;
   align-items: center;
   gap: var(--spacing-unit);
+  min-width: 0;
+  flex: 1 1 auto;
   color: var(--color-primary);
   text-decoration: none;
   font-weight: 700;
-  min-width: 0;
-  flex-shrink: 1;
 }
 
 .logo-label {
   display: inline-block;
   min-width: 0;
-}
-
-.logo-svg {
-  transition: transform var(--transition-duration-medium) var(--ease-out-cubic);
-}
-.logo:hover .logo-svg {
-  transform: scale(1.1);
-}
-
-.clinic-name-header {
-  font-size: 1.25rem;
+  overflow: hidden;
   color: var(--color-text-primary);
-}
-
-/* Visible label next to logo (falls back to clinic-name-header styling) */
-.logo-label {
-  font-size: 1.125rem;
-  color: var(--color-text-primary);
+  font-size: 1.05rem;
   font-weight: 700;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.main-nav {
-  display: none; /* Oculto en móvil */
-}
+.logo-svg { transition: transform var(--transition-duration-medium) var(--ease-out-cubic); }
+.logo:hover .logo-svg { transform: scale(1.06); }
+
+.main-nav { display: none; }
 
 .nav-list {
   display: flex;
+  align-items: center;
   list-style: none;
-  gap: calc(var(--spacing-unit) * 4);
+  gap: clamp(1rem, 2vw, 2rem);
+  margin: 0;
+  padding: 0;
 }
 
 .nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
   color: var(--color-text-secondary);
   text-decoration: none;
-  font-weight: 500;
+  font-size: .88rem;
+  font-weight: 600;
   position: relative;
-  padding: var(--spacing-unit) 0;
+  padding: .5rem 0;
 }
+
 .nav-link::after {
   content: '';
   position: absolute;
-  bottom: 0;
+  bottom: .1rem;
   left: 0;
   width: 100%;
   height: 2px;
@@ -108,75 +102,127 @@ body.mobile-nav-open .main-header {
   transform-origin: right;
   transition: transform var(--transition-duration-medium) var(--ease-out-cubic);
 }
+
 .nav-link:hover,
-.nav-link:focus {
-  color: var(--color-text-primary);
-}
+.nav-link:focus-visible { color: var(--color-text-primary); }
 .nav-link:hover::after,
-.nav-link:focus::after {
-  transform: scaleX(1);
-  transform-origin: left;
-}
+.nav-link:focus-visible::after { transform: scaleX(1); transform-origin: left; }
+
+.nav-link-appointment { color: var(--color-primary); }
+.nav-link-icon { font-size: .72rem; }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: var(--spacing-unit);
+  justify-content: flex-end;
+  gap: .65rem;
   min-width: 0;
-  flex-shrink: 0;
+  flex: 0 0 auto;
 }
 
-.header-actions .btn {
-  display: none;
+.header-appointment-link {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  min-width: 0;
+  padding: .42rem .65rem;
+  border: 1px solid rgba(37, 99, 235, .13);
+  border-radius: 11px;
+  background: rgba(37, 99, 235, .055);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  transition: transform .2s ease, border-color .2s ease, background-color .2s ease;
 }
+
+.header-appointment-link:hover,
+.header-appointment-link:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(37, 99, 235, .28);
+  background: rgba(37, 99, 235, .10);
+}
+
+.header-appointment-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+.header-appointment-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.header-appointment-text small {
+  color: var(--color-text-secondary);
+  font-size: .62rem;
+  font-weight: 500;
+}
+
+.header-appointment-text strong {
+  color: var(--color-primary);
+  font-size: .76rem;
+  white-space: nowrap;
+}
+
+.header-book-button { white-space: nowrap; }
 
 .mobile-nav-toggle {
-  display: block; /* Visible en móvil */
+  display: block;
   width: 44px;
   height: 44px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  z-index: 1002; /* Debe estar por encima del overlay del menú */
   padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  z-index: 1002;
 }
 
 .hamburger-line {
   display: block;
   width: 24px;
   height: 2px;
-  background-color: var(--color-text-primary);
   margin: 5px auto;
+  background-color: var(--color-text-primary);
   transition: all var(--transition-duration-medium) var(--ease-out-cubic);
 }
 
-/* Estilos para menú móvil abierto */
-body.mobile-nav-open .hamburger-line:nth-child(1) {
-  transform: translateY(7px) rotate(45deg);
-}
-body.mobile-nav-open .hamburger-line:nth-child(2) {
-  opacity: 0;
-}
-body.mobile-nav-open .hamburger-line:nth-child(3) {
-  transform: translateY(-7px) rotate(-45deg);
+body.mobile-nav-open .hamburger-line:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+body.mobile-nav-open .hamburger-line:nth-child(2) { opacity: 0; }
+body.mobile-nav-open .hamburger-line:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+@media (max-width: 1023px) {
+  .header-appointment-link { display: none; }
 }
 
 @media (max-width: 767px) {
-  .logo-label {
-    max-width: min(52vw, 220px);
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+  .header-container { gap: .4rem; }
+  .logo-label { max-width: min(55vw, 230px); }
+  .header-actions { gap: .25rem; }
+  .header-book-button { display: none; }
 }
 
 @media (min-width: 1024px) {
-  .main-nav {
-    display: block;
-  }
-  .mobile-nav-toggle {
-    display: none;
-  }
-  .header-actions .btn {
-    display: inline-block;
-  }
+  .main-nav { display: block; flex: 0 1 auto; margin: 0 clamp(.75rem, 2vw, 2rem); }
+  .mobile-nav-toggle { display: none; }
+  .header-actions .header-book-button { display: inline-flex; }
+}
+
+@media (min-width: 1280px) {
+  .nav-list { gap: 2rem; }
+  .header-appointment-link { padding-right: .8rem; padding-left: .8rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header-appointment-link,
+  .hamburger-line,
+  .logo-svg { transition: none; }
 }
