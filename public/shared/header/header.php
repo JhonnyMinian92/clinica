@@ -62,9 +62,11 @@ $home_url = clinica_url();
           <li><a href="<?php echo htmlspecialchars(clinica_url('#services')); ?>" class="nav-link">Servicios</a></li>
           <li><a href="<?php echo htmlspecialchars(clinica_url('#doctors')); ?>" class="nav-link">Doctores</a></li>
           <li><a href="<?php echo htmlspecialchars(clinica_url('#about')); ?>" class="nav-link">Nosotros</a></li>
+          <li><a href="<?php echo htmlspecialchars(clinica_url('pages/my-appointment/')); ?>" class="nav-link">Mi Cita</a></li>
         </ul>
       </nav>
       <div class="header-actions">
+        <a href="<?php echo htmlspecialchars(clinica_url('pages/my-appointment/')); ?>" class="btn btn-secondary">Consultar Cita</a>
         <a href="<?php echo htmlspecialchars(clinica_url('pages/reservations/')); ?>" class="btn btn-primary">Agendar Cita</a>
         <button class="mobile-nav-toggle" id="mobile-nav-toggle" aria-controls="main-nav" aria-expanded="false"
           aria-label="Abrir menu de navegacion">
