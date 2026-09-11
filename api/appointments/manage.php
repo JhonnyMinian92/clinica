@@ -67,8 +67,12 @@ function clinica_appointment_manage_lookup(PDO $pdo, string $cedula): array
 $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 $action = strtolower(trim((string) ($_GET['action'] ?? $_POST['action'] ?? '')));
 
-if ($action === 'lookup' && $method === 'GET') {
-  $cedula = clinica_appointment_manage_cedula((string) ($_GET['cedula'] ?? ''));
+if ($action === 'lookup' && $method === 'POST') {
+  if (!clinica_validate_csrf_from_request()) {
+    clinica_json(['success' => false, 'error' => 'CSRF token invalido.'], 403);
+  }
+
+  $cedula = clinica_appointment_manage_cedula((string) ($_POST['cedula'] ?? ''));
 
   if (!clinica_appointment_manage_validate_cedula($cedula)) {
     clinica_json(['success' => false, 'error' => 'Ingrese una cedula o documento valido.'], 422);
