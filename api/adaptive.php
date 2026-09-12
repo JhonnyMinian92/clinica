@@ -21,10 +21,15 @@ function clinica_doctor_specialties(PDO $pdo, string $doctorId, bool $activeOnly
   }
 
   // The legacy column remains a compatibility bridge while existing CRUD
-  // forms still write doctors.specialty_id. Include it when valid so a normal
-  // doctor edit cannot silently make the doctor disappear from the catalog.
+  // forms still write doctors.specialty_id. Include it only when its specialty
+  // is active so disabled specialties can never leak into the public catalog.
   try {
-    $stmt = $pdo->prepare('SELECT specialty_id FROM doctors WHERE id = ? AND specialty_id IS NOT NULL AND specialty_id <> ? LIMIT 1');
+    $sql = 'SELECT d.specialty_id FROM doctors d';
+    if ($activeOnly) {
+      $sql .= ' INNER JOIN specialties s ON s.id = d.specialty_id AND s.active = 1';
+    }
+    $sql .= ' WHERE d.id = ? AND d.specialty_id IS NOT NULL AND d.specialty_id <> ? LIMIT 1';
+    $stmt = $pdo->prepare($sql);
     $stmt->execute([$doctorId, '']);
     $legacy = $stmt->fetchColumn();
     if ($legacy !== false && $legacy !== null && $legacy !== '') {
@@ -41,8 +46,12 @@ function clinica_doctor_has_specialty(PDO $pdo, string $doctorId, string $specia
 {
   if ($doctorId === '' || $specialtyId === '') return false;
   try {
-    $sql = 'SELECT 1 FROM doctor_specialties WHERE doctor_id = ? AND specialty_id = ?';
-    if ($activeOnly) $sql .= ' AND active = 1';
+    $sql = 'SELECT 1 FROM doctor_specialties ds';
+    if ($activeOnly) {
+      $sql .= ' INNER JOIN specialties s ON s.id = ds.specialty_id AND s.active = 1';
+    }
+    $sql .= ' WHERE ds.doctor_id = ? AND ds.specialty_id = ?';
+    if ($activeOnly) $sql .= ' AND ds.active = 1';
     $sql .= ' LIMIT 1';
     $stmt = $pdo->prepare($sql);
     $stmt->execute([$doctorId, $specialtyId]);
@@ -51,10 +60,14 @@ function clinica_doctor_has_specialty(PDO $pdo, string $doctorId, string $specia
     // Pre-migration fallback below.
   }
 
-  // Compatibility bridge for legacy doctor CRUD writes. If the relation table
-  // exists but a legacy edit changed specialty_id, the new value is still a
-  // valid specialty until the relation manager is explicitly used.
-  $stmt = $pdo->prepare('SELECT 1 FROM doctors WHERE id = ? AND specialty_id = ? AND active = 1 LIMIT 1');
+  // Compatibility bridge for legacy doctor CRUD writes. The fallback also
+  // verifies specialty activity, matching the relation path above.
+  $sql = 'SELECT 1 FROM doctors d';
+  if ($activeOnly) {
+    $sql .= ' INNER JOIN specialties s ON s.id = d.specialty_id AND s.active = 1';
+  }
+  $sql .= ' WHERE d.id = ? AND d.specialty_id = ? AND d.active = 1 LIMIT 1';
+  $stmt = $pdo->prepare($sql);
   $stmt->execute([$doctorId, $specialtyId]);
   return (bool) $stmt->fetchColumn();
 }
