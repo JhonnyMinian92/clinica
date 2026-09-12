@@ -1,0 +1,20 @@
+@import url("specialties.css");
+
+/* Single active doctor/specialty: keep the existing card design but avoid
+   presenting a multi-specialty catalog when there is only one applicable item. */
+#main-content.clinic-mode-single_doctor_single_specialty .grid-4-col,
+#main-content.clinic-mode-single_doctor_multi_specialty .grid-4-col {
+  grid-template-columns: minmax(240px, 380px);
+  justify-content: center;
+  max-width: 380px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (max-width: 767px) {
+  #main-content.clinic-mode-single_doctor_single_specialty .grid-4-col,
+  #main-content.clinic-mode-single_doctor_multi_specialty .grid-4-col {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 420px;
+  }
+}
