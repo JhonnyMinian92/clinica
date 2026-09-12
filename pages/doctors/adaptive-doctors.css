@@ -1,0 +1,24 @@
+@import url("doctors.css");
+
+/* Single-doctor catalog: preserve the original card design, but compose it as
+   a focused profile instead of leaving empty grid columns around it. */
+#main-content.clinic-mode-single_doctor_single_specialty .doctors-grid,
+#main-content.clinic-mode-single_doctor_multi_specialty .doctors-grid {
+  grid-template-columns: minmax(0, 860px);
+  justify-content: center;
+  max-width: 860px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#main-content.clinic-mode-single_doctor_single_specialty .doctor-profile-card,
+#main-content.clinic-mode-single_doctor_multi_specialty .doctor-profile-card {
+  width: 100%;
+}
+
+@media (max-width: 767px) {
+  #main-content.clinic-mode-single_doctor_single_specialty .doctors-grid,
+  #main-content.clinic-mode-single_doctor_multi_specialty .doctors-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
