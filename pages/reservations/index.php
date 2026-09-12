@@ -64,4 +64,5 @@ const reservationSpecialtyDetails=<?php echo json_encode(array_map(static fn(arr
   if(grid){new MutationObserver(enhance).observe(grid,{childList:true});enhance();}
 }());
 </script>
+<script src="<?php echo htmlspecialchars(clinica_versioned_url('pages/reservations/reservations-availability-hardening.js')); ?>" defer></script>
 <?php include __DIR__ . '/../../public/shared/footer/footer.php'; ?>
