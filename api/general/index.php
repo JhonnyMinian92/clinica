@@ -68,17 +68,85 @@ if ($action === 'slot_status') {
   $doctorId = trim((string) ($_GET['doctorId'] ?? ''));
   $date = trim((string) ($_GET['date'] ?? ''));
   if ($doctorId === '' || !clinica_is_valid_dashboard_date($date)) clinica_json(['success' => false, 'error' => 'Parametros invalidos.'], 422);
+
   try {
     $pdo = clinica_get_db();
+    $doctorStmt = $pdo->prepare('SELECT id, active FROM doctors WHERE id = ? LIMIT 1');
+    $doctorStmt->execute([$doctorId]);
+    $doctor = $doctorStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$doctor || !(bool) $doctor['active']) {
+      clinica_json(['success' => false, 'error' => 'El doctor no existe o no esta activo.'], 422);
+    }
+
     $stmt = $pdo->prepare("SELECT time, slot_minutes FROM appointments WHERE doctor_id = ? AND date = ? AND status NOT IN ('rechazada', 'cancelada') ORDER BY time");
     $stmt->execute([$doctorId, $date]);
-    $bookedSlots = array_map(static fn(array $row): array => ['time' => substr((string) ($row['time'] ?? ''), 0, 5), 'slot_minutes' => max(5, (int) ($row['slot_minutes'] ?? 15))], $stmt->fetchAll(PDO::FETCH_ASSOC));
+    $bookedSlots = array_map(static fn(array $row): array => [
+      'time' => substr((string) ($row['time'] ?? ''), 0, 5),
+      'slot_minutes' => max(5, (int) ($row['slot_minutes'] ?? 15)),
+    ], $stmt->fetchAll(PDO::FETCH_ASSOC));
     $bookedTimes = array_values(array_unique(array_column($bookedSlots, 'time')));
+
+    // Return the exact currently bookable slots as well as booked slots. This
+    // lets the public UI refresh without duplicating schedule calculations.
+    $rules = clinica_schedule_rules_for_doctor($doctorId);
+    $dateObject = new DateTimeImmutable($date . ' 00:00:00');
+    $weekday = (string) $dateObject->format('N');
+    $blocks = array_merge($rules[$date] ?? [], $rules[$weekday] ?? []);
+    $now = new DateTimeImmutable('now');
+    $isToday = $dateObject->format('Y-m-d') === $now->format('Y-m-d');
+    $currentMinutes = ((int) $now->format('H') * 60) + (int) $now->format('i');
+    $availableTimes = [];
+    $slotMinutesByTime = [];
+
+    foreach ($blocks as $block) {
+      $startMatch = preg_match('/^(\d{2}):(\d{2})/', (string) ($block['start_time'] ?? ''), $startParts) ? true : false;
+      $endMatch = preg_match('/^(\d{2}):(\d{2})/', (string) ($block['end_time'] ?? ''), $endParts) ? true : false;
+      if (!$startMatch || !$endMatch) continue;
+      $start = ((int) $startParts[1] * 60) + (int) $startParts[2];
+      $end = ((int) $endParts[1] * 60) + (int) $endParts[2];
+      $duration = max(5, (int) ($block['slot_minutes'] ?? 15));
+      if ($start >= $end) continue;
+
+      for ($minute = $start; $minute < $end; $minute += $duration) {
+        if ($isToday && $minute <= $currentMinutes) continue;
+        $candidateEnd = $minute + $duration;
+        $conflict = false;
+        foreach ($bookedSlots as $booked) {
+          if (!preg_match('/^(\d{2}):(\d{2})/', (string) $booked['time'], $bookedParts)) continue;
+          $bookedStart = ((int) $bookedParts[1] * 60) + (int) $bookedParts[2];
+          $bookedEnd = $bookedStart + max(5, (int) $booked['slot_minutes']);
+          if (($minute - CLINICA_APPOINTMENT_BUFFER_MINUTES) < $bookedEnd
+              && ($candidateEnd + CLINICA_APPOINTMENT_BUFFER_MINUTES) > $bookedStart) {
+            $conflict = true;
+            break;
+          }
+        }
+        if ($conflict) continue;
+        $timeValue = sprintf('%02d:%02d', intdiv($minute, 60), $minute % 60);
+        $availableTimes[] = $timeValue;
+        $slotMinutesByTime[$timeValue] = $duration;
+      }
+    }
+
+    $availableTimes = array_values(array_unique($availableTimes));
+    sort($availableTimes, SORT_STRING);
   } catch (Throwable $e) {
     error_log('Slot status lookup error: ' . $e->getMessage());
     clinica_json(['success' => false, 'error' => 'No se pudo consultar la disponibilidad.'], 500);
   }
-  clinica_json(['success' => true, 'doctorId' => $doctorId, 'date' => $date, 'bookedTimes' => $bookedTimes, 'bookedSlots' => $bookedSlots, 'serverTime' => (new DateTimeImmutable())->format(DATE_ATOM)]);
+  header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+  header('Pragma: no-cache');
+  clinica_json([
+    'success' => true,
+    'doctorId' => $doctorId,
+    'date' => $date,
+    'bookedTimes' => $bookedTimes,
+    'bookedSlots' => $bookedSlots,
+    'availableTimes' => $availableTimes,
+    'availableCount' => count($availableTimes),
+    'slotMinutesByTime' => $slotMinutesByTime,
+    'serverTime' => (new DateTimeImmutable())->format(DATE_ATOM),
+  ]);
 }
 
 // La creacion de citas tiene una unica implementacion canonica en /api/appointments/.
