@@ -96,7 +96,6 @@ if ($method === 'GET') {
   $search = trim((string) ($_GET['search'] ?? ''));
   $page = max(1, (int) ($_GET['page'] ?? 1));
   $perPage = max(6, min(48, (int) ($_GET['per_page'] ?? 6)));
-  $offset = ($page - 1) * $perPage;
 
   $pdo = clinica_get_db();
   $params = [];
@@ -120,9 +119,6 @@ if ($method === 'GET') {
   if ($exactDate) {
     $where[] = "a.date = :exact_date";
     $params[':exact_date'] = $exactDate;
-    if (!$canSeeAllAppointments && $exactDate < date('Y-m-d')) {
-      $where[] = "1=0"; // Force no results for doctors on past dates
-    }
   } else {
     $today = date('Y-m-d');
     switch ($dateScope) {
@@ -179,6 +175,7 @@ if ($method === 'GET') {
   // Get paginated data
   $totalPages = max(1, (int) ceil($totalRecords / $perPage));
   $page = min($page, $totalPages);
+  $offset = ($page - 1) * $perPage;
   $dataSql .= $whereClause . " ORDER BY a.date, a.time LIMIT :limit OFFSET :offset";
   $dataStmt = $pdo->prepare($dataSql);
   $dataStmt->execute(array_merge($params, [':limit' => $perPage, ':offset' => $offset]));
@@ -188,7 +185,7 @@ if ($method === 'GET') {
   $appointments = array_map(
     static function (array $appointment) use ($user, $notificationStatuses): array {
       $transformed = clinica_transform_appointment($appointment, $user);
-      $transformed['notifications'] = $notificationStatuses[(int) $appointment['id']] ?? clinica_notification_status_empty();
+      $transformed['notifications'] = $notificationStatuses[(int) $appointment['id'] ?? 0] ?? clinica_notification_status_empty();
       return $transformed;
     },
     $pageRecords
@@ -273,10 +270,6 @@ if ($method === 'POST') {
 
   if (!$canSeeAllAppointments && $appointment['doctor_id'] !== $user['id']) {
     clinica_json(['success' => false, 'error' => 'No puede actualizar esta cita.'], 403);
-  }
-
-  if (!$canSeeAllAppointments && ($appointment['date'] ?? '') < date('Y-m-d')) {
-    clinica_json(['success' => false, 'error' => 'No puede actualizar citas anteriores.'], 403);
   }
 
   $oldStatus = (string) ($appointment['status'] ?? '');
