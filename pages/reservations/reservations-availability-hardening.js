@@ -33,46 +33,43 @@
     node.textContent = count > 0 ? `${count} ${count === 1 ? 'cupo' : 'cupos'}` : 'Sin cupos';
   };
 
+  const renderLiveTimes = (times) => {
+    const grid = document.getElementById('time-slots');
+    if (!grid) return null;
+    const previous = grid.querySelector('[data-time].active')?.dataset.time || '';
+    const groups = { morning: [], afternoon: [], evening: [] };
+    times.map(String).forEach((time) => {
+      const parts = time.split(':').map(Number);
+      const minutes = parts[0] * 60 + parts[1];
+      const period = minutes < 720 ? 'morning' : minutes < 1080 ? 'afternoon' : 'evening';
+      groups[period].push(time);
+    });
+    const labels = { morning: 'Mañana', afternoon: 'Tarde', evening: 'Noche' };
+    grid.innerHTML = Object.entries(groups).filter(([, values]) => values.length).map(([period, values]) => `
+      <section class="time-period" aria-label="${labels[period]}">
+        <div class="time-period-header"><h4>${labels[period]}</h4><span>${values.length} ${values.length === 1 ? 'cupo' : 'cupos'}</span></div>
+        <div class="time-period-grid">${values.map((time) => `<button type="button" class="selectable-card time-slot${time === previous ? ' active' : ''}" data-time="${time}" aria-pressed="${time === previous ? 'true' : 'false'}"><span class="card-title">${time}</span></button>`).join('')}</div>
+      </section>
+    `).join('');
+    if (!times.length) grid.innerHTML = '<div class="no-time-selected"><p>No hay horarios disponibles para esta fecha.</p></div>';
+    return previous && times.includes(previous) ? previous : null;
+  };
+
   const applyAvailability = (result) => {
     if (!result || !Array.isArray(result.availableTimes)) return;
-    const available = new Set(result.availableTimes.map(String));
-    const buttons = [...document.querySelectorAll('#time-slots [data-time]')];
-    let selectedStillAvailable = true;
-
-    buttons.forEach((button) => {
-      const isAvailable = available.has(String(button.dataset.time || ''));
-      if (!isAvailable) {
-        if (button.classList.contains('active')) selectedStillAvailable = false;
-        button.remove();
-      }
-    });
-
-    document.querySelectorAll('#time-slots .time-period').forEach((period) => {
-      const grid = period.querySelector('.time-period-grid');
-      const remaining = grid ? grid.querySelectorAll('[data-time]').length : 0;
-      const countNode = period.querySelector('.time-period-header span');
-      if (countNode) countNode.textContent = `${remaining} ${remaining === 1 ? 'cupo' : 'cupos'}`;
-      if (!remaining) period.remove();
-    });
-
-    updateCount(available.size, false);
-
+    const availableTimes = [...new Set(result.availableTimes.map(String))].sort();
+    const previousSelected = document.querySelector('#time-slots [data-time].active')?.dataset.time || '';
+    const currentTimes = [...document.querySelectorAll('#time-slots [data-time]')].map((button) => String(button.dataset.time || '')).sort();
     const next = document.getElementById('next-btn');
-    const selected = document.querySelector('#time-slots [data-time].active');
-    if (!selectedStillAvailable || !selected) {
-      if (!selectedStillAvailable) {
-        const summaryTime = document.getElementById('schedule-time-label');
-        if (summaryTime) summaryTime.textContent = 'Pendiente';
-      }
-      if (next) next.disabled = true;
+    const selectedStillAvailable = previousSelected === '' || availableTimes.includes(previousSelected);
+    const sameTimes = currentTimes.length === availableTimes.length && currentTimes.every((time, index) => time === availableTimes[index]);
+    if (!sameTimes) renderLiveTimes(availableTimes);
+    updateCount(availableTimes.length, false);
+    if (!selectedStillAvailable) {
+      const summaryTime = document.getElementById('schedule-time-label');
+      if (summaryTime) summaryTime.textContent = 'Pendiente';
     }
-
-    if (!available.size) {
-      const grid = document.getElementById('time-slots');
-      if (grid && !grid.querySelector('.no-time-selected')) {
-        grid.innerHTML = '<div class="no-time-selected"><p>No hay horarios disponibles para esta fecha.</p></div>';
-      }
-    }
+    if (next) next.disabled = !previousSelected || !selectedStillAvailable;
   };
 
   async function refresh() {
