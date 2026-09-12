@@ -79,7 +79,10 @@
     const context = getContext();
     if (!context || document.visibilityState === 'hidden') return;
     const id = ++requestId;
-    updateCount(0, true);
+    const countNode = document.getElementById('available-slots-count');
+    if (countNode && (!countNode.textContent || countNode.textContent === '--' || countNode.textContent === 'Buscando')) {
+      updateCount(0, true);
+    }
     try {
       const response = await fetch(
         `${endpoint}?action=slot_status&doctorId=${encodeURIComponent(context.doctorId)}&date=${encodeURIComponent(context.date)}&_=${Date.now()}`,
