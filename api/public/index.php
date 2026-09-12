@@ -14,6 +14,7 @@ if ($resource !== 'home') {
   clinica_json(['success' => false, 'error' => 'Recurso no soportado.'], 404);
 }
 
+$pdo = clinica_get_db();
 $clinic = clinica_get_clinic_settings();
 $adaptive_context = clinica_adaptive_context($pdo);
 
@@ -26,8 +27,6 @@ clinica_json([
     'about_cards' => array_values($clinic['about_cards'] ?? []),
     'stats' => array_values($clinic['stats'] ?? []),
     'services' => clinica_public_services_for_home(),
-    // Public specialties must reflect the active doctors, not every specialty
-    // configured in the database.
     'specialties' => array_slice($adaptive_context['specialties'] ?? [], 0, 4),
     'doctors' => array_slice($adaptive_context['doctors'] ?? [], 0, 4),
     'comments' => clinica_public_comments_for_home(),
