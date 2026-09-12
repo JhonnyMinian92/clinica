@@ -16,6 +16,12 @@ function clinica_doctor_specialties(PDO $pdo, string $doctorId, bool $activeOnly
     $stmt->execute([$doctorId]);
     $ids = array_map('strval', $stmt->fetchAll(PDO::FETCH_COLUMN));
     if ($ids) return array_values(array_unique($ids));
+
+    // Once the relation exists, an empty active relation is authoritative.
+    // Do not resurrect the legacy specialty when an administrator intentionally
+    // deactivates a relationship.
+    $exists = $pdo->query("SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'doctor_specialties' LIMIT 1")->fetchColumn();
+    if ($exists) return [];
   } catch (Throwable $e) {
     error_log('Adaptive specialty relation fallback: ' . $e->getMessage());
   }
