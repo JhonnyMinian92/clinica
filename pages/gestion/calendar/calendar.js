@@ -1,3 +1,8 @@
+window.findMetadataItem = window.findMetadataItem || function (items, id) {
+  if (!Array.isArray(items)) return null;
+  return items.find((item) => String(item?.id ?? '') === String(id ?? '')) || null;
+};
+
 window.ClinicaGestion.boot({
   resource: 'schedules',
   view: 'schedule-board',
