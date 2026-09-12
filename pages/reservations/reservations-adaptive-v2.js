@@ -2,6 +2,7 @@
 (function(){'use strict';
 const base=String(window.CLINICA_BASE_PATH||'').replace(/\/$/,''), u=p=>`${base}/${String(p||'').replace(/^\/+/, '')}`;
 const cfg=typeof reservationConfig!=='undefined'?reservationConfig:{};
+const API=String(cfg.generalApi||u('api/appointments/'));
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const csrf=()=>{const m=document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);return m?decodeURIComponent(m[1]):''};
 const validEmail=v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), validDoc=v=>/^[A-Za-z0-9]{6,20}$/.test(v), validPhone=v=>/^\d{7,15}$/.test(v);
