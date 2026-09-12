@@ -46,7 +46,7 @@ include __DIR__ . '/../../public/shared/header/header.php';
         <?php endforeach; ?>
       </div>
 
-      <div id="no-results-message" class="no-results-message"><p>No se encontraron especialidades que coincidan con su busqueda.</p></div>
+      <div id="no-results-message" class="no-results-message" style="display: none;"><p>No se encontraron especialidades que coincidan con su busqueda.</p></div>
     </div>
   </section>
 </main>
