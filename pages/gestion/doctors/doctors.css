@@ -1,1 +1,98 @@
 @import url('../gestion.css');
+
+.doctor-specialties-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.doctor-specialties-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(15 23 42 / 55%);
+}
+
+.doctor-specialties-dialog {
+  position: relative;
+  width: min(620px, 100%);
+  max-height: min(760px, 90vh);
+  overflow: auto;
+  border-radius: 22px;
+  background: var(--surface, #fff);
+  box-shadow: 0 24px 70px rgb(15 23 42 / 25%);
+  padding: 24px;
+}
+
+.doctor-specialties-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.doctor-specialties-header h3 {
+  margin: 4px 0 8px;
+}
+
+.doctor-specialties-header p {
+  margin: 0;
+  color: var(--muted, #64748b);
+}
+
+.doctor-specialties-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.doctor-specialty-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.doctor-specialty-option:has(input:checked) {
+  border-color: var(--primary, #2563eb);
+}
+
+.doctor-specialties-status {
+  min-height: 22px;
+  color: var(--muted, #64748b);
+}
+
+.doctor-specialties-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border, #e2e8f0);
+}
+
+@media (max-width: 640px) {
+  .doctor-specialties-options {
+    grid-template-columns: 1fr;
+  }
+
+  .doctor-specialties-dialog {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .doctor-specialties-actions {
+    flex-direction: column-reverse;
+  }
+
+  .doctor-specialties-actions .btn {
+    width: 100%;
+  }
+}
