@@ -78,12 +78,17 @@ function clinica_appointment_fail(PDO $pdo, array &$locks, string $message, int 
 
 try {
   $patientLockName = 'clinica_patient_' . md5($patientCedula);
+  $emailLockName = 'clinica_patient_email_' . md5($patientEmail);
   $doctorLockName = 'clinica_doctor_' . md5($doctorId . '|' . $date);
 
   if (!clinica_appointment_lock($pdo, $patientLockName)) {
     clinica_json(['success' => false, 'error' => 'El sistema esta procesando otra solicitud para este paciente. Intente nuevamente en unos segundos.'], 409);
   }
   $locks[] = $patientLockName;
+  if (!clinica_appointment_lock($pdo, $emailLockName)) {
+    clinica_appointment_fail($pdo, $locks, 'El sistema esta procesando otra solicitud con este correo. Intente nuevamente en unos segundos.', 409);
+  }
+  $locks[] = $emailLockName;
   if (!clinica_appointment_lock($pdo, $doctorLockName)) {
     clinica_appointment_fail($pdo, $locks, 'El sistema esta procesando otra reserva para este doctor. Intente nuevamente en unos segundos.', 409);
   }
