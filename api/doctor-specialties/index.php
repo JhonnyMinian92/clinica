@@ -19,12 +19,16 @@ if ($doctorId === '') {
 }
 
 try {
-  $stmt = $pdo->prepare('SELECT id FROM doctors WHERE id = ?');
-  $stmt->execute([$doctorId]);
-  if (!$stmt->fetch()) clinica_json(['success' => false, 'error' => 'Doctor no encontrado.'], 404);
-
   if ($method === 'GET') {
+    $stmt = $pdo->prepare('SELECT id FROM doctors WHERE id = ?');
+    $stmt->execute([$doctorId]);
+    if (!$stmt->fetch()) clinica_json(['success' => false, 'error' => 'Doctor no encontrado.'], 404);
+
     clinica_json(['success' => true, 'doctorId' => $doctorId, 'specialtyIds' => clinica_doctor_specialties($pdo, $doctorId, false)]);
+  }
+
+  if ($method !== 'POST') {
+    clinica_json(['success' => false, 'error' => 'Metodo no permitido.'], 405);
   }
 
   $payload = clinica_request_json();
@@ -34,18 +38,35 @@ try {
   if (!$ids) clinica_json(['success' => false, 'error' => 'Seleccione al menos una especialidad.'], 422);
 
   $pdo->beginTransaction();
+
+  // Serialize updates for the same doctor so two administrators cannot
+  // interleave deactivate/reactivate operations and produce a partial set.
+  $doctorLock = $pdo->prepare('SELECT id FROM doctors WHERE id = ? FOR UPDATE');
+  $doctorLock->execute([$doctorId]);
+  if (!$doctorLock->fetch()) {
+    $pdo->rollBack();
+    clinica_json(['success' => false, 'error' => 'Doctor no encontrado.'], 404);
+  }
+
   $check = $pdo->prepare('SELECT id FROM specialties WHERE id = ? AND active = 1');
   $insert = $pdo->prepare('INSERT INTO doctor_specialties (doctor_id, specialty_id, active) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE active = 1, updated_at = CURRENT_TIMESTAMP');
-  // Deactivate every relation first, then reactivate the requested set. This is safe and keeps history.
-  $pdo->prepare('UPDATE doctor_specialties SET active = 0, updated_at = CURRENT_TIMESTAMP WHERE doctor_id = ?')->execute([$doctorId]);
+
+  // Validate the complete requested set before changing existing relations.
   foreach ($ids as $specialtyId) {
     $check->execute([$specialtyId]);
     if (!$check->fetch()) {
       $pdo->rollBack();
       clinica_json(['success' => false, 'error' => 'Una de las especialidades no existe o esta inactiva.'], 422);
     }
+  }
+
+  // Deactivate every relation first, then reactivate the requested set.
+  // This is safe and keeps historical rows without deleting them.
+  $pdo->prepare('UPDATE doctor_specialties SET active = 0, updated_at = CURRENT_TIMESTAMP WHERE doctor_id = ?')->execute([$doctorId]);
+  foreach ($ids as $specialtyId) {
     $insert->execute([$doctorId, $specialtyId]);
   }
+
   // Keep the legacy primary specialty synchronized with the first selected specialty.
   $primary = $ids[0];
   $pdo->prepare('UPDATE doctors SET specialty_id = ? WHERE id = ?')->execute([$primary, $doctorId]);
