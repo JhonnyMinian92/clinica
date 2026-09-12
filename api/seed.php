@@ -28,6 +28,9 @@ try {
   // Base data may create doctors after the migration backfill ran. Repeat the
   // idempotent backfill so a fresh installation gets the relation immediately.
   $pdo->exec("INSERT IGNORE INTO doctor_specialties (doctor_id, specialty_id, active) SELECT id, specialty_id, active FROM doctors WHERE specialty_id IS NOT NULL AND specialty_id <> ''");
+  // Keep the adaptive relation protected even when this initializer is used
+  // instead of running the standalone hardening migration manually.
+  clinica_seed_ensure_doctor_specialties_constraints($pdo);
   echo "Base de datos lista sin eliminar datos existentes.\n";
 } catch (PDOException $e) {
   echo "Error durante la inicializacion: " . $e->getMessage() . "\n";
@@ -172,6 +175,28 @@ function clinica_seed_add_column(PDO $pdo, string $table, string $column, string
   $stmt = $pdo->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?");
   $stmt->execute([$table, $column]);
   if ((int) $stmt->fetchColumn() === 0) $pdo->exec($sql);
+}
+
+function clinica_seed_ensure_doctor_specialties_constraints(PDO $pdo): void
+{
+  $constraints = [
+    [
+      'name' => 'fk_doctor_specialties_doctor',
+      'sql' => 'ALTER TABLE doctor_specialties ADD CONSTRAINT fk_doctor_specialties_doctor FOREIGN KEY (doctor_id) REFERENCES doctors(id)',
+    ],
+    [
+      'name' => 'fk_doctor_specialties_specialty',
+      'sql' => 'ALTER TABLE doctor_specialties ADD CONSTRAINT fk_doctor_specialties_specialty FOREIGN KEY (specialty_id) REFERENCES specialties(id)',
+    ],
+  ];
+
+  foreach ($constraints as $constraint) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM information_schema.REFERENTIAL_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = 'doctor_specialties' AND CONSTRAINT_NAME = ?");
+    $stmt->execute([$constraint['name']]);
+    if ((int) $stmt->fetchColumn() === 0) {
+      $pdo->exec($constraint['sql']);
+    }
+  }
 }
 
 function clinica_seed_base_data(PDO $pdo): void
