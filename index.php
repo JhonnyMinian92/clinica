@@ -1,15 +1,18 @@
 <?php
 require_once __DIR__ . '/api/data.php';
+require_once __DIR__ . '/api/adaptive.php';
 
 $clinic = clinica_get_clinic_settings();
+$adaptive_context = clinica_adaptive_context($pdo);
 $page_title = $clinic['meta_title'] ?? null;
 $page_description = $clinic['meta_description'] ?? null;
 $page_canonical = $clinic['canonical_url'] ?? null;
+$page_specific_css = 'adaptive-home.css';
 
 include __DIR__ . '/public/shared/header/header.php';
 ?>
 
-<main id="main-content" data-home-api="<?php echo htmlspecialchars(clinica_url('api/public/?resource=home')); ?>">
+<main id="main-content" class="clinic-mode-<?php echo htmlspecialchars($adaptive_context['mode'] ?? 'multi_doctor_multi_specialty'); ?>" data-home-api="<?php echo htmlspecialchars(clinica_url('api/public/?resource=home')); ?>">
   <section id="hero" class="hero lazy-bg skeleton skeleton-dark">
     <div class="hero-overlay"></div>
     <div class="container">
@@ -92,14 +95,12 @@ include __DIR__ . '/public/shared/header/header.php';
         <div class="testimonial-wrapper" id="home-testimonials"></div>
         <div class="testimonial-controls">
           <button id="testimonial-prev" class="carousel-btn prev" aria-label="Testimonio anterior">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
           </button>
           <button id="testimonial-next" class="carousel-btn next" aria-label="Siguiente testimonio">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <polyline points="9 18 15 12 9 6"></polyline>
             </svg>
           </button>
