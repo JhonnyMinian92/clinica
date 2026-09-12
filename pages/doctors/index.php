@@ -1,10 +1,33 @@
 <?php
 require_once __DIR__ . '/../../api/data.php';
+require_once __DIR__ . '/../../api/adaptive.php';
 
 $clinic = clinica_get_clinic_settings();
 $dia_actual = (string) date('N');
-$doctores = clinica_public_doctors_for_catalog();
-$especialidades_filtro = array_values(array_unique(array_filter(array_column($doctores, 'especialidad'))));
+$adaptive_context = clinica_adaptive_context($pdo);
+$doctores = $adaptive_context['doctors'] ?? [];
+
+// Public doctor profiles use the adaptive doctor-specialty relation. This
+// prevents inactive doctors/specialties from leaking into the catalog while
+// keeping the legacy fields available for existing profile data.
+foreach ($doctores as &$doctor) {
+  $doctor_specialties = array_values(array_filter($doctor['especialidades'] ?? [], static fn($item) => is_array($item) && ($item['nombre'] ?? '') !== ''));
+  if ($doctor_specialties) {
+    $doctor['especialidad'] = implode(' · ', array_map(static fn($item) => (string) $item['nombre'], $doctor_specialties));
+  }
+  $doctor['idiomas'] = is_array($doctor['idiomas'] ?? null) ? $doctor['idiomas'] : [];
+  $doctor['reconocimientos'] = is_array($doctor['reconocimientos'] ?? null) ? $doctor['reconocimientos'] : [];
+}
+unset($doctor);
+
+$especialidades_filtro = [];
+foreach ($doctores as $doctor) {
+  foreach (($doctor['especialidades'] ?? []) as $especialidad) {
+    $nombre = trim((string) ($especialidad['nombre'] ?? ''));
+    if ($nombre !== '') $especialidades_filtro[$nombre] = true;
+  }
+}
+$especialidades_filtro = array_keys($especialidades_filtro);
 $idiomas_columnas = array_values(array_filter(array_column($doctores, 'idiomas'), 'is_array'));
 $idiomas_filtro = $idiomas_columnas ? array_values(array_unique(array_merge(...$idiomas_columnas))) : [];
 sort($especialidades_filtro);
@@ -16,7 +39,7 @@ $page_specific_js = 'doctors.js';
 include __DIR__ . '/../../public/shared/header/header.php';
 ?>
 
-<main id="main-content">
+<main id="main-content" class="clinic-mode-<?php echo htmlspecialchars($adaptive_context['mode'] ?? 'multi_doctor_multi_specialty'); ?>">
   <section class="page-header">
     <div class="container">
       <h1 class="page-title"><?php echo htmlspecialchars($clinic['doctors_title'] ?? 'Nuestro Equipo Medico'); ?></h1>
@@ -28,72 +51,68 @@ include __DIR__ . '/../../public/shared/header/header.php';
 
   <section class="section" id="doctors-catalog">
     <div class="container">
-      <div class="doctors-filters" id="doctors-filters">
-        <div class="filter-group animate-on-scroll fade-in-up" style="--animation-delay: 100ms;">
-          <span class="filter-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-          </span>
-          <input type="search" id="name-filter" placeholder="Buscar por nombre..." class="filter-input"
-            style="padding-left: 40px;">
-        </div>
+      <?php if (count($doctores) > 1): ?>
+        <div class="doctors-filters" id="doctors-filters">
+          <div class="filter-group animate-on-scroll fade-in-up" style="--animation-delay: 100ms;">
+            <span class="filter-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </span>
+            <input type="search" id="name-filter" placeholder="Buscar por nombre..." class="filter-input" style="padding-left: 40px;">
+          </div>
 
-        <div class="filter-group animate-on-scroll fade-in-up" style="--animation-delay: 200ms;">
-          <span class="filter-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-              <polyline points="22 4 12 14.01 9 11.01"></polyline>
-            </svg>
-          </span>
-          <select id="specialty-filter" class="filter-select">
-            <option value="">Todas las especialidades</option>
-            <?php foreach ($especialidades_filtro as $item): ?>
-              <option value="<?php echo htmlspecialchars($item); ?>"><?php echo htmlspecialchars($item); ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
+          <div class="filter-group animate-on-scroll fade-in-up" style="--animation-delay: 200ms;">
+            <span class="filter-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+            </span>
+            <select id="specialty-filter" class="filter-select">
+              <option value="">Todas las especialidades</option>
+              <?php foreach ($especialidades_filtro as $item): ?>
+                <option value="<?php echo htmlspecialchars(strtolower($item)); ?>"><?php echo htmlspecialchars($item); ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
 
-        <div class="filter-group animate-on-scroll fade-in-up" style="--animation-delay: 300ms;">
-          <span class="filter-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <path d="M2 12h20"></path>
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-            </svg>
-          </span>
-          <select id="language-filter" class="filter-select">
-            <option value="">Todos los idiomas</option>
-            <?php foreach ($idiomas_filtro as $item): ?>
-              <option value="<?php echo htmlspecialchars($item); ?>"><?php echo htmlspecialchars($item); ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
+          <div class="filter-group animate-on-scroll fade-in-up" style="--animation-delay: 300ms;">
+            <span class="filter-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M2 12h20"></path>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+              </svg>
+            </span>
+            <select id="language-filter" class="filter-select">
+              <option value="">Todos los idiomas</option>
+              <?php foreach ($idiomas_filtro as $item): ?>
+                <option value="<?php echo htmlspecialchars(strtolower($item)); ?>"><?php echo htmlspecialchars($item); ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
 
-        <div class="filter-group animate-on-scroll fade-in-up" style="--animation-delay: 400ms;">
-          <label class="filter-switch">
-            <input type="checkbox" id="availability-filter">
-            <span class="switch-slider"></span>
-            <span class="switch-label">Mostrar solo disponibles hoy</span>
-          </label>
-        </div>
+          <div class="filter-group animate-on-scroll fade-in-up" style="--animation-delay: 400ms;">
+            <label class="filter-switch">
+              <input type="checkbox" id="availability-filter">
+              <span class="switch-slider"></span>
+              <span class="switch-label">Mostrar solo disponibles hoy</span>
+            </label>
+          </div>
 
-        <div class="animate-on-scroll fade-in-up" style="--animation-delay: 500ms;">
-          <button id="filter-reset-btn" class="filter-reset-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
-              style="vertical-align: middle; margin-right: 4px;">
-              <polyline points="23 4 23 10 17 10"></polyline>
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-            </svg>
-            Limpiar
-          </button>
+          <div class="animate-on-scroll fade-in-up" style="--animation-delay: 500ms;">
+            <button id="filter-reset-btn" class="filter-reset-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+              </svg>
+              Limpiar
+            </button>
+          </div>
         </div>
-      </div>
+      <?php endif; ?>
 
       <div class="doctors-grid" id="doctors-grid">
         <?php foreach ($doctores as $doctor): ?>
@@ -102,11 +121,13 @@ include __DIR__ . '/../../public/shared/header/header.php';
           $disponible_hoy = $horario_hoy !== '';
           $texto_disponibilidad = $disponible_hoy ? 'Disponible hoy (' . $horario_hoy . ')' : 'No disponible hoy';
           $rating = max(0, min(5, (int) ($doctor['valoracion'] ?? 0)));
+          $doctor_specialty_names = array_values(array_filter(array_map(static fn($item) => trim((string) ($item['nombre'] ?? '')), $doctor['especialidades'] ?? [])));
+          $doctor_specialty_text = $doctor_specialty_names ? implode(' · ', $doctor_specialty_names) : (string) ($doctor['especialidad'] ?? '');
           ?>
           <div class="doctor-profile-card animate-on-scroll fade-in-up"
             data-id="<?php echo htmlspecialchars($doctor['id']); ?>"
             data-name="<?php echo htmlspecialchars(strtolower($doctor['nombre'])); ?>"
-            data-specialty="<?php echo htmlspecialchars(strtolower($doctor['especialidad'])); ?>"
+            data-specialty="<?php echo htmlspecialchars(strtolower($doctor_specialty_text)); ?>"
             data-languages="|<?php echo htmlspecialchars(implode('|', array_map('strtolower', $doctor['idiomas']))); ?>|"
             data-available-today="<?php echo $disponible_hoy ? 'true' : 'false'; ?>">
             <div class="doctor-profile-photo-wrapper">
@@ -120,13 +141,12 @@ include __DIR__ . '/../../public/shared/header/header.php';
                   <?php echo str_repeat('&#9733;', $rating) . str_repeat('&#9734;', 5 - $rating); ?>
                 </div>
               </div>
-              <p class="doctor-profile-specialty"><?php echo htmlspecialchars($doctor['especialidad']); ?> |
-                <strong><?php echo htmlspecialchars($doctor['subespecialidad']); ?></strong>
+              <p class="doctor-profile-specialty"><?php echo htmlspecialchars($doctor_specialty_text); ?><?php if (!empty($doctor['subespecialidad'])): ?> |
+                <strong><?php echo htmlspecialchars($doctor['subespecialidad']); ?></strong><?php endif; ?>
               </p>
               <div class="doctor-profile-details">
                 <div class="detail-item">
-                  <svg class="detail-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg class="detail-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M8 21h8a2 2 0 0 0 2-2V7H6v12a2 2 0 0 0 2 2z"></path>
                     <line x1="10" y1="3" x2="14" y2="3"></line>
                     <line x1="12" y1="3" x2="12" y2="7"></line>
@@ -135,8 +155,7 @@ include __DIR__ . '/../../public/shared/header/header.php';
                   <span class="detail-label">de experiencia</span>
                 </div>
                 <div class="detail-item">
-                  <svg class="detail-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg class="detail-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                     <circle cx="9" cy="7" r="4"></circle>
                     <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -146,8 +165,7 @@ include __DIR__ . '/../../public/shared/header/header.php';
                   <span class="detail-label">pacientes</span>
                 </div>
                 <div class="detail-item">
-                  <svg class="detail-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg class="detail-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
                     <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
                     <line x1="12" y1="22.08" x2="12" y2="12"></line>
@@ -169,8 +187,7 @@ include __DIR__ . '/../../public/shared/header/header.php';
                   <span class="availability-dot"></span>
                   <span class="availability-text"><?php echo htmlspecialchars($texto_disponibilidad); ?></span>
                 </div>
-                <a href="../reservations/?doctor_id=<?php echo htmlspecialchars($doctor['id']); ?>"
-                  class="btn btn-primary btn-sm">Agendar Cita</a>
+                <a href="../reservations/?doctor_id=<?php echo htmlspecialchars($doctor['id']); ?>" class="btn btn-primary btn-sm">Agendar Cita</a>
               </div>
             </div>
           </div>
