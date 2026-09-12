@@ -25,6 +25,9 @@ try {
   clinica_seed_create_schema($pdo);
   clinica_seed_apply_migrations($pdo);
   clinica_seed_base_data($pdo);
+  // Base data may create doctors after the migration backfill ran. Repeat the
+  // idempotent backfill so a fresh installation gets the relation immediately.
+  $pdo->exec("INSERT IGNORE INTO doctor_specialties (doctor_id, specialty_id, active) SELECT id, specialty_id, active FROM doctors WHERE specialty_id IS NOT NULL AND specialty_id <> ''");
   echo "Base de datos lista sin eliminar datos existentes.\n";
 } catch (PDOException $e) {
   echo "Error durante la inicializacion: " . $e->getMessage() . "\n";
