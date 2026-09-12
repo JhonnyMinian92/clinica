@@ -68,7 +68,17 @@ if ($action === 'slot_status') {
   $doctorId = trim((string) ($_GET['doctorId'] ?? ''));
   $date = trim((string) ($_GET['date'] ?? ''));
   if ($doctorId === '' || !clinica_is_valid_dashboard_date($date)) clinica_json(['success' => false, 'error' => 'Parametros invalidos.'], 422);
-  clinica_json(['success' => true, 'doctorId' => $doctorId, 'date' => $date, 'bookedTimes' => clinica_public_booked_times_for($doctorId, $date), 'serverTime' => (new DateTimeImmutable())->format(DATE_ATOM)]);
+  try {
+    $pdo = clinica_get_db();
+    $stmt = $pdo->prepare("SELECT time, slot_minutes FROM appointments WHERE doctor_id = ? AND date = ? AND status NOT IN ('rechazada', 'cancelada') ORDER BY time");
+    $stmt->execute([$doctorId, $date]);
+    $bookedSlots = array_map(static fn(array $row): array => ['time' => substr((string) ($row['time'] ?? ''), 0, 5), 'slot_minutes' => max(5, (int) ($row['slot_minutes'] ?? 15))], $stmt->fetchAll(PDO::FETCH_ASSOC));
+    $bookedTimes = array_values(array_unique(array_column($bookedSlots, 'time')));
+  } catch (Throwable $e) {
+    error_log('Slot status lookup error: ' . $e->getMessage());
+    clinica_json(['success' => false, 'error' => 'No se pudo consultar la disponibilidad.'], 500);
+  }
+  clinica_json(['success' => true, 'doctorId' => $doctorId, 'date' => $date, 'bookedTimes' => $bookedTimes, 'bookedSlots' => $bookedSlots, 'serverTime' => (new DateTimeImmutable())->format(DATE_ATOM)]);
 }
 
 // La creacion de citas tiene una unica implementacion canonica en /api/appointments/.
