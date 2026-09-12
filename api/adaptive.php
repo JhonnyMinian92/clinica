@@ -10,9 +10,13 @@ function clinica_doctor_specialties(PDO $pdo, string $doctorId, bool $activeOnly
 {
   $ids = [];
   try {
-    $sql = 'SELECT specialty_id FROM doctor_specialties WHERE doctor_id = ?';
-    if ($activeOnly) $sql .= ' AND active = 1';
-    $sql .= ' ORDER BY specialty_id';
+    $sql = 'SELECT ds.specialty_id FROM doctor_specialties ds';
+    if ($activeOnly) {
+      $sql .= ' INNER JOIN specialties s ON s.id = ds.specialty_id AND s.active = 1';
+    }
+    $sql .= ' WHERE ds.doctor_id = ?';
+    if ($activeOnly) $sql .= ' AND ds.active = 1';
+    $sql .= ' ORDER BY ds.specialty_id';
     $stmt = $pdo->prepare($sql);
     $stmt->execute([$doctorId]);
     $ids = array_map('strval', $stmt->fetchAll(PDO::FETCH_COLUMN));
