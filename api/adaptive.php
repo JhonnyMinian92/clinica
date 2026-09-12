@@ -8,6 +8,7 @@ require_once __DIR__ . '/data.php';
 
 function clinica_doctor_specialties(PDO $pdo, string $doctorId, bool $activeOnly = true): array
 {
+  $ids = [];
   try {
     $sql = 'SELECT specialty_id FROM doctor_specialties WHERE doctor_id = ?';
     if ($activeOnly) $sql .= ' AND active = 1';
@@ -15,25 +16,25 @@ function clinica_doctor_specialties(PDO $pdo, string $doctorId, bool $activeOnly
     $stmt = $pdo->prepare($sql);
     $stmt->execute([$doctorId]);
     $ids = array_map('strval', $stmt->fetchAll(PDO::FETCH_COLUMN));
-    if ($ids) return array_values(array_unique($ids));
-
-    // Once the relation exists, an empty active relation is authoritative.
-    // Do not resurrect the legacy specialty when an administrator intentionally
-    // deactivates a relationship.
-    $exists = $pdo->query("SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'doctor_specialties' LIMIT 1")->fetchColumn();
-    if ($exists) return [];
   } catch (Throwable $e) {
     error_log('Adaptive specialty relation fallback: ' . $e->getMessage());
   }
 
+  // The legacy column remains a compatibility bridge while existing CRUD
+  // forms still write doctors.specialty_id. Include it when valid so a normal
+  // doctor edit cannot silently make the doctor disappear from the catalog.
   try {
     $stmt = $pdo->prepare('SELECT specialty_id FROM doctors WHERE id = ? AND specialty_id IS NOT NULL AND specialty_id <> ? LIMIT 1');
     $stmt->execute([$doctorId, '']);
     $legacy = $stmt->fetchColumn();
-    return $legacy !== false ? [(string) $legacy] : [];
+    if ($legacy !== false && $legacy !== null && $legacy !== '') {
+      $ids[] = (string) $legacy;
+    }
   } catch (Throwable $e) {
-    return [];
+    // The relation result remains usable if the legacy column is unavailable.
   }
+
+  return array_values(array_unique($ids));
 }
 
 function clinica_doctor_has_specialty(PDO $pdo, string $doctorId, string $specialtyId, bool $activeOnly = true): bool
@@ -46,12 +47,13 @@ function clinica_doctor_has_specialty(PDO $pdo, string $doctorId, string $specia
     $stmt = $pdo->prepare($sql);
     $stmt->execute([$doctorId, $specialtyId]);
     if ($stmt->fetchColumn()) return true;
-    $exists = $pdo->query("SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'doctor_specialties' LIMIT 1")->fetchColumn();
-    if ($exists) return false;
   } catch (Throwable $e) {
-    // Pre-migration fallback.
+    // Pre-migration fallback below.
   }
 
+  // Compatibility bridge for legacy doctor CRUD writes. If the relation table
+  // exists but a legacy edit changed specialty_id, the new value is still a
+  // valid specialty until the relation manager is explicitly used.
   $stmt = $pdo->prepare('SELECT 1 FROM doctors WHERE id = ? AND specialty_id = ? AND active = 1 LIMIT 1');
   $stmt->execute([$doctorId, $specialtyId]);
   return (bool) $stmt->fetchColumn();
