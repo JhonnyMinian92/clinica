@@ -36,7 +36,6 @@ try {
   $pdo->beginTransaction();
   $check = $pdo->prepare('SELECT id FROM specialties WHERE id = ? AND active = 1');
   $insert = $pdo->prepare('INSERT INTO doctor_specialties (doctor_id, specialty_id, active) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE active = 1, updated_at = CURRENT_TIMESTAMP');
-  $deactivate = $pdo->prepare('UPDATE doctor_specialties SET active = 0, updated_at = CURRENT_TIMESTAMP WHERE doctor_id = ? AND specialty_id <> ?');
   // Deactivate every relation first, then reactivate the requested set. This is safe and keeps history.
   $pdo->prepare('UPDATE doctor_specialties SET active = 0, updated_at = CURRENT_TIMESTAMP WHERE doctor_id = ?')->execute([$doctorId]);
   foreach ($ids as $specialtyId) {
