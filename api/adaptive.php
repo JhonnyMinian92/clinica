@@ -17,7 +17,6 @@ function clinica_doctor_specialties(PDO $pdo, string $doctorId, bool $activeOnly
     $ids = array_map('strval', $stmt->fetchAll(PDO::FETCH_COLUMN));
     if ($ids) return array_values(array_unique($ids));
   } catch (Throwable $e) {
-    // Migration may not have been applied yet. Legacy column remains the safe fallback.
     error_log('Adaptive specialty relation fallback: ' . $e->getMessage());
   }
 
@@ -41,7 +40,6 @@ function clinica_doctor_has_specialty(PDO $pdo, string $doctorId, string $specia
     $stmt = $pdo->prepare($sql);
     $stmt->execute([$doctorId, $specialtyId]);
     if ($stmt->fetchColumn()) return true;
-    // If relation table exists and has no row, do not silently authorize via legacy data.
     $exists = $pdo->query("SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'doctor_specialties' LIMIT 1")->fetchColumn();
     if ($exists) return false;
   } catch (Throwable $e) {
@@ -88,11 +86,6 @@ function clinica_adaptive_context(PDO $pdo): array
 
   $doctorCount = count($doctors);
   $specialtyCount = count($specialties);
-  $specialtiesPerDoctor = [];
-  foreach ($doctors as $doctor) {
-    $specialtiesPerDoctor[(string) $doctor['id']] = count($doctor['especialidades'] ?? []);
-  }
-
   $singleDoctor = $doctorCount === 1 ? $doctors[0] : null;
   $singleDoctorSpecialtyCount = $singleDoctor ? count($singleDoctor['especialidades'] ?? []) : 0;
 
@@ -130,5 +123,8 @@ function clinica_user_can_manage_doctor(array $user, string $doctorId): bool
 {
   $role = (string) ($user['role'] ?? '');
   if ($role === 'ADMINISTRATOR' || $role === 'SECRETARIA') return true;
-  return $role === 'DOCTOR' && (string) ($user['id'] ?? '') === $doctorId;
+  if ($role !== 'DOCTOR' || $doctorId === '') return false;
+  $linkedDoctorId = (string) ($user['doctor_id'] ?? '');
+  if ($linkedDoctorId !== '') return $linkedDoctorId === $doctorId;
+  return (string) ($user['id'] ?? '') === $doctorId;
 }
