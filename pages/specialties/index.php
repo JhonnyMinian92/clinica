@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../api/data.php';
 require_once __DIR__ . '/../../api/adaptive.php';
 
+$pdo = clinica_get_db();
 $clinic = clinica_get_clinic_settings();
 $adaptive_context = clinica_adaptive_context($pdo);
 $especialidades = $adaptive_context['specialties'] ?? [];
