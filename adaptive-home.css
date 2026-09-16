@@ -1,0 +1,49 @@
+/* Adaptive public-home presentation.
+ * Keeps the existing visual language and only changes composition when
+ * the clinic has a single active doctor / specialty.
+ */
+
+/* One active doctor: center the only profile and remove the empty grid columns. */
+#main-content.clinic-mode-single_doctor_single_specialty #home-doctors,
+#main-content.clinic-mode-single_doctor_multi_specialty #home-doctors {
+  grid-template-columns: minmax(280px, 420px);
+  justify-content: center;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#main-content.clinic-mode-single_doctor_single_specialty #home-specialties,
+#main-content.clinic-mode-single_doctor_multi_specialty #home-specialties {
+  grid-template-columns: minmax(240px, 360px);
+  justify-content: center;
+  max-width: 360px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* A single entity does not need a redundant "view all" action. */
+#main-content.clinic-mode-single_doctor_single_specialty #doctors + .section-footer,
+#main-content.clinic-mode-single_doctor_multi_specialty #doctors + .section-footer {
+  display: none;
+}
+
+#main-content.clinic-mode-single_doctor_single_specialty #specialties + .section-footer,
+#main-content.clinic-mode-single_doctor_multi_specialty #specialties + .section-footer {
+  display: none;
+}
+
+/* Give the single doctor a little more presence without changing the card design. */
+#main-content.clinic-mode-single_doctor_single_specialty #home-doctors .doctor-card {
+  width: 100%;
+}
+
+@media (max-width: 767px) {
+  #main-content.clinic-mode-single_doctor_single_specialty #home-doctors,
+  #main-content.clinic-mode-single_doctor_multi_specialty #home-doctors,
+  #main-content.clinic-mode-single_doctor_single_specialty #home-specialties,
+  #main-content.clinic-mode-single_doctor_multi_specialty #home-specialties {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 420px;
+  }
+}
